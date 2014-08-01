@@ -60,8 +60,5 @@ $(SPOTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spot.out : $(RANDOM_SAMPLE_BAM)
 
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM)
-#	bash -e $(STAMPIPES)/scripts/SPOT/picard_dups.bash $(RANDOM_SAMPLE_BAM) $(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.dup $(DUP_OUT)
-# This should be the rule but qmake errors out with
-# Error: Unable to access jarfile ~/picard-tools-1.114/MarkDuplicates.jar
-	java -jar `which MarkDuplicates.jar` INPUT=$(SAMPLE_NAME).R1.rand.uniques.sorted.bam OUTPUT=$(SAMPLE_NAME).R1.rand.uniques.dup \
-	  METRICS_FILE=$(SAMPLE_NAME).R1.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT
+	java -jar `which MarkDuplicates.jar` INPUT=$(RANDOM_SAMPLE_BAM) OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.dup \
+	  METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT
