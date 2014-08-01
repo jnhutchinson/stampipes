@@ -32,7 +32,7 @@ FAI ?= $(BWAINDEX).fai
 READ_LENGTH ?= 36
 
 # Ideally this will be set in the environment or on the command line to an actual temp directory
-TMPDIR ?= .
+TMPDIR ?= $(shell pwd)
 
 # Discard reads failing chastity filter, use 32 bases as a seed
 # and set the mismatch level appropriate to the read length
