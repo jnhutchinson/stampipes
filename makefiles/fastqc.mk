@@ -7,8 +7,9 @@
 ###################
 # PAIRED=True
 ###################
-# If uploading data to the LIMS, then indicate the APITOKEN to use and FLOWCELL uploading name
-# APITOKEN=aethua87ao997i9a9u
+# If uploading data to the LIMS, then indicate the LIMS_API_TOKEN to use and FLOWCELL uploading name
+# LIMS_API_URL=http://lims.com
+# LIMS_API_TOKEN=aethua87ao997i9a9u
 # FLOWCELL=CU8TE
 ###################
 
@@ -19,9 +20,9 @@ FASTQC ?= fastqc
 # well within qsub memory limits
 FASTQC_OPTIONS ?= -t 4
 
-INDIR ?= .
+INDIR ?= $(shell pwd)
 
-LIMS_API_URL ?= https://lims.stamlab.org/api/
+STAMPIPES ?= ~/stampipes
 
 ifdef PAIRED
  TARGETS ?= $(SAMPLE_NAME)_R1_fastqc $(SAMPLE_NAME)_R2_fastqc
@@ -56,13 +57,19 @@ info :
 # Also move the folder if we only have one file pair so we don't have the extra 001
 $(INDIR)/$(SAMPLE_NAME)_%_fastqc :
 	time $(FASTQC) $(FASTQC_OPTIONS) $(SAMPLE_NAME)_$*_???.fastq.gz --casava && echo FastQC stats >&2
-ifeq ($(words $(SORTED_BAMS)), 1)
+ifeq ($(words $(shell ls $(SAMPLE_NAME)_R1_???.fastq.gz | wc -l)), 1)
 	mv $(SAMPLE_NAME)_$*_001_fastqc $(SAMPLE_NAME)_$*_fastqc
 	mv $(SAMPLE_NAME)_$*_001_fastqc.zip $(SAMPLE_NAME)_$*_fastqc.zip
 endif
 
-ifdef APITOKEN
+ifdef LIMS_API_TOKEN
 upload : $(TARGETS)
 	@echo "Uploading FastQC data"
-	find . -name "fastqc_data.txt" | upload_fastqc.py -a $(LIMS_API_URL) -t $(APITOKEN) -f $(FLOWCELL)
+ifdef PAIRED
+        python $(STAMPIPES)/scripts/lims/upload_data.py -a $(LIMS_API_URL) -t $(LIMS_API_TOKEN) -f $(FLOWCELL) \
+	  --flowcell_lane_id=$(FLOWCELL_LANE_ID) --fastqcfile $(SAMPLE_NAME)_R1_fastqc --fastqcfile $(SAMPLE_NAME)_R2_fastqc
+else
+        python $(STAMPIPES)/scripts/lims/upload_data.py -a $(LIMS_API_URL) -t $(LIMS_API_TOKEN) -f $(FLOWCELL) \
+	  --flowcell_lane_id=$(FLOWCELL_LANE_ID) --fastqcfile $(SAMPLE_NAME)_R1_fastqc
+endif
 endif
