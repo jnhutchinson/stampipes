@@ -265,11 +265,13 @@ class UploadLIMS(object):
             "count": count,
         }
         
-        print "%s/flowcell_lane_count/"
         result = requests.post("%s/flowcell_lane_count/" % self.api_url, headers = self.headers, data = data)
         
-        print result
-                
+        if result.ok:
+            print result.json()
+        else:
+            print result
+            
     def upload_spot(self, alignment_id, spot_file, dup_file):
         
         if not spot_file and dup_file:
