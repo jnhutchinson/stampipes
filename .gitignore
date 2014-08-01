@@ -1,2 +1,3 @@
 data/densities/*.starch
 data/adapters/*.adapters
+*.pyc
