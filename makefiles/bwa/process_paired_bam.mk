@@ -23,13 +23,13 @@ READ_LENGTH ?= 36
 
 MIN_MAP_QUALITY ?= 30
 
-SAMTOOL_OPTIONS ?= -F 0x12 -q $(MIN_MAP_QUALITY)
+SAMTOOL_OPTIONS ?= -q $(MIN_MAP_QUALITY)
 
 # Ideally this will be set to something else set in the environment or on the command line
-TMPDIR ?= .
+TMPDIR ?= $(shell pwd)
 
 # where our results files go
-OUTDIR ?= .
+OUTDIR ?= $(shell pwd)
 
 all : info metrics uniques
 
@@ -65,7 +65,7 @@ $(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam.bai : $(OUTDIR)/$(SAMPLE_NAME).uniqu
                 
 # Sorted uniquely mapping reads BAM
 $(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam : $(OUTDIR)/$(SAMPLE_NAME).sorted.bam
-	time $(SAMTOOLS) view $(SAMTOOL_OPTIONS) $^ | $(SAMTOOLS) view -bSt $(FAI) - > $@
+	time $(SAMTOOLS) view -F 0x4 $(SAMTOOL_OPTIONS) $^ | $(SAMTOOLS) view -F 0x8 -bSt $(FAI) - > $@
 
 # Index sorted BAM file
 $(OUTDIR)/$(SAMPLE_NAME).sorted.bam.bai : $(OUTDIR)/$(SAMPLE_NAME).sorted.bam
