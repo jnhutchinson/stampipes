@@ -54,7 +54,7 @@ def get_processing_info(api_url, token, id, outfile):
         result = info.json()
         print "Writing results to %s" % outfile
         with open(outfile, 'w') as output:
-            json.dump(result, output)
+            json.dump(result, output, sort_keys=True, indent=4, separators=(',', ': '))
     else:
         sys.stderr.write("Could not find processing info for alignment group %s" % str(id))
     
