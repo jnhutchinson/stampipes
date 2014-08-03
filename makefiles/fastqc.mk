@@ -8,8 +8,11 @@
 # PAIRED=True
 ###################
 # If uploading data to the LIMS, then indicate the LIMS_API_TOKEN to use and FLOWCELL uploading name
+# and the ALIGNMENT_ID for the counts
+###################
 # LIMS_API_URL=http://lims.com
 # LIMS_API_TOKEN=aethua87ao997i9a9u
+# ALIGNMENT_ID=1435
 # FLOWCELL=CU8TE
 ###################
 
@@ -66,10 +69,10 @@ ifdef LIMS_API_TOKEN
 upload : $(TARGETS)
 	@echo "Uploading FastQC data"
 ifdef PAIRED
-        python $(STAMPIPES)/scripts/lims/upload_data.py -a $(LIMS_API_URL) -t $(LIMS_API_TOKEN) -f $(FLOWCELL) \
-	  --flowcell_lane_id=$(FLOWCELL_LANE_ID) --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R1_fastqc --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R2_fastqc
+        python $(STAMPIPES)/scripts/lims/upload_data.py -f $(FLOWCELL) --alignment_id $(ALIGNMENT_ID) --flowcell_lane_id=$(FLOWCELL_LANE_ID) \
+	  --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R1_fastqc/fastqc_data.txt --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R2_fastqc/fastqc_data.txt
 else
-        python $(STAMPIPES)/scripts/lims/upload_data.py -a $(LIMS_API_URL) -t $(LIMS_API_TOKEN) -f $(FLOWCELL) \
-	  --flowcell_lane_id=$(FLOWCELL_LANE_ID) --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R1_fastqc
+        python $(STAMPIPES)/scripts/lims/upload_data.py -f $(FLOWCELL) --alignment_id $(ALIGNMENT_ID) --flowcell_lane_id=$(FLOWCELL_LANE_ID) \
+	  --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R1_fastqc/fastqc_data.txt
 endif
 endif

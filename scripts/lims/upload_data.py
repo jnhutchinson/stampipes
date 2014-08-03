@@ -25,6 +25,7 @@ script_options = {
     "counts_file": None,
     "flowcell": None,
     "flowcell_lane_id": None,
+    "fastqc_counts": False,
 }
 
 def parser_setup():
@@ -62,6 +63,8 @@ def parser_setup():
         help="A FastQC file to upload.")
     parser.add_argument("--insertsfile", dest="inserts_file",
         help="A Picard CollectInsertSizeMetrics text file.")
+    parser.add_argument("--fastqc_counts", dest="fastqc_counts", action="store_true",
+        help="Use the given fastqc files to create total/pf/qc counts. Must have an alignment id.")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -103,6 +106,25 @@ def get_dup_score(spotdup_file):
     
     return None
 
+def get_fastqc_counts(fastqc_input):
+
+    total_m = re.search('Total Sequences\t(?P<total>\d+)', fastqc_input)
+    
+    if not total_m:
+        print "Could not get total sequences from fastqc_input"
+        return None
+
+    filtered_m = re.search('Filtered Sequences\t(?P<filtered>\d+)', fastqc_input)
+    
+    if not filtered_m:
+        print "Could not get filtered sequences from fastqc_input"
+        return None
+    
+    return {
+        'total': int(total_m.group('total')),
+        'filtered': int(filtered_m.group('filtered')),
+    }
+
 class UploadLIMS(object):
 
     def __init__(self, api_url, token):
@@ -115,7 +137,8 @@ class UploadLIMS(object):
        self.flowcell_lane_cache = {}
        self.alignment_counts = {}
        self.picard_metrics = None
-
+       self.fastqc_counts = {}
+       
     def clear_flowcell_cache(self, flowcell):
        
        r = requests.get("%s/flowcell_run/?label=%s" % (self.api_url, flowcell), headers = self.headers)
@@ -137,7 +160,7 @@ class UploadLIMS(object):
        if not self.fastqc_tags:
            tags_url = '%s/fastqc_tag/' % self.api_url
            tags = list()
-
+           
            tags_results = requests.get(tags_url, headers = self.headers).json()
            tags.extend(tags_results['results'])
 
@@ -340,6 +363,8 @@ class UploadLIMS(object):
             print "Could not read fastqc file %s" % filename
             return None
         
+        self.fastqc_counts[filename] = get_fastqc_counts(fastqc_report)
+        
         samplename = m.group('samplename')
         read = m.group('read')
             
@@ -373,6 +398,30 @@ class UploadLIMS(object):
             result = requests.post("%s/fastqc_report/" % self.api_url, headers = self.headers, data = upload)
             print result
             print result.json()
+       
+    def upload_fastqc_counts(self, alignment_id):
+        
+        total = 0
+        filtered = 0
+        
+        for fastqc_file, fastqc_counts in self.fastqc_counts.items():
+            
+            if not fastqc_counts:
+                print "Could not get counts from %s for uploading" % fastqc_file
+                return
+                
+            total += fastqc_counts["total"]
+            filtered += fastqc_counts["filtered"]
+
+        # FastQC's definition of total differs from ours
+        counts = {
+            "total": total + filtered,
+            "qc": filtered,
+            "pf": total
+        }
+        
+        for count_name, count in counts.items():
+            self.upload_count(alignment_id, count_name, count)
        
     def upload_inserts(self, flowcell_lane_id, filename, metric="CollectInsertSizeMetrics"):
 
@@ -454,6 +503,9 @@ from the command line."""
 
     for fastqc_file in poptions.fastqc_files:
         uploader.upload_fastqc(poptions.flowcell_lane_id, fastqc_file)
+
+    if poptions.fastqc_files and poptions.fastqc_counts:
+        uploader.upload_fastqc_counts(poptions.alignment_id)
 
     if poptions.inserts_file:
         uploader.upload_inserts(poptions.flowcell_lane_id, poptions.inserts_file)
