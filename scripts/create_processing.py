@@ -6,7 +6,13 @@ QSUB_SCRIPT = 'run.bash'
 PROCESS_SCRIPT = 'run.bash'
 
 STAMPIPES = os.getenv('STAMPIPES', '~/stampipes')
-base_script = open("%s/processes/bwa/process_bwa_paired_trimmed.bash" % STAMPIPES, "r").read()
+
+script_files = {
+    "bwa": "%s/processes/bwa/process_bwa_paired_trimmed.bash" % STAMPIPES,
+    "fastqc": "%s/processes/fastqc_only.bash" % STAMPIPES,
+}
+
+script_contents = {}
 
 p = json.loads(open(PROCESSING_FILE, 'r').read())
 
@@ -36,18 +42,25 @@ def run_scripts():
 def create_script(lane):
     global p
 
-    if not lane["alignments"]:
-        print "# Skipping %s" % lane['sample']
-        return
-
     alignment = lane["alignments"][0]
 
     if not alignment['aligner']:
-        print "# Skipping %s" % lane['sample']
-        return
-    print "# Aligning %s" % lane['sample']
-
-    script_file = os.path.join(p['alignment_group']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'], "run.bash")
+        print "# FastQC only %s" % lane['sample']
+        base_script = "fastqc"
+    else:
+        print "# Aligning %s with bwa" % lane['sample']
+        base_script = "bwa"
+    
+    if not base_script in script_contents:
+        script_contents[base_script] = open(script_files[base_script], 'r').read()
+    
+    script_directory = os.path.join(p['alignment_group']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
+    
+    if not os.path.exists(script_directory):
+        print "Creating directory %s" % script_directory
+        os.makedirs(script_directory)
+    
+    script_file = os.path.join( script_directory, QSUB_SCRIPT )
     print script_file
 
     outfile = open(script_file, 'w')
@@ -63,7 +76,7 @@ def create_script(lane):
     outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
     outfile.write("export FLOWCELL=%s\n" % p['flowcell']['label'])
     outfile.write("\n")
-    outfile.write(base_script)
+    outfile.write(script_contents[base_script])
     outfile.close()
 
     add_script(script_file, lane['samplesheet_name'], alignment['priority'])
