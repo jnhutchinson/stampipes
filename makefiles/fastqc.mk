@@ -25,13 +25,17 @@ FASTQC_OPTIONS ?= -t 4
 
 INDIR ?= $(shell pwd)
 
+OUTDIR ?= $(shell pwd)
+
 STAMPIPES ?= ~/stampipes
 
 ifdef PAIRED
- TARGETS ?= $(SAMPLE_NAME)_R1_fastqc $(SAMPLE_NAME)_R2_fastqc
+ TARGETS ?= $(OUTDIR)/$(SAMPLE_NAME)_R1_fastqc $(OUTDIR)/$(SAMPLE_NAME)_R2_fastqc
 else
- TARGETS ?= $(SAMPLE_NAME)_R1_fastqc 
+ TARGETS ?= $(OUTDIR)/$(SAMPLE_NAME)_R1_fastqc 
 endif 
+
+NUM_FILES = $(shell ls $(INDIR)/$(SAMPLE_NAME)_R1_???.fastq.gz | wc -l)
 
 .PHONY : upload fastqc info
 
@@ -58,21 +62,26 @@ info :
 
 # Make fastqc results
 # Also move the folder if we only have one file pair so we don't have the extra 001
-$(INDIR)/$(SAMPLE_NAME)_%_fastqc :
+$(OUTDIR)/$(SAMPLE_NAME)_%_fastqc :
+	@echo FastQ files: $(NUM_FILES)
 	time $(FASTQC) $(FASTQC_OPTIONS) $(INDIR)/$(SAMPLE_NAME)_$*_???.fastq.gz --casava && echo FastQC stats >&2
-ifeq ($(words $(shell ls $(INDIR)/$(SAMPLE_NAME)_R1_???.fastq.gz | wc -l)), 1)
-	mv $(INDIR)/$(SAMPLE_NAME)_$*_001_fastqc $(INDIR)/$(SAMPLE_NAME)_$*_fastqc
-	mv $(INDIR)/$(SAMPLE_NAME)_$*_001_fastqc.zip $(INDIR)/$(SAMPLE_NAME)_$*_fastqc.zip
+ifeq ($(NUM_FILES), 1)
+	mv $(OUTDIR)/$(SAMPLE_NAME)_$*_001_fastqc $(OUTDIR)/$(SAMPLE_NAME)_$*_fastqc
+	mv $(OUTDIR)/$(SAMPLE_NAME)_$*_001_fastqc.zip $(OUTDIR)/$(SAMPLE_NAME)_$*_fastqc.zip
 endif
 
 ifdef LIMS_API_TOKEN
 upload : $(TARGETS)
 	@echo "Uploading FastQC data"
 ifdef PAIRED
-        python $(STAMPIPES)/scripts/lims/upload_data.py -f $(FLOWCELL) --alignment_id $(ALIGNMENT_ID) --flowcell_lane_id=$(FLOWCELL_LANE_ID) \
-	  --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R1_fastqc/fastqc_data.txt --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R2_fastqc/fastqc_data.txt
+	@echo "Paired end upload"
+	python $(STAMPIPES)/scripts/lims/upload_data.py -f $(FLOWCELL) --alignment_id $(ALIGNMENT_ID) --flowcell_lane_id=$(FLOWCELL_LANE_ID) \
+	  --fastqcfile $(OUTDIR)/$(SAMPLE_NAME)_R1_fastqc/fastqc_data.txt --fastqcfile $(OUTDIR)/$(SAMPLE_NAME)_R2_fastqc/fastqc_data.txt \
+	  --fastqc_counts
 else
-        python $(STAMPIPES)/scripts/lims/upload_data.py -f $(FLOWCELL) --alignment_id $(ALIGNMENT_ID) --flowcell_lane_id=$(FLOWCELL_LANE_ID) \
-	  --fastqcfile $(INDIR)/$(SAMPLE_NAME)_R1_fastqc/fastqc_data.txt
+	@echo "Single end upload"
+	python $(STAMPIPES)/scripts/lims/upload_data.py -f $(FLOWCELL) --alignment_id $(ALIGNMENT_ID) --flowcell_lane_id=$(FLOWCELL_LANE_ID) \
+	  --fastqcfile $(OUTDIR)/$(SAMPLE_NAME)_R1_fastqc/fastqc_data.txt \
+	  --fastqc_counts
 endif
 endif
