@@ -51,7 +51,7 @@ def create_links(lane, read, input_basedir, output_basedir, dry_run = False):
     # if nextseq
     if True:
         input_dir  = input_basedir
-        input_wildcard = os.path.join(input_dir, "%s_S?_L00?_%s_???.fastq.gz" % (short_name, read))
+        input_wildcard = os.path.join(input_dir, "%s_S*_L00?_%s_???.fastq.gz" % (short_name, read))
     else: # eventually could be highseq rapid run linking... have to make some changes
         input_dir = os.path.join( input_basedir,  "Project_%s" % lane["project"], "Sample_%s" % lane["samplesheet_name"] )
         input_wildcard = os.path.join(input_dir, "%s_%s_???.fastq.gz" % (sample_name, read))
@@ -71,7 +71,7 @@ def create_links(lane, read, input_basedir, output_basedir, dry_run = False):
         rel_path = os.path.relpath(input_file, output_dir)
 
         print "Linking %s => %s" % (rel_path, output_file)
-        if not dry_run:
+        if not dry_run and not os.path.exists(output_file):
             os.symlink(rel_path, output_file)
     
 def main(args = sys.argv):
