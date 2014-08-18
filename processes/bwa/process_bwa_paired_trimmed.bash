@@ -25,7 +25,7 @@ qsub -l h_data=5650M -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: " `hostname`
   
-  make -f $STAMPIPES/makefiles/bwa/bwa_paired_trimmed_make.mk \
+  make -f $STAMPIPES/makefiles/bwa/bwa_paired_trimmed.mk \
     FASTQ1_FILE=${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
     FASTQ2_FILE=${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
     OUTBAM=${BAMFILE} \
