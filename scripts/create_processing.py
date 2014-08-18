@@ -20,7 +20,7 @@ script_options = {
     "debug": False,
     "process_config": "processing.json",
     "outfile": os.path.join(os.getcwd(), "run.bash"),
-    "sample_scriptname": "run.bash",   
+    "sample_script_basename": "run.bash",   
 }
 
 def parser_setup():
@@ -36,7 +36,9 @@ def parser_setup():
         help="The master script to run all sample scripts.")
     parser.add_argument("-p", "--process-config", dest="process_config",
         help="The process config to work off of.")
-    
+    parser.add_argument("-b", "--sample-script-basename", dest="sample_script_basename",
+        help="Name of the script that goes after the sample name.")
+
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
 
@@ -47,7 +49,7 @@ class ProcessSetUp(object):
     
     def __init__(self, processing_configfile, qsub_scriptname, outfile):
         
-        self.processing_configfile = processing_configfile        
+        self.processing_configfile = processing_configfile
         self.qsub_scriptname = qsub_scriptname
         self.outfile = outfile
         
@@ -60,12 +62,12 @@ class ProcessSetUp(object):
 
         self.run_scripts()
 
-    def add_script(self, script_file, samplesheet_name, priority):
+    def add_script(self, script_file, sample_name, priority):
         
         if not priority in self.processing_scripts:
             self.processing_scripts[priority] = list()
         
-        self.processing_scripts[priority].append((samplesheet_name, script_file))
+        self.processing_scripts[priority].append((sample_name, script_file))
 
     def run_scripts(self):
 
@@ -73,9 +75,9 @@ class ProcessSetUp(object):
         
         for priority in sorted(self.processing_scripts.keys(), reverse=True):
             outfile.write("# Priority %s\n" % str(priority))
-            for samplesheet_name, script_file in self.processing_scripts[priority]:
+            for sample_name, script_file in self.processing_scripts[priority]:
                 outfile.write("cd %s && " % os.path.dirname(script_file))
-                outfile.write("qsub -N .proc%s -cwd -V -S /bin/bash %s\n\n" % (samplesheet_name, self.qsub_scriptname))
+                outfile.write("qsub -N .proc%s-%s -cwd -V -S /bin/bash %s\n\n" % (sample_name, self.p['flowcell']['label'], script_file))
 
         outfile.close()
 
@@ -99,7 +101,7 @@ class ProcessSetUp(object):
             print "Creating directory %s" % script_directory
             os.makedirs(script_directory)
     
-        script_file = os.path.join( script_directory, self.qsub_scriptname )
+        script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         print script_file
 
         outfile = open(script_file, 'w')
@@ -118,7 +120,7 @@ class ProcessSetUp(object):
         outfile.write(script_contents[base_script])
         outfile.close()
       
-        self.add_script(script_file, lane['samplesheet_name'], alignment['priority'])
+        self.add_script(script_file, alignment['sample_name'], alignment['priority'])
     
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
@@ -135,7 +137,7 @@ from the command line."""
         # Set up the logging levels
         logging.basicConfig(level=logging.INFO, format=log_format)
 
-    process = ProcessSetUp(poptions.process_config, poptions.sample_scriptname,
+    process = ProcessSetUp(poptions.process_config, poptions.sample_script_basename,
         poptions.outfile)
 
     process.create()
