@@ -203,10 +203,16 @@ class UploadLIMS(object):
         
         if not name in self.count_types:
             exists = requests.get("%s/flowcell_lane_count_type/?codename=%s" % (self.api_url, name), headers = self.headers)
+            count_type = None
             if exists.ok:
-                self.count_types[name] = exists.json()['results'][0]
+                results = exists.json()
+                if results['count'] > 0:
+                    self.count_types[name] = results['results'][0]
+                else:
+                    print "Count type %s not found" % name
+                    self.count_types[name] = None
             else:
-                print "Count type %s not found" % name
+                print "Error finding count type %s through API" % name
                 self.count_types[name] = None
 
         return self.count_types[name]
