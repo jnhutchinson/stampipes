@@ -41,12 +41,15 @@ def parser_setup():
 
     return parser
 
-def create_links(lane, read, input_basedir, output_basedir, dry_run = False):
+def create_links(lane, read, input_basedir, output_basedir, dry_run = False, undetermined = False):
 
     sample_name = lane["alignments"][0]["sample_name"]
     short_name = lane["samplesheet_name"]
 
-    output_dir = os.path.join( output_basedir, "Project_%s" % lane["project"], "Sample_%s" % lane["samplesheet_name"] )
+    if undetermined:
+        output_dir = os.path.join( output_basedir, "Undetermined_indices", "Sample_lane1")
+    else:
+        output_dir = os.path.join( output_basedir, "Project_%s" % lane["project"], "Sample_%s" % lane["samplesheet_name"] )
 
     # if nextseq
     if True:
@@ -96,6 +99,10 @@ from the command line."""
     for lane in p['libraries']:
         create_links(lane, "R1", input_dir, poptions.output_dir, poptions.dry_run)
         create_links(lane, "R2", input_dir, poptions.output_dir, poptions.dry_run)
+
+    undet_lane = {"alignments":[{"sample_name": "lane1_Undetermined"}], "samplesheet_name": "Undetermined" }
+    for read in ['R1', 'R2']:
+        create_links(undet_lane, read, input_dir, poptions.output_dir, poptions.dry_run, True)
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
