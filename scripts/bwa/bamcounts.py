@@ -41,13 +41,19 @@ class BAMFilter(object):
         # change this to false if we run into a condition that excludes this read
         output = True
 
+        tags = dict(read.tags)
+
+        # This might not be the most perfect indicator, but it will do for now
+        # Must take place before minimum quality filter--multiple matching
+        # reads have mapq set to 0
+        if "XT" in tags and tags["XT"] == "R":
+            counts['mm'] += 1
+
         if self.min_map_quality > read.mapq:
             return
 
         if not read.tags:
             return
-
-        tags = dict(read.tags)
         
         if read.flag & 12:
             return False
@@ -101,7 +107,7 @@ class BAMFilter(object):
         #outbam = Samfile(outfile, 'wb', template=inbam)
         
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
-          'u-pf-n-mm%d-mito' % self.max_mismatches, ] #'qc', 'mm', 'nm', 'pf', 'total']
+          'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm' ]#'qc', 'mm', 'nm', 'pf', 'total']
         
         counts = dict([(label, 0) for label in count_labels])
 
