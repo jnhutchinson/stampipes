@@ -122,7 +122,7 @@ __SCRIPT__
 
 fi
 
-if [ ! -e ${SAMPLE_NAME}.${GENOME}.bw ]; then
+if [ ! -e ${SAMPLE_NAME}.75_20.${GENOME}.bw ]; then
 
 qsub $PROCESS_HOLD -N ".den${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
