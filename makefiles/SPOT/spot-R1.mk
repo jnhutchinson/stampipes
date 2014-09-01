@@ -58,7 +58,17 @@ $(SPOT_OUT) : $(SPOTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spot.out
 $(SPOTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spot.out : $(RANDOM_SAMPLE_BAM)
 	bash -e $(STAMPIPES)/scripts/SPOT/runhotspot.bash $(HOTSPOT_DIR) $(SPOTDIR) $(RANDOM_SAMPLE_BAM) $(GENOME) $(READLENGTH) $(ASSAY)
 
+# picard has trouble calculating dups when we are just working with a sampling
+# from R1 on paired end data; converting back and forth with BED will
+# strip that information
+$(RANDOM_SAMPLE_BAM).bed : $(RANDOM_SAMPLE_BAM)
+	bamToBed -i $^ > $@
+
+$(RANDOM_SAMPLE_BAM).bed.sorted.bam : $(RANDOM_SAMPLE_BAM).bed
+	bedToBam -i $^ -g $(FAI) > $(RANDOM_SAMPLE_BAM).bed.bam
+	samtools sort $(RANDOM_SAMPLE_BAM).bed.bam $(RANDOM_SAMPLE_BAM).bed.sorted
+
 # Calculate the duplication score of the random sample
-$(DUP_OUT) : $(RANDOM_SAMPLE_BAM)
-	java -jar `which MarkDuplicates.jar` INPUT=$(RANDOM_SAMPLE_BAM) OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.dup \
+$(DUP_OUT) : $(RANDOM_SAMPLE_BAM).bed.sorted.bam
+	java -jar `which MarkDuplicates.jar` INPUT=$(RANDOM_SAMPLE_BAM).bed.sorted.bam OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.dup \
 	  METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT
