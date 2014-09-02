@@ -65,7 +65,7 @@ def create_links(lane, read, input_basedir, output_basedir, dry_run = False, und
     # This will fail if we have the same sample listed multiple times in the
     # samplesheet (run with different barcodes). 
     # But I've never seen that happen.
-    input_fastq = glob.glob(input_wildcard)
+    input_fastq = sorted(glob.glob(input_wildcard))
 
     for idx, input_file in enumerate(input_fastq, start=1):
         output_name = "%s_%s_%03d.fastq.gz" % (sample_name, read, idx)
