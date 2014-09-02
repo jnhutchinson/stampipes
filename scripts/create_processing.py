@@ -83,6 +83,9 @@ class ProcessSetUp(object):
 
     def create_script(self, lane):
 
+        if not lane["alignments"]:
+            return False
+
         alignment = lane["alignments"][0]
 
         if not alignment['aligner']:
