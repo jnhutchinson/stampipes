@@ -10,6 +10,7 @@ STAMPIPES = os.getenv('STAMPIPES', '~/stampipes')
 
 script_files = {
     "bwa": "%s/processes/bwa/process_bwa_paired_trimmed.bash" % STAMPIPES,
+    "tophat": "%s/processes/tophat/process_tophat_paired.bash" % STAMPIPES,
     "fastqc": "%s/processes/fastqc_only.bash" % STAMPIPES,
 }
 
@@ -111,8 +112,8 @@ class ProcessSetUp(object):
             print "# FastQC only %s" % lane['sample']
             base_script = "fastqc"
         else:
-            print "# Aligning %s with bwa" % lane['sample']
-            base_script = "bwa"
+            base_script = alignment["aligner"]
+            print "# Aligning %s with %s" % ( lane['sample'], base_script )
 
         if not base_script in script_contents:
             script_contents[base_script] = open(script_files[base_script], 'r').read()
