@@ -31,6 +31,10 @@ TMPDIR ?= $(shell pwd)
 # where our results files go
 OUTDIR ?= $(shell pwd)
 
+INBAM ?= $(OUTDIR)/$(SAMPLE_NAME).sorted.bam
+OUTBAM ?= $(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam
+INSERTMETRICS ?= $(OUTDIR)/$(SAMPLE_NAME).CollectInsertSizeMetrics.picard
+
 all : info metrics uniques
 
 info : 
@@ -53,20 +57,20 @@ uniques : $(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam.bai
 
 # Sometimes this will report errors about a read not mapping that should have a mapq of 0
 # See this for more info: http://seqanswers.com/forums/showthread.php?t=4246
-$(OUTDIR)/$(SAMPLE_NAME).CollectInsertSizeMetrics.picard : $(OUTDIR)/$(SAMPLE_NAME).sorted.bam
+$(INSERTMETRICS) : $(OUTBAM) 
 	time java -Xmx1000m -jar `which CollectInsertSizeMetrics.jar` INPUT=$^ OUTPUT=$@ \
                 HISTOGRAM_FILE=$(SAMPLE_NAME).CollectInsertSizeMetrics.pdf \
                 VALIDATION_STRINGENCY=LENIENT \
                 ASSUME_SORTED=true && echo Picard stats >&2
 
 # Index uniquely mapping reads 
-$(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam.bai : $(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam
+$(OUTBAM).bai : $(OUTBAM)
 	time $(SAMTOOLS) index $^
                 
 # Sorted uniquely mapping reads BAM
-$(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam : $(OUTDIR)/$(SAMPLE_NAME).sorted.bam
+$(OUTBAM) : $(INBAM)
 	time $(SAMTOOLS) view -F 0x4 $(SAMTOOL_OPTIONS) $^ | $(SAMTOOLS) view -F 0x8 -bSt $(FAI) - > $@
 
 # Index sorted BAM file
-$(OUTDIR)/$(SAMPLE_NAME).sorted.bam.bai : $(OUTDIR)/$(SAMPLE_NAME).sorted.bam
+$(INBAM).bai : $(INBAM)
 	time $(SAMTOOLS) index $^	
