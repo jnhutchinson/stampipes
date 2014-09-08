@@ -51,9 +51,9 @@ info :
 	@echo "FAI: " $(FAI)
 	@echo "READ LENGTH: " $(READ_LENGTH)
 
-metrics : $(OUTDIR)/$(SAMPLE_NAME).CollectInsertSizeMetrics.picard
+metrics : $(INSERTMETRICS)
 
-uniques : $(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam.bai
+uniques : $(INBAM).bai $(OUTBAM).bai
 
 # Sometimes this will report errors about a read not mapping that should have a mapq of 0
 # See this for more info: http://seqanswers.com/forums/showthread.php?t=4246
