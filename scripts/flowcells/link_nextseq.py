@@ -53,6 +53,7 @@ def create_links(lane, read, input_basedir, output_basedir, dry_run = False, und
 
     # if nextseq
     if True:
+        short_name = re.sub(r"_", '-', short_name)
         input_dir  = input_basedir
         input_wildcard = os.path.join(input_dir, "%s_S*_L00?_%s_???.fastq.gz" % (short_name, read))
     else: # eventually could be highseq rapid run linking... have to make some changes
