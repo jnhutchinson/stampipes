@@ -23,7 +23,7 @@ def compare_bam_order(faifile, bamfile):
 def main(args = sys.argv):
 
     if len(sys.argv) < 3:
-        print "USAGE: %s FAIFILE BAMFILE" % argv[0]
+        print "USAGE: %s FAIFILE BAMFILE" % sys.argv[0]
         sys.exit(0)
 
     faifile = sys.argv[1]
@@ -40,9 +40,9 @@ def main(args = sys.argv):
     ordered = compare_bam_order(faifile, bamfile)
 
     if ordered:
-        sys.stdout.write("ORDERED")
+        sys.stdout.write("ORDERED\n")
     else:
-        sys.stdout.write("UNORDERED")
+        sys.stdout.write("UNORDERED\n")
 
 if __name__ == "__main__":
     main()
