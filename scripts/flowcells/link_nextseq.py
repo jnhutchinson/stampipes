@@ -101,7 +101,7 @@ from the command line."""
         create_links(lane, "R1", input_dir, poptions.output_dir, poptions.dry_run)
         create_links(lane, "R2", input_dir, poptions.output_dir, poptions.dry_run)
 
-    undet_lane = {"alignments":[{"sample_name": "lane1_Undetermined"}], "samplesheet_name": "Undetermined" }
+    undet_lane = {"alignments":[{"sample_name": "lane1_Undetermined_L001"}], "samplesheet_name": "Undetermined" }
     for read in ['R1', 'R2']:
         create_links(undet_lane, read, input_dir, poptions.output_dir, poptions.dry_run, True)
 
