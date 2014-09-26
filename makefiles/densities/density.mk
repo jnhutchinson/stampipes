@@ -42,13 +42,15 @@ all : $(SAMPLE_NAME).$(WIN)_$(BINI).uniques-density.$(READLENGTH).$(GENOME).bed.
 # clip tags to single 5' end base
 $(TMPDIR)/$(SAMPLE_NAME).m$(READLENGTH).uniques.$(BINI).bed : $(BAMFILE)
 	bamToBed -i $^ \
-    | awk '{if($$6=="+"){s=$$2; e=$$2+1}else{s=$$3-1; e=$$3}print $$1"\t"s"\t"e}' \
+    | awk '{ if( $$6=="+" ){ s=$$2; e=$$2+1 } else { s=$$3-1; e=$$3 } print $$1 "\t" s "\t" e "\tid\t" 1 }' \
     | sort-bed - \
     > $@
 
 $(SAMPLE_NAME).$(WIN)_$(BINI).uniques-density.$(READLENGTH).$(GENOME).bed.starch : $(CHROM_BUCKET) $(TMPDIR)/$(SAMPLE_NAME).m$(READLENGTH).uniques.$(BINI).bed   
 	unstarch $(CHROM_BUCKET) \
     | bedmap --faster --echo --count --delim "\t" - $(TMPDIR)/$(SAMPLE_NAME).m$(READLENGTH).uniques.$(BINI).bed \
+    | awk -v binI=$(BINI) -v win=$(WIN) \
+        'BEGIN{ halfBin=binI/2; shiftFactor=win-halfBin } { print $$1 "\t" $$2 + shiftFactor "\t" $$3-shiftFactor "\tid\t" i $$4}' \
     | starch - \
     > $@
 
