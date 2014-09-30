@@ -8,6 +8,7 @@ In order to set up these scripts, checkout the repository.  There are some envir
 * STAMPIPES -- full path to the installation directory
 * LIMS_API_URL -- URL to the LIMS API
 * LIMS_API_TOKEN -- Auth to the LIMS API
+* MODULELOAD -- Full path to the GNU modules init script
 
 Modules
 -------------
@@ -21,3 +22,5 @@ The current modules to load for working the pipeline are:
 	module load python/2.7.3
 	module load java/jdk1.7.0_05
 	module load picard/1.118
+
+If $MODULELOAD is set, then the processing scripts should load the required modules automatically.
