@@ -109,7 +109,7 @@ python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
 analysis_dir=$( jq -r .alignment_group.directory  "$json" )
 mask=$(         jq -r .alignment_group.bases_mask "$json" )
 illumina_dir=$(pwd)
-barcodes=$( jq -r '.libraries[].barcode_index' "$json" )
+barcodes=$( jq -r '.libraries[].barcode_index' $json )
 mismatches=$( "$STAMPIPES/scripts/max_mismatch.py" "$barcodes" )
 
 run_type=$( jq -r .flowcell.run_type "$json" )
