@@ -1,3 +1,13 @@
+# Dependencies
+source $MODULELOAD
+module load bedops/2.4.2
+module load bedtools/2.16.2
+module load bwa/0.7.0
+module load java/jdk1.7.0_05
+module load picard/1.118
+module load python/2.7.3
+module load samtools/0.1.19
+
 FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 
