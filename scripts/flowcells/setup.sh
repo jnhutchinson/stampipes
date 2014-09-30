@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Dependencies
+source $MODULELOAD
+module load python/2.7.3
+
 #########
 # Options
 #########
@@ -174,6 +178,11 @@ esac
 # The final script is below:
 cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 #!/bin/bash
+
+source $MODULELOAD
+module load bcl2fastq/1.8.4
+module load bcl2fastq2/2.15.0.4
+module load python/2.7.3
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
