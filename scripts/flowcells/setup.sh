@@ -104,32 +104,40 @@ jq -r '.libraries[] | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | 
 ########
 
 json="processing.json"
-python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
-
-analysis_dir=$( jq -r .alignment_group.directory  "$json" )
-mask=$(         jq -r .alignment_group.bases_mask "$json" )
 illumina_dir=$(pwd)
-barcodes=$( jq -r '.libraries[].barcode_index' $json )
 mismatches=$( "$STAMPIPES/scripts/max_mismatch.py" "$barcodes" )
 
 run_type=$( jq -r .flowcell.run_type "$json" )
 link_command="#no linking to do"
 
+# Get and read the processing script
+python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
+analysis_dir=$( jq -r '.alignment_group.directory'  "$json" )
+mask=$(         jq -r '.alignment_group.bases_mask' "$json" )
+run_type=$(     jq -r '.flowcell.run_type'          "$json" )
+barcodes=$(     jq -r '.libraries[].barcode_index'  "$json" )
+
+mismatches=$( "$STAMPIPES/scripts/max_mismatch.py" $barcodes )
+
 case $run_type in
 "NextSeq 500")
     echo "Regular NextSeq 500 run detected"
     parallel_env="-pe threads $THREADS"
-    link_command='python $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o .'
+    link_command="python $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$analysis_dir/fastq"
     make_nextseq_samplesheet > SampleSheet.csv
-    unaligned_command=$(cat <<_U_
-    bcl2fastq \
-      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \
-      --use-bases-mask "$mask" \
-      --output-dir "${illumina_dir}/fastq" \
-      --with-failed-reads \
+
+    # The quadruple-backslash syntax on this is messy and gross.
+    # It works, though, and the output is readable.
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$mask" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --with-failed-reads \\\\
       --barcode-mismatches "$mismatches"
 _U_
-)
     ;;
     #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
 "HISEQ V4")
@@ -139,20 +147,22 @@ _U_
     samplesheet=$(pwd)/Data/Intensities/BaseCalls/SampleSheet.csv
     mkdir -p $(basename "$samplesheet")
     make_hiseq_samplesheet > "$samplesheet"
-    unaligned_command="$(cat <<_U_
-    if [ ! -s "$illumina_dir/Unaligned" ] ; then
-            configureBclToFastq.pl \
-              --mismatches "$mismatches" \
-              --output-dir "$illumina_dir/Unaligned" --fastq-cluster-count 16000000 \
-              --with-failed-reads --sample-sheet $samplesheet \
-              --use-bases-mask "$mask"  \
+    fastq_dir="$illumina_dir/Unaligned"
+
+    read -d '' unaligned_command <<_U_
+    if [ ! -e "$fastq_dir" ] ; then
+            configureBclToFastq.pl \\\\
+              --mismatches "$mismatches" \\\\
+              --output-dir "$fastq_dir" \\\\
+              --fastq-cluster-count 16000000 \\\\
+              --with-failed-reads --sample-sheet $samplesheet \\\\
+              --use-bases-mask "$mask"  \\\\
               --input-dir "$illumina_dir/Data/Intensities/BaseCalls"
     fi
 
-    cd "$illumina_dir/Unaligned"
+    cd "$fastq_dir"
     qmake -now no -cwd -q all.q -V -- -j "$NODES"
 _U_
-)"
     ;;
 \?)
     echo "Unrecognized sequencer $sequencer"
@@ -179,14 +189,11 @@ __FASTQ__
 
 qsub -cwd -N "c-$flowcell" -hold_jid "u-$flowcell" -V -S /bin/bash <<__COPY__
 mkdir -p "$analysis_dir"
-if [ -e "$illumina_dir/fastq/" ] ; then
-    rsync -avP "$illumina_dir/fastq/" "$analysis_dir/fastq/"
-fi
-if [ -e "$illumina_dir/Unaligned/" ] ; then
-    rsync -avP "$illumina_dir/Unaligned/" "$analysis_dir/"
-fi
+
+rsync -avP "$fastq_dir/" "$analysis_dir/"
 rsync -avP "$illumina_dir/InterOp" "$analysis_dir/InterOp"
 rsync -avP "$illumina_dir/RunInfo.xml" "$analysis_dir/RunInfo.xml"
+rsync -avP "$samplesheet" "$analysis_dir"
 
 cd "$analysis_dir"
 
