@@ -109,7 +109,6 @@ jq -r '.libraries[] | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | 
 
 json="processing.json"
 illumina_dir=$(pwd)
-mismatches=$( "$STAMPIPES/scripts/max_mismatch.py" "$barcodes" )
 
 link_command="#no linking to do"
 
