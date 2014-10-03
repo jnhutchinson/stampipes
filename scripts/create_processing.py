@@ -20,7 +20,9 @@ script_options = {
     "debug": False,
     "process_config": "processing.json",
     "outfile": os.path.join(os.getcwd(), "run.bash"),
-    "sample_script_basename": "run.bash",   
+    "sample_script_basename": "run.bash",
+    "template_script": None,
+    "project_filter": None,
 }
 
 def parser_setup():
@@ -38,6 +40,10 @@ def parser_setup():
         help="The process config to work off of.")
     parser.add_argument("-b", "--sample-script-basename", dest="sample_script_basename",
         help="Name of the script that goes after the sample name.")
+    parser.add_argument("--project", dest="project_filter",
+        help="Run for this particular project.")
+    parser.add_argument("-t", "--template-script", dest="template_script",
+        help="Template script to make for each valid library if not defaults")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -46,33 +52,39 @@ def parser_setup():
 
 
 class ProcessSetUp(object):
-    
-    def __init__(self, processing_configfile, qsub_scriptname, outfile):
-        
+
+    def __init__(self, processing_configfile, qsub_scriptname, outfile, template_script=None, project_filter=None):
+
         self.processing_configfile = processing_configfile
         self.qsub_scriptname = qsub_scriptname
         self.outfile = outfile
-        
+        self.template_script = template_script
+        self.project_filter = project_filter
+
+        if self.template_script:
+            self.template_script_content = open(self.template_script, 'r').read()
+
     def create(self):
         self.processing_scripts = dict()
         self.p = json.loads(open(self.processing_configfile, 'r').read())
 
         for lane in self.p['libraries']:
-            self.create_script(lane)
+            if not self.project_filter or (self.project_filter and lane["project"] == self.project_filter):
+                self.create_script(lane)
 
         self.run_scripts()
 
     def add_script(self, script_file, sample_name, priority):
-        
+
         if not priority in self.processing_scripts:
             self.processing_scripts[priority] = list()
-        
+
         self.processing_scripts[priority].append((sample_name, script_file))
 
     def run_scripts(self):
 
         outfile = open(self.qsub_scriptname, 'w')
-        
+
         for priority in sorted(self.processing_scripts.keys(), reverse=True):
             outfile.write("# Priority %s\n" % str(priority))
             for sample_name, script_file in self.processing_scripts[priority]:
@@ -80,6 +92,23 @@ class ProcessSetUp(object):
                 outfile.write("qsub -N .proc%s-%s -cwd -V -S /bin/bash %s\n\n" % (sample_name, self.p['flowcell']['label'], script_file))
 
         outfile.close()
+
+    def get_script_template(self, lane):
+
+        if self.template_script:
+            return self.template_script_content
+
+        if not alignment['aligner']:
+            print "# FastQC only %s" % lane['sample']
+            base_script = "fastqc"
+        else:
+            print "# Aligning %s with bwa" % lane['sample']
+            base_script = "bwa"
+
+        if not base_script in script_contents:
+            script_contents[base_script] = open(script_files[base_script], 'r').read()
+
+        return script_contents[base_script]
 
     def create_script(self, lane):
 
@@ -94,16 +123,13 @@ class ProcessSetUp(object):
         else:
             print "# Aligning %s with bwa" % lane['sample']
             base_script = "bwa"
-    
-        if not base_script in script_contents:
-            script_contents[base_script] = open(script_files[base_script], 'r').read()
-    
+
         script_directory = os.path.join(self.p['alignment_group']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
-    
+
         if not os.path.exists(script_directory):
             print "Creating directory %s" % script_directory
             os.makedirs(script_directory)
-    
+
         script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         print script_file
 
@@ -120,11 +146,11 @@ class ProcessSetUp(object):
         outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
         outfile.write("export FLOWCELL=%s\n" % self.p['flowcell']['label'])
         outfile.write("\n")
-        outfile.write(script_contents[base_script])
+        outfile.write(self.get_script_template(lane))
         outfile.close()
-      
+
         self.add_script(script_file, alignment['sample_name'], alignment['priority'])
-    
+
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
 from the command line."""
@@ -141,7 +167,7 @@ from the command line."""
         logging.basicConfig(level=logging.INFO, format=log_format)
 
     process = ProcessSetUp(poptions.process_config, poptions.sample_script_basename,
-        poptions.outfile)
+        poptions.outfile, template_script=poptions.template_script, project_filter=poptions.project_filter)
 
     process.create()
 
