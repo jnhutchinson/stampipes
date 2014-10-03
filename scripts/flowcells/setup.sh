@@ -129,7 +129,7 @@ case $run_type in
     parallel_env="-pe threads $THREADS"
     link_command="python $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
-    fastq_dir="$analysis_dir/fastq"
+    fastq_dir="$illumina_dir/fastq"
     make_nextseq_samplesheet > SampleSheet.csv
 
     # The quadruple-backslash syntax on this is messy and gross.
@@ -199,9 +199,9 @@ __FASTQ__
 qsub -cwd -N "c-$flowcell" -hold_jid "u-$flowcell" -V -S /bin/bash <<__COPY__
 mkdir -p "$analysis_dir"
 
-rsync -avP "$fastq_dir/" "$analysis_dir/"
-rsync -avP "$illumina_dir/InterOp" "$analysis_dir/InterOp"
-rsync -avP "$illumina_dir/RunInfo.xml" "$analysis_dir/RunInfo.xml"
+rsync -avP "$fastq_dir" "$analysis_dir/"
+rsync -avP "$illumina_dir/InterOp" "$analysis_dir/"
+rsync -avP "$illumina_dir/RunInfo.xml" "$analysis_dir/"
 rsync -avP "$samplesheet" "$analysis_dir"
 
 cd "$analysis_dir"
