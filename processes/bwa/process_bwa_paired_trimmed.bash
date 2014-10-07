@@ -116,9 +116,7 @@ qsub $PROCESS_HOLD -N ".sp${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /de
   set -x -e -o pipefail
   echo "Hostname: " `hostname`
 
-  make -f $STAMPIPES/makefiles/SPOT/spot-R1.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
-  #make -f $STAMPIPES/makefiles/SPOT/spot-Rboth.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
+  make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
     READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
   # upload all data to the LIMS
   python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \

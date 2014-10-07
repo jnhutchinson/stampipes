@@ -23,7 +23,9 @@ READ_LENGTH ?= 36
 
 MIN_MAP_QUALITY ?= 30
 
-SAMTOOL_OPTIONS ?= -q $(MIN_MAP_QUALITY)
+# Filter to a minimum mapping quality, where both pairs
+# are properly paired in the mapping
+SAMTOOL_OPTIONS ?= -F 12 -f 3 -q $(MIN_MAP_QUALITY)
 
 # Ideally this will be set to something else set in the environment or on the command line
 TMPDIR ?= $(shell pwd)
@@ -69,7 +71,7 @@ $(OUTBAM).bai : $(OUTBAM)
                 
 # Sorted uniquely mapping reads BAM
 $(OUTBAM) : $(INBAM)
-	time $(SAMTOOLS) view -F 0x4 $(SAMTOOL_OPTIONS) $^ | $(SAMTOOLS) view -F 0x8 -bSt $(FAI) - > $@
+	time $(SAMTOOLS) $(SAMTOOL_OPTIONS) -bSt $(FAI) - > $@
 
 # Index sorted BAM file
 $(INBAM).bai : $(INBAM)
