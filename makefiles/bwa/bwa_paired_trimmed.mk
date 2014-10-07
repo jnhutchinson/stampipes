@@ -23,6 +23,13 @@
 
 SHELL = bash
 
+# NSLOTS is the default sge environment variable letting the process know
+# how many threads it has reserved
+# We can use that for the default number of threads to use for the bwa
+# aln process
+NSLOTS ?= 1
+THREADS ?= $(NSLOTS)
+
 # Use the default PATH version of each of these programs unless overridden
 SAMTOOLS ?= samtools
 BWA ?= bwa
@@ -92,7 +99,7 @@ $(TMPDIR)/align.sam : $(TMPDIR)/R1.sai $(TMPDIR)/R2.sai $(TMPDIR)/trimmed.R1.fas
 
 # Make SAI alignments for each FASTQ file
 $(TMPDIR)/%.sai : $(TMPDIR)/trimmed.%.fastq.gz
-	time $(BWA) aln $(BWA_ALN_OPTIONS) $(BWAINDEX) $(TMPDIR)/trimmed.$*.fastq.gz > $(TMPDIR)/$*.sai && echo made $(TMPDIR)/$*.sai >&2
+	time $(BWA) aln -t $(THREADS) $(BWA_ALN_OPTIONS) $(BWAINDEX) $(TMPDIR)/trimmed.$*.fastq.gz > $(TMPDIR)/$*.sai && echo made $(TMPDIR)/$*.sai >&2
 
 # Trim each FASTQ file pair
 # Keep track of the output by passing it to a file, so we can know how many pairs were trimmed
