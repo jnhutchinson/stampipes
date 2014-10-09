@@ -111,11 +111,11 @@ json="processing.json"
 illumina_dir=$(pwd)
 mismatches=$( "$STAMPIPES/scripts/max_mismatch.py" "$barcodes" )
 
-run_type=$( jq -r .flowcell.run_type "$json" )
 link_command="#no linking to do"
 
 # Get and read the processing script
 python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
+run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 analysis_dir=$( jq -r '.alignment_group.directory'  "$json" )
 mask=$(         jq -r '.alignment_group.bases_mask' "$json" )
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
