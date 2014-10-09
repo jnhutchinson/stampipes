@@ -11,6 +11,8 @@ module load samtools/0.1.19
 FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 
+bash $STAMPIPES/scripts/versions.bash &> ${SAMPLE_NAME}.versions.txt
+
 if [ ! -e ${SAMPLE_NAME}_R1_fastqc -o ! -e ${SAMPLE_NAME}_R2_fastqc -o -n "$FORCE_FASTQ" ]; then
 qsub -N ".fq${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
