@@ -98,6 +98,7 @@ class ProcessSetUp(object):
         if self.template_script:
             return self.template_script_content
 
+        alignment = lane["alignments"][0]
         if not alignment['aligner']:
             print "# FastQC only %s" % lane['sample']
             base_script = "fastqc"
