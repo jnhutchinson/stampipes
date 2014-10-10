@@ -71,7 +71,7 @@ $(OUTBAM).bai : $(OUTBAM)
                 
 # Sorted uniquely mapping reads BAM
 $(OUTBAM) : $(INBAM)
-	time $(SAMTOOLS) $(SAMTOOL_OPTIONS) -bSt $(FAI) - > $@
+	time $(SAMTOOLS) view $(SAMTOOL_OPTIONS) -bSt $(FAI) $(INBAM) > $@
 
 # Index sorted BAM file
 $(INBAM).bai : $(INBAM)
