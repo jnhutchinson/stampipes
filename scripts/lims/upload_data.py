@@ -134,6 +134,7 @@ class UploadLIMS(object):
        self.fastqc_tags = None
        self.count_types = {}
        self.flowcelllane_contenttype = None
+       self.alignment_contenttype = None
        self.flowcell_lane_cache = {}
        self.alignment_counts = {}
        self.picard_metrics = None
@@ -195,6 +196,73 @@ class UploadLIMS(object):
             contenttype_results = requests.get(contenttype_url, headers = self.headers).json()
             self.flowcelllane_contenttype = contenttype_results['results'][0]
         return self.flowcelllane_contenttype
+
+    def get_alignment_contenttype(self):
+        if not self.alignment_contenttype: 
+            contenttype_url = '%s/content_type/?model=flowcelllanealignment' % self.api_url
+            contenttype_results = requests.get(contenttype_url, headers = self.headers).json()
+            self.alignment_contenttype = contenttype_results['results'][0]
+        return self.alignment_contenttype
+
+    def get_count_type(self, name):
+        
+        if not name:
+            return None
+        
+        if not name in self.count_types:
+            exists = requests.get("%s/flowcell_lane_count_type/?codename=%s" % (self.api_url, name), headers = self.headers)
+            count_type = None
+            if exists.ok:
+                results = exists.json()
+                if results['count'] > 0:
+                    self.count_types[name] = results['results'][0]
+                else:
+                    print "Count type %s not found" % name
+                    self.count_types[name] = None
+            else:
+                print "Error finding count type %s through API" % name
+                self.count_types[name] = None
+
+        return self.count_types[name]
+                
+    # TODO : make sure that no more of one count type exists
+    def get_alignment_counts(self, alignment_id):
+        
+        print "Getting alignment counts for %d" % alignment_id
+        
+        if not alignment_id in self.alignment_counts:
+            counts_url = "%s/flowcell_lane_count/?alignment=%d" % (self.api_url, alignment_id)
+            counts = list()
+            
+            counts_results = requests.get(counts_url, headers = self.headers).json()
+            counts.extend(counts_results['results'])
+            
+            while counts_results['next']:
+                counts_results = requests.get(counts_results['next'], headers = self.headers).json()
+                counts.extend(counts_results['results'])
+            
+            self.alignment_counts[alignment_id] = dict([(count['count_type_name'], count) for count in counts])
+        else:
+            return self.alignment_counts[alignment_id]
+        
+    def get_flowcell_lane(self, flowcell_lane_id):
+        
+        if flowcell_lane_id in self.flowcell_lane_cache:
+            return self.flowcell_lane_cache[flowcell_lane_id]
+        print "%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id)
+        exists = requests.get("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id), headers = self.headers)
+        if exists.ok:
+            self.flowcell_lane_cache[flowcell_lane_id] = exists.json()
+        else:
+            print "Flowcell lane %d not found" % flowcell_lane_id
+            print exists
+            self.flowcell_lane_cache[flowcell_lane_id] = None
+
+        return self.flowcell_lane_cache[flowcell_lane_id]
+
+    def upload_counts(self, alignment_id, counts_file):
+        
+        content = open(counts_file, 'r')
 
     def get_count_type(self, name):
         
@@ -431,38 +499,41 @@ class UploadLIMS(object):
         for count_name, count in counts.items():
             self.upload_count(alignment_id, count_name, count)
        
-    def upload_inserts(self, flowcell_lane_id, filename, metric="CollectInsertSizeMetrics"):
+    def upload_inserts(self, alignment_id, flowcell_lane_id, filename, metric_name="CollectInsertSizeMetrics"):
 
         if not self.picard_metrics:
             self.picard_metrics = self.get_picard_metrics()
-        if not self.flowcelllane_contenttype:
-            self.get_flowcelllane_contenttype()
+        if not self.alignment_contenttype:
+            self.get_alignment_contenttype()
 
         picard_metric  = None
-
         try:
             picard_metric = open(filename, 'r').read()
         except:
             print "Could not read picard metric file %s" % filename
             return None
-            
+
         lane_info = self.get_flowcell_lane(flowcell_lane_id)   
    
         if not lane_info:
             return False
  
-        metric = self.picard_metrics[metric]
+        metric = self.picard_metrics[metric_name]
     
         upload = dict()
     
         upload['metrics'] = [metric['url']]
         upload['raw_data'] = picard_metric
-        upload['content_type'] = self.flowcelllane_contenttype["url"]
+        upload['content_type'] = self.alignment_contenttype["url"]
         upload['object_id'] = lane_info['id']
-        upload['label'] = "FC%s %s %s %s" % (lane_info['flowcell_label'], lane_info["samplesheet_name"], str(lane_info["lane"]), lane_info["barcode_index"])
+        upload['label'] = "FC%s %s %s %s %s" % (lane_info['flowcell_label'],
+            lane_info["samplesheet_name"], str(lane_info["lane"]), 
+            lane_info["barcode_index"], metric_name)
 
         # does this report already exist?
-        exists = requests.get("%s/picard_report/?label=%s&object_id=%d&content_type=%s" % (self.api_url, upload['label'], upload['object_id'], self.flowcelllane_contenttype["id"]), headers = self.headers).json()
+        exists = requests.get("%s/picard_report/?label=%s&object_id=%d&content_type=%s" % (
+            self.api_url, upload['label'], upload['object_id'],
+            self.alignment_contenttype["id"]), headers = self.headers).json()
    
         # replace content 
         if exists['count'] == 1:
@@ -470,7 +541,6 @@ class UploadLIMS(object):
             if report['raw_data'] != upload['raw_data']:
                 print "Updating report %s" % upload['label']
                 result = requests.put(exists['results'][0]['url'], headers = self.headers, data = upload).json()
-                print result
         else:
             print "Uploading new picard report %s" % upload['label']
             result = requests.post("%s/picard_report/" % self.api_url, headers = self.headers, data = upload)
@@ -516,7 +586,7 @@ from the command line."""
         uploader.upload_fastqc_counts(poptions.alignment_id)
 
     if poptions.inserts_file:
-        uploader.upload_inserts(poptions.flowcell_lane_id, poptions.inserts_file)
+        uploader.upload_inserts(poptions.alignment_id, poptions.flowcell_lane_id, poptions.inserts_file)
 
     if poptions.spot_file or poptions.dup_file:
         uploader.upload_spot(poptions.alignment_id, poptions.spot_file, poptions.dup_file)
