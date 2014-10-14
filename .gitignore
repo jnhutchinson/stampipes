@@ -1,3 +1,4 @@
 data/densities/*.starch
 data/adapters/*.adapters
 *.pyc
+config/ucsc_browser/*.config
