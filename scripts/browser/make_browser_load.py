@@ -18,7 +18,7 @@ options = {
     "quiet": False,
     "debug": False,
     "process_config": "processing.json",
-    "priority": 0,
+    "priority": None,
     "api_url": os.getenv('LIMS_API_URL'),
     "api_token": os.getenv('LIMS_API_TOKEN'),
 }
@@ -45,12 +45,10 @@ def parser_setup():
     parser.add_argument("-d", "--debug", dest="debug", action="store_true",
         help="Print all debug messages to standard out.")
 
-    #parser.add_argument("-o", "--outfile", dest="outfile",
-    #    help="The master script to run all sample scripts.")
-    parser.add_argument("-p", "--process-config", dest="process_config",
+    parser.add_argument("-j", "--json-config", dest="process_config",
         help="The process config to work off of.")
-    #parser.add_argument("-b", "--sample-script-basename", dest="sample_script_basename",
-    #    help="Name of the script that goes after the sample name.")
+    parser.add_argument("-p", "--priority", dest="priority", required=True,
+        help="The priority of this flowcell")
 
     parser.set_defaults( **options )
     parser.set_defaults( quiet=False, debug=False )
