@@ -107,7 +107,6 @@ class MakeBrowserload(object):
        import ConfigParser
        Config = ConfigParser.ConfigParser()
        Config.read(browserconfig)
-       print browserconfig
        self.server = Config.get("browser", "server")
        self.browser_url = Config.get("browser", "browser_url")
        self.flowcell_link_folder = Config.get("browser", "flowcell_link_folder")
@@ -590,47 +589,14 @@ def main(args = sys.argv):
 
         lane_group = load_groups[group_key]
 
-        #FIXME: Un-hardcode this!
-        browserconfig = ""
+        browserconfig = os.path.join( os.getenv("STAMPIPES"), "config", "ucsc_browser", "%s-%s.config" % (browser, project) )
+        print browserconfig
 
         outdir = os.path.join( basedir, "browser-load-%s-%s" % (project, browser))
 
         loader = MakeBrowserload(lane_group, browserconfig, basedir, outdir, poptions.priority, paired_end, project, date)
         loader.load()
 
-        #for lane in lane_group:
-            #print lane
-
-    #for project in projects:
-
-    #    # get browser config location
-    #    configs = "/"
-    #    config = os.path.join(configs , "%s.config" % project)
-
-    #    for browser in list(browsers):
-    #        # construct outdir name
-    #        outdir = os.path.join( basedir, "browser-load-%s-%s" % (project, browser))
-    #        print outdir
-
-    #        #sub_data = copy.deepcopy(data)
-    #        #sub_data['libraries]' = [ l for l in data['libraries'] if ( l['h'
-
-
-    #        # Get maintrackname
-    #        maintrackname = None
-
-    #        # bool to use bigwig?
-
-    #        # get date
-
-    #        loader = MakeBrowserload(config, browsersheet, basedir, outdir, poptions.priority, paired, project, maintrackname, bigwig, date)
-    #        loader.load()
-    #        #loader = MakeBrowserload(poptions.browserconfig, poptions.browsersheet, poptions.basedir,
-    #        #    poptions.outdir, poptions.priority, poptions.paired, poptions.project, 
-    #        #    project_dir = poptions.project_dir, maintrackname = poptions.maintrackname, 
-    #        #    bigwig = poptions.bigwig, date = poptions.date)
-
-    #    #loader.load()
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
