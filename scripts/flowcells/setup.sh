@@ -129,7 +129,7 @@ case $run_type in
     parallel_env="-pe threads $THREADS"
     link_command="python $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
-    fastq_dir="$illumina_dir/fastq"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     make_nextseq_samplesheet > SampleSheet.csv
 
     # The quadruple-backslash syntax on this is messy and gross.
@@ -151,7 +151,7 @@ _U_
     samplesheet=$(pwd)/Data/Intensities/BaseCalls/SampleSheet.csv
     mkdir -p $(basename "$samplesheet")
     make_hiseq_samplesheet > "$samplesheet"
-    fastq_dir="$illumina_dir/Unaligned"
+    fastq_dir="$illumina_dir/Unaligned/"  # Trailing slash is important for rsync!
 
     read -d '' unaligned_command <<_U_
     if [ ! -e "$fastq_dir" ] ; then
