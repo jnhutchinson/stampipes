@@ -60,6 +60,16 @@ def apply_mask(mask, barcode_string):
     barcodes = [ orig_barcodes[i][:l] for (i, l) in enumerate(mask) ]
     return barcodes
 
+def create_lane_set(libraries, mask):
+    lanes = {}
+    for library in libraries:
+        lane = library['lane']
+        barcodes = apply_mask(mask, library['barcode_index'])
+        if lane not in lanes:
+            lanes[lane] = set()
+        lanes[lane].add(tuple(barcodes))
+    return lanes
+
 # NB: This assumes that all index reads will start with an i, and be followed by one or more digits
 #     e.g: i6n will work, but iiiiiin and i2n2i2 will not.
 def parse_bases_mask(mask_string):
@@ -74,18 +84,14 @@ def main(args = sys.argv):
     mask_string = data['alignment_group']['bases_mask']
     mask = parse_bases_mask(mask_string)
 
-    lanes = {}
-    for library in data['libraries']:
-        lane = library['lane']
-        barcodes = apply_mask(mask, library['barcode_index'])
-        if lane not in lanes:
-            lanes[lane] = set()
-        lanes[lane].add(tuple(barcodes))
+    lanes = create_lane_set(data['libraries'], mask)
 
     mismatch_level = get_max_mismatch_level( lanes, len(mask) )
+
     if not mismatch_level:
         sys.stderr.write("No allowable mismatch levels found, barcode collision?\n")
         sys.exit(1)
+
     print ",".join(map(str, mismatch_level))
 
 if __name__ == "__main__":
