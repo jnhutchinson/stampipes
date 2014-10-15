@@ -119,7 +119,7 @@ analysis_dir=$( jq -r '.alignment_group.directory'  "$json" )
 mask=$(         jq -r '.alignment_group.bases_mask' "$json" )
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 
-mismatches=$( "$STAMPIPES/scripts/max_mismatch.py" )
+mismatches=$( "$STAMPIPES/scripts/flowcells/max_mismatch.py" )
 
 case $run_type in
 "NextSeq 500")
