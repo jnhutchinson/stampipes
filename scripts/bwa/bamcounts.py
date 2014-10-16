@@ -62,7 +62,7 @@ class BAMFilter(object):
         # do not use reads with
         # 0x4 = read is unmapped
         # 0x8 = pair is unmapped
-        if read.flag | 12:
+        if read.flag & 12:
             return False
 
         if read.is_unmapped:
