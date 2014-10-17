@@ -72,7 +72,7 @@ class BAMFilter(object):
         # only use reads with
         # 0x1 read paired
         # 0x2 read mapped in proper pair
-        if not read.flag & 3:
+        if not (read.flag & 1 and read.flag & 2):
             return False
 
         counts['u'] += 1
