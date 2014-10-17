@@ -26,4 +26,4 @@ all : $(BUCKETS_FILE)
 $(BUCKETS_FILE) :
 	awk -v w=$(WIN) '{print $$1"\t0\t"$$2-w}' $(FAI) | sort-bed - \
   | awk -v binI=$(BINI) -v win=$(WIN) '{ for(i = $$2 + win; i < $$3; i += binI) { print $$1"\t"i - win"\t"i + win }}' \
-  | starch - > $(BUCKETS_DIR)/chrom-buckets.$(GENOME).$(WIN).$(BINI).bed.starch
+  | starch - > $@

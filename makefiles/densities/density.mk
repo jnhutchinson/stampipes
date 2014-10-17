@@ -35,7 +35,7 @@ TAGEXP=$(FLOWCELL)-$(SAMPLE_NAME)-$(FORG)
 
 BUCKETS_DIR ?= $(STAMPIPES)/data/densities/
 
-CHROM_BUCKET ?= $(BUCKETS_DIR)/chrom-buckets.$(GENOME).$(WIN).$(BINI).bed.starch
+CHROM_BUCKET ?= $(BUCKETS_DIR)/chrom-buckets.$(GENOME).$(WIN)_$(BINI).bed.starch
 
 all : $(SAMPLE_NAME).$(WIN)_$(BINI).uniques-density.$(READLENGTH).$(GENOME).bed.starch $(SAMPLE_NAME).$(WIN)_$(BINI).$(GENOME).bw
 
