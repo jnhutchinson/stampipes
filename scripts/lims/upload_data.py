@@ -525,7 +525,7 @@ class UploadLIMS(object):
         upload['metrics'] = [metric['url']]
         upload['raw_data'] = picard_metric
         upload['content_type'] = self.alignment_contenttype["url"]
-        upload['object_id'] = lane_info['id']
+        upload['object_id'] = alignment_id
         upload['label'] = "FC%s %s %s %s %s" % (lane_info['flowcell_label'],
             lane_info["samplesheet_name"], str(lane_info["lane"]), 
             lane_info["barcode_index"], metric_name)
