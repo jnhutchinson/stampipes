@@ -24,10 +24,10 @@ fi
 
 refseqfasta=$REF_DIR/$refseq/$refseq.fa
 
-if [ "$TMPDIR_t" == "" ] ; then
-    TMPDIR_t=/tmp
-fi
-echo "TMPDIR_t=$TMPDIR_t"
+#if [ "$TMPDIR_t" == "" ] ; then
+#    TMPDIR_t=/tmp
+#fi
+#echo "TMPDIR_t=$TMPDIR_t"
 
 if ! [ -d "$outputdir" ] ; then
     mkdir -p $outputdir

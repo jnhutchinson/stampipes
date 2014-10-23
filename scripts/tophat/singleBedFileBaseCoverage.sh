@@ -1,16 +1,11 @@
 #!/bin/bash
 
+# TODO: Maybe make this not a temp file??
 # Still has to copy the file, but at least encapsulates it
 # The named-pipe version would lock itself up, even with extra buffering
 
-if [ "$TMPDIR_t" == "" ] ; then
-    TMPDIR_t=/tmp
-fi
-#TMPFILE="$TMPDIR_t/$(basename $0).$$.tmp"
-TMPFILE=`mktemp`
-#if [ -f "$TMPFILE" ] ; then
-#    rm $TMPFILE
-#fi
+TMPFILE=`mktemp -p /tmp/`
+
 #mkfifo $TMPFILE
 
 # if no params, cat or cut will take stdin
@@ -21,8 +16,7 @@ cut -f1-3 $1 > $TMPFILE
 bedops --ec -m $TMPFILE | $SCRIPT_DIR/expandBedRangesToBases.pl \
     | bedmap --delim '\t' --ec --echo --bases --bases - $TMPFILE 
 
-rm $TMPFILE
-exit
+rm -f $TMPFILE
 
 # \
 #cat $1 \
