@@ -10,56 +10,59 @@ outputF=$3
 outputR=$4
 
 outputdir=`dirname $outputF`
-if ! [ -d "$outputdir" ] ; then
-    mkdir -p $outputdir
-fi
-
-if [ "$TMPDIR_t" == "" ] ; then
-    TMPDIR_t=/tmp
-fi
-hostname
-date
-echo "TMPDIR_t=$TMPDIR_t"
-
-nameF=`basename $readsF | cut -f1 -d .`
-nameR=`basename $readsR | cut -f1 -d .`
-tmpInputF=$TMPDIR_t/original.$nameF.fq
-tmpInputR=$TMPDIR_t/original.$nameR.fq
-echo "Uncompressing to temp folder" 1>&2
-pwd
-echo -e "zcat -f $readsF > $tmpInputF"
-zcat -f $readsF > $tmpInputF
-ls -altr $readsF $tmpInputF
-zcat -f $readsR > $tmpInputR
-ls -altr $readsR $tmpInputR
-
-if ! [ -s "$tmpInputF" ] ; then
-    echo "Error:  empty $tmpInputF" 1>&2
-    exit 1
-elif ! [ -s "$tmpInputR" ] ; then
-    echo "Error:  empty $tmpInputR" 1>&2
-    exit 1
-fi
-
-tmpOutputF=$TMPDIR_t/trimmed.$nameF.fq
-tmpOutputR=$TMPDIR_t/trimmed.$nameR.fq
+mkdir -p $outputdir
+#if ! [ -d "$outputdir" ] ; then
+#    mkdir -p $outputdir
+#fi
+#
+#if [ "$TMPDIR_t" == "" ] ; then
+#    TMPDIR_t=/tmp
+#fi
+#hostname
+#date
+#echo "TMPDIR_t=$TMPDIR_t"
+#
+#nameF=`basename $readsF | cut -f1 -d .`
+#nameR=`basename $readsR | cut -f1 -d .`
+#tmpInputF=$TMPDIR_t/original.$nameF.fq
+#tmpInputR=$TMPDIR_t/original.$nameR.fq
+#echo "Uncompressing to temp folder" 1>&2
+#pwd
+#echo -e "zcat -f $readsF > $tmpInputF"
+#zcat -f $readsF > $tmpInputF
+#ls -altr $readsF $tmpInputF
+#zcat -f $readsR > $tmpInputR
+#ls -altr $readsR $tmpInputR
+#
+#if ! [ -s "$tmpInputF" ] ; then
+#    echo "Error:  empty $tmpInputF" 1>&2
+#    exit 1
+#elif ! [ -s "$tmpInputR" ] ; then
+#    echo "Error:  empty $tmpInputR" 1>&2
+#    exit 1
+#fi
+#
+#tmpOutputF=$TMPDIR_t/trimmed.$nameF.fq
+#tmpOutputR=$TMPDIR_t/trimmed.$nameR.fq
 
 adapterFA=$REF_DIR/contamination/IlluminaAdapter_min40bp_revcomp.fa
 
-$SCRIPT_DIR/fastq-mcf -f -P 33 -p 15 -o $tmpOutputF -o $tmpOutputR $adapterFA $tmpInputF $tmpInputR 
+#$SCRIPT_DIR/fastq-mcf -f -P 33 -p 15 -o $tmpOutputF -o $tmpOutputR $adapterFA $tmpInputF $tmpInputR 
+#$SCRIPT_DIR/fastq-mcf -f -P 33 -p 15 -o $outputF -o $outputR $adapterFA <(zcat $readsF) <(zcat $readsR )
+$SCRIPT_DIR/fastq-mcf -f -P 33 -p 15 -o $outputF -o $outputR $adapterFA $readsF $readsR
 
-rm $tmpInputF $tmpInputR 
-if [ -s "$tmpOutputF" ] ; then
-    gzip -9 -c $tmpOutputF > $outputF
-    gzip -9 -c $tmpOutputR > $outputR
-fi
-rm $tmpOutputF $tmpOutputR 
-
-if ! [ -s "$outputF" ] ; then
-    echo "Error:  empty $outputF" 1>&2
-    rm $outputF $outputR
-    exit 1
-fi
+#rm $tmpInputF $tmpInputR 
+#if [ -s "$tmpOutputF" ] ; then
+#    gzip -9 -c $tmpOutputF > $outputF
+#    gzip -9 -c $tmpOutputR > $outputR
+#fi
+#rm $tmpOutputF $tmpOutputR 
+#
+#if ! [ -s "$outputF" ] ; then
+#    echo "Error:  empty $outputF" 1>&2
+#    rm $outputF $outputR
+#    exit 1
+#fi
 
 #  usage: fastq-mcf [options] <adapters.fa> <reads.fq> [mates1.fq ...] 
 #  

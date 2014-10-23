@@ -10,11 +10,13 @@ TOPHAT_REF ?= hg19
 REF_SEQ ?= $(TOPHAT_REF)
 #LIBTYPE ?= libtype??
 LIBTYPE ?= "fr-unstranded" #For paired end? I think?
-STRAND_SPEC ?= "NONE" # Guessing...
+STRAND_SPEC ?= "SECOND_READ_TRANSCRIPTION_STRAND" # Guessing... could also be FIRST_READ...
 
 REF_DIR ?= $(STAMPIPES)/data/tophat/refseq
 ANNOT_GTF ?= $(REF_DIR)/$(GENOME)/genes.gtf
 ANNOT_GENEPRED ?= $(REF_DIR)/$(GENOME)/refFlat.txt
+
+ADAPTER_FA ?= $(REF_DIR)/contamination/IlluminaAdapter_min40bp_revcomp.fa
 
 SAMTOOLS ?= samtools
 JAVA ?= java
@@ -30,7 +32,7 @@ CONTROL_REF   ?= $(REF_DIR)/spikeInControlRNA/ERCC92
 R1_FASTQ_FILES ?= $(wildcard $(SAMPLE_NAME)_R1_*.fastq.gz)
 R2_FASTQ_FILES ?= $(wildcard $(SAMPLE_NAME)_R2_*.fastq.gz)
 
-TRIM_DIR ?= $(SAMPLE_NAME)/trimmed
+TRIM_DIR ?= trimmed
 R1_trimmed_fastq_files ?= $(prefix $(TRIM_DIR)/$(R1_FASTQ_FILES))
 R2_trimmed_fastq_files ?= $(prefix $(TRIM_DIR)/$(R2_FASTQ_FILES))
 
@@ -69,12 +71,10 @@ $(coverage_finished) : $(marked_bam)
 		touch $@
 
 $(cufflinks_finished) : $(marked_bam)
-	SGE_RREQ=" -pe threads $(CUFFLINKS_THREADS)" $(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(CUFFLINKS_THREADS) GTF \ ;
+	 $(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(CUFFLINKS_THREADS) GTF \ ;
 	touch $@
 
 # Mark dups
-# The % stem here is just so we can specify multiple output files.
-# Again, there's probably a better way to do it.
 $(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(SAMPLE_NAME).tophat_merged.bam
 	$(JAVA) -Xmx24g -jar $(MARK_DUPS) \
 		INPUT=$< \
@@ -99,7 +99,7 @@ $(ribo_txt) : $(ribosomal_files)
 $(control_txt) : $(control_files)
 	cat $^ | cut -f3 | $(SCRIPT_DIR)/countFew.pl > $@
 
-# TODO: CHeck if this even runs correctly on qmake
+# TODO: Check if this even runs correctly on qmake
 $(bamcount_txt) : $(marked_bam)
 	$(SCRIPT_DIR)/summarizeBAM.sh $(SAMPLE_NAME) $< $(STRAND_SPEC) $(ANNOT_GENEPRED) ; \
 	$(SCRIPT_DIR)/mappedBamStats.pl $(marked_bam) $(SAMPLE_NAME) >> $@ ; \
@@ -110,18 +110,21 @@ $(bamcount_txt) : $(marked_bam)
 # the filetype transformation, but my make-fu is weak.
 
 $(SAMPLE_NAME)_tophat_%/accepted_hits.bam : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
-	SGE_RREQ=" -pe threads $(TOPHAT_THREADS)" $(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(SAMPLE_NAME)_tophat_$* \
+	 $(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(SAMPLE_NAME)_tophat_$* \
 		$(TOPHAT_THREADS)
 
 ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
-	SGE_RREQ=" -pe threads $(BOWTIE_THREADS)" zcat -f $^ | $(BOWTIE) --threads $(BOWTIE_THREADS) -n 3 -e 140 \
+	 zcat -f $^ | $(BOWTIE) --threads $(BOWTIE_THREADS) -n 3 -e 140 \
 		$(RIBOSOMAL_REF) - $@
 
 spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
-	SGE_RREQ=" -pe threads $(BOWTIE_THREADS)" zcat -f $^ | $(BOWTIE) --threads $(BOWTIE_THREADS) -n 3 -e 140 \
+	 zcat -f $^ | $(BOWTIE) --threads $(BOWTIE_THREADS) -n 3 -e 140 \
 		$(CONTROL_REF) - $@
 
 $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(SAMPLE_NAME)_R1_%.fastq.gz $(SAMPLE_NAME)_R2_%.fastq.gz
 	$(SCRIPT_DIR)/clipadapterPE.sh $^ $(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz \
 		$(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz
 
+#$(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(SAMPLE_NAME)_R1_%.fastq.gz $(SAMPLE_NAME)_R2_%.fastq.gz
+#	$(SCRIPT_DIR)/fastq-mcf -f -P 33 -p 15 -o $(addprefix -o, $^)  $(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz \
+#		$(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz

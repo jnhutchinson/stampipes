@@ -26,10 +26,6 @@ if ! [ -s "$gtf" ] ; then
     exit 1
 fi
 
-if [ "$TMPDIR_t" == "" ] ; then
-    TMPDIR_t=/tmp
-fi
-echo "TMPDIR_t=$TMPDIR_t"
 
 # No idea at all what this should be
 mate_inner_dist=200 
@@ -56,13 +52,14 @@ if [ "$USE_TMERCER_PARAMS" == "1" ] ; then
 fi
 
 #options=" --GTF $gtf -r $mate_inner_dist --mate-std-dev $mate_std_dev --tmp-dir $TMPDIR_t --library-type $libraryType "
-options=" $opt_known_junctions -r $mate_inner_dist --mate-std-dev $mate_std_dev --tmp-dir $TMPDIR_t --library-type $libraryType "
+options=" $opt_known_junctions -r $mate_inner_dist --mate-std-dev $mate_std_dev --library-type $libraryType "
 reads=" $readsF $readsR "
 echo -e "tophat $options $opt_special -p $numthreads -o $outputdir $bowtie_index $reads"
          tophat $options $opt_special -p $numthreads -o $outputdir $bowtie_index $reads
+exitstatus=$?
 
-if [ "$?" -ne "0" ]; then
-    echo "$0:  TopHat failed with exit code ($?)" 1>&2
+if [ "$exitstatus" -ne "0" ]; then
+    echo "$0:  TopHat failed with exit code ($exitstatus)" 1>&2
     exit 100
 else
     resultfile="$outputdir/accepted_hits.bam"
