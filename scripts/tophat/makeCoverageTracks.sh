@@ -39,13 +39,10 @@ if ! [ -f "$gcovpos" ] ; then
         #    | bbms.pl \
         #    | awk "BEGIN{OFS=\"\\t\"}{ print \$1,\$2,\$3 > \"$destall\"; if (\$6==\"+\") { print \$1,\$2,\$3 > \"$destpos\" } else if (\$6==\"-\") { print \$1,\$2,\$3 > \"$destneg\" }; }"
         $SCRIPT_DIR/splitCoverageByTemplateStrand.pl $bam $destdir/readspans.$name $refseq
-        echo "42"
     fi
-    echo "44"
     bedops --ec -u $destpos | $SCRIPT_DIR/singleBedFileBaseCoverage.sh | $SCRIPT_DIR/compressBed4.pl > $gcovpos
     bedops --ec -u $destneg | $SCRIPT_DIR/singleBedFileBaseCoverage.sh | $SCRIPT_DIR/compressBed4.pl > $gcovneg
     bedops --ec -u $destall | $SCRIPT_DIR/singleBedFileBaseCoverage.sh | $SCRIPT_DIR/compressBed4.pl > $gcovall
-    echo "48"
     if [ -s "$gcovpos" ] ; then
         # cleanup
         rm $destpos $destneg $destall
