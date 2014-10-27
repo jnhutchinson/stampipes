@@ -71,7 +71,7 @@ $(coverage_finished) : $(marked_bam)
 		touch $@
 
 $(cufflinks_finished) : $(marked_bam)
-	 $(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(CUFFLINKS_THREADS) GTF \ ;
+	 $(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(CUFFLINKS_THREADS) GTF && \
 	touch $@
 
 # Mark dups
@@ -124,7 +124,3 @@ spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.
 $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(SAMPLE_NAME)_R1_%.fastq.gz $(SAMPLE_NAME)_R2_%.fastq.gz
 	$(SCRIPT_DIR)/clipadapterPE.sh $^ $(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz \
 		$(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz
-
-#$(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(SAMPLE_NAME)_R1_%.fastq.gz $(SAMPLE_NAME)_R2_%.fastq.gz
-#	$(SCRIPT_DIR)/fastq-mcf -f -P 33 -p 15 -o $(addprefix -o, $^)  $(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz \
-#		$(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz
