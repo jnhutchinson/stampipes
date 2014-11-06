@@ -21,11 +21,11 @@ info :
 
 report: barcode_report.txt
 	
-tmp.barcode_report.txt : $(barcodes)
-	$(REPORT_SCRIPT) > $@
+barcode_report.txt : $(barcodes)
+	SGE_RREQ=" -N .tb$(FLOWCELL)-report " $(REPORT_SCRIPT) > $@
 
 barcodes : $(barcodes)
 	
 
 %.barcodes.txt : %.fastq.gz
-	python $(TALLY_SCRIPT) $^ > $@
+	SGE_RREQ=" -N .tb$(FLOWCELL)-fasta " python $(TALLY_SCRIPT) $^ > $@
