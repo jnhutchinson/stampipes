@@ -13,6 +13,11 @@ script_files = {
     "fastqc": "%s/processes/fastqc_only.bash" % STAMPIPES,
 }
 
+# Right now, these are always run.
+flowcell_script_files = {
+    "barcodetally": "%s/processes/barcode_tally.bash" % STAMPIPES,
+}
+
 script_contents = {}
 
 script_options = {
@@ -72,6 +77,9 @@ class ProcessSetUp(object):
             if not self.project_filter or (self.project_filter and lane["project"] == self.project_filter):
                 self.create_script(lane)
 
+        for script in flowcell_script_files.values():
+            self.create_flowcell_script(script)
+
         self.run_scripts()
 
     def add_script(self, script_file, sample_name, priority):
@@ -110,6 +118,24 @@ class ProcessSetUp(object):
             script_contents[base_script] = open(script_files[base_script], 'r').read()
 
         return script_contents[base_script]
+
+    def create_flowcell_script(self, inscript):
+        script_file = os.path.join(self.p['alignment_group']['directory'],
+                os.path.basename(inscript))
+        
+        outfile = open(script_file, 'w')
+        outfile.write("set -e -o pipefail\n")
+        outfile.write("export READLENGTH=%s\n" % self.p['flowcell']['read_length'])
+        if self.p['flowcell']['paired_end']:
+            outfile.write("export PAIRED=True\n")
+        outfile.write("export FLOWCELL=%s\n" % self.p['flowcell']['label'])
+        outfile.write("\n")
+        outfile.close()
+
+        os.system("cat %s >> %s" % ( inscript, script_file ) )
+
+        # TODO: Figure out the appropriate priority here.
+        self.add_script(script_file, 'flowcell_script', 0)
 
     def create_script(self, lane):
 
