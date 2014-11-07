@@ -1,4 +1,4 @@
-TALLY_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/tallybarcodes.py
+TALLY_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/tallybarcodes.sh
 REPORT_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/barcode_report.sh
 
 SAMPLE_FASTQ = $(shell ls Project_*/Sample*/*_R1_???.fastq.gz)
@@ -28,4 +28,4 @@ barcodes : $(barcodes)
 	
 
 %.barcodes.txt : %.fastq.gz
-	SGE_RREQ=" -N .tb$(FLOWCELL)-fasta " python $(TALLY_SCRIPT) $^ > $@
+	SGE_RREQ=" -N .tb$(FLOWCELL)-fasta " bash $(TALLY_SCRIPT) $^ > $@
