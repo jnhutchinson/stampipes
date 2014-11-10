@@ -64,21 +64,30 @@ fi
 make_hiseq_samplesheet(){
 echo "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject"
 
-# Escape double quotes, as we need to interpolate $flowcell
 # ( X | tostring) syntax is for non-string fields
 # Default values (if field is false or null) come after //
-jq -r ".libraries[] | [
- \"FC$flowcell\",
+jq -r --arg flowcell "$flowcell" ' 
+.libraries as $l
+| $l
+| map( .lane as $num
+   | .barcode_index =
+       if (  $l | map(select( $num  == .lane )) | length == 1 ) then
+           "NoIndex"
+       else
+           .barcode_index
+       end )
+| .[] | [
+ "FC" + $flowcell,
  (.lane | tostring),
  .samplesheet_name,
- .alignments[0].genome_index // \"contam\",
- .barcode_index,
- .cell_type                  // \"None\"  ,
- \"N\",
- .assay                      // \"N/A\"   ,
- \"orders\",
+ .alignments[0].genome_index // "contam",
+ .barcode_index              // "NoIndex",
+ .cell_type                  // "None"  ,
+ "N",
+ .assay                      // "N/A"   ,
+ "orders",
  .project
- ] | join(\",\") " "$json"
+ ] | join(",") ' "$json"
 }
 
 make_nextseq_samplesheet(){
