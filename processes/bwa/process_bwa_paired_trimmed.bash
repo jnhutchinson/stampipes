@@ -77,13 +77,15 @@ qsub ${HOLD} -N ".pb${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stde
   fi
   
   make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk
+  make -f $STAMPIPES/makefiles/picard/dups.mk
 
   python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
     -t ${LIMS_API_TOKEN} \
     -f ${FLOWCELL} \
     --alignment_id ${ALIGNMENT_ID} \
     --flowcell_lane_id ${FLOWCELL_LANE_ID} \
-    --insertsfile ${SAMPLE_NAME}.CollectInsertSizeMetrics.picard
+    --insertsfile ${SAMPLE_NAME}.CollectInsertSizeMetrics.picard \
+    --dupsfile ${SAMPLE_NAME}.MarkDuplicates.picard
   
   if [ "$NUMBER_FASTQ_FILES" -gt "1" ]
   then
