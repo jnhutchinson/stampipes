@@ -22,7 +22,7 @@ __JSON__
 
 # perl summation code
 PERL_SUM=$(cat <<'__SUM__'
-$f{$F[0]} += $F[1] ;
+$f{$F[1]} += $F[0] ;
 END {
     foreach $k (sort {$f{$b} <=> $f{$a} } keys %f ) {
         print "$k $f{$k}\n"
