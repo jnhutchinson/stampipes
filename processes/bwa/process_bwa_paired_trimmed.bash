@@ -129,7 +129,7 @@ qsub $PROCESS_HOLD -N ".sp${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /de
       --alignment_id ${ALIGNMENT_ID} \
       --flowcell_lane_id ${FLOWCELL_LANE_ID} \
       --spotfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out \
-      --dupfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt
+      --spotdupfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt
 __SCRIPT__
 
 fi
