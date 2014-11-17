@@ -75,8 +75,12 @@ def get_expected_barcodes(data):
     mask = parse_bases_mask(data['alignment_group']['bases_mask'])
     libraries = {}
     for l in data['libraries']:
-        barcode = '-'.join( apply_mask(mask, l['barcode_index']) )
+        if l['barcode_index'] == "NoIndex":
+            barcode = None
+        else:
+            barcode = '-'.join( apply_mask(mask, l['barcode_index']) )
         lane = l['lane']
+        l['realbarcode'] = barcode
         if not lane in libraries:
             libraries[lane] = {}
         libraries[lane][barcode] = l
@@ -86,11 +90,18 @@ def get_expected_barcodes(data):
 def merge_actual_and_expected(expected, actual):
     merged = {}
     fields = ['samplesheet_name', 'id', 'purpose']
-    for barcode in actual.keys():
-        merged[barcode] = { 'cluster_count': actual[barcode] }
-        if barcode in expected:
-            for field in fields:
-                merged[barcode][field] = expected[barcode][field]
+    if None in expected:
+        total_barcodes = sum( actual.values())
+        merged['NoIndex'] = {'cluster_count': total_barcodes}
+        for field in fields:
+            merged['NoIndex'][field] = expected[None][field]
+    else:
+        for barcode in actual.keys():
+            merged[barcode] = { 'cluster_count': actual[barcode] }
+            if barcode in expected:
+                for field in fields:
+                    merged[barcode][field] = expected[barcode][field]
+
     return merged
 
 def print_stats_txt(stats, threshold):
