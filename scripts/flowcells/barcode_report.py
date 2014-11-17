@@ -22,6 +22,8 @@ def parser_setup():
             help="Write output in JSON")
     parser.add_argument("-t", "--threshold", dest="threshold", type=int,
             help="The minimum cluster count")
+    parser.add_argument("-l", "--lane", dest="lane", type=int,
+            help="Report details for only the specified lane")
     parser.set_defaults( **script_options )
 
     return parser
@@ -117,7 +119,10 @@ def main(args = sys.argv):
     process_json.close()
     expected = get_expected_barcodes( processing_data )
 
-    lanes = sorted(list(set([l['lane'] for l in processing_data['libraries']])))
+    if poptions.lane:
+        lanes = [poptions.lane]
+    else:
+        lanes = sorted(list(set([l['lane'] for l in processing_data['libraries']])))
 
     # Get actual barcodes and merge with expected
     compiled_stats = {}
