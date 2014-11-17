@@ -21,7 +21,8 @@ script_options = {
     "alignment_id": None,
     "fastqc_files": [],
     "spot_file": None,
-    "dup_file": None,
+    "spot_dup_file": None,
+    "dups_file": None,
     "counts_file": None,
     "flowcell": None,
     "flowcell_lane_id": None,
@@ -49,20 +50,22 @@ def parser_setup():
     parser.add_argument("--alignment_id", dest="alignment_id", type=int)
     parser.add_argument("--spotfile", dest="spot_file",
         help="The SPOT output file.  Best paired with a dupfile.  Needs alignment id.")
-    parser.add_argument("--dupfile", dest="dup_file",
-        help="The Picard dup results file.  Best paired with a spotfile.  Needs alignment id.")
-    
+    parser.add_argument("--spotdupfile", dest="spot_dup_file",
+        help="The Picard dup results file paired with a spotfile.  Needs alignment id.")
+
     # also needs alignment_id
     parser.add_argument("--countsfile", dest="counts_file",
         help="A tab delineated list of counts.  Needs alignnment id.")
-    
+
         # A lane can have multiple fastQC files, one for each read
     parser.add_argument("--flowcell_lane_id", dest="flowcell_lane_id", type=int,
         help="The ID of the flowcell lane we're working on.")
     parser.add_argument("--fastqcfile", dest="fastqc_files", action="append",
         help="A FastQC file to upload.")
     parser.add_argument("--insertsfile", dest="inserts_file",
-        help="A Picard CollectInsertSizeMetrics text file.")
+        help="A Picard CollectInsertSizeMetrics text file for an alignment.")
+    parser.add_argument("--dupsfile", dest="dups_file",
+        help="A Picard MarkDuplicates text file for an alignment.")
     parser.add_argument("--fastqc_counts", dest="fastqc_counts", action="store_true",
         help="Use the given fastqc files to create total/pf/qc counts. Must have an alignment id.")
 
@@ -495,11 +498,11 @@ class UploadLIMS(object):
             "qc": filtered,
             "pf": total
         }
-        
+
         for count_name, count in counts.items():
             self.upload_count(alignment_id, count_name, count)
-       
-    def upload_inserts(self, alignment_id, flowcell_lane_id, filename, metric_name="CollectInsertSizeMetrics"):
+
+    def upload_picard_metric(self, alignment_id, flowcell_lane_id, filename, metric_name):
 
         if not self.picard_metrics:
             self.picard_metrics = self.get_picard_metrics()
@@ -514,14 +517,18 @@ class UploadLIMS(object):
             return None
 
         lane_info = self.get_flowcell_lane(flowcell_lane_id)   
-   
+
         if not lane_info:
             return False
- 
+
+        if not metric_name in self.picard_metrics:
+            print "Could not find metrics type %s" % metric_name
+            return False
+
         metric = self.picard_metrics[metric_name]
-    
+
         upload = dict()
-    
+
         upload['metrics'] = [metric['url']]
         upload['raw_data'] = picard_metric
         upload['content_type'] = self.alignment_contenttype["url"]
@@ -545,7 +552,6 @@ class UploadLIMS(object):
             print "Uploading new picard report %s" % upload['label']
             result = requests.post("%s/picard_report/" % self.api_url, headers = self.headers, data = upload)
             print result.json()
-            
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
 from the command line."""
@@ -586,18 +592,21 @@ from the command line."""
         uploader.upload_fastqc_counts(poptions.alignment_id)
 
     if poptions.inserts_file:
-        uploader.upload_inserts(poptions.alignment_id, poptions.flowcell_lane_id, poptions.inserts_file)
+        uploader.upload_picard_metric(poptions.alignment_id, poptions.flowcell_lane_id, poptions.inserts_file, "CollectInsertSizeMetrics")
 
-    if poptions.spot_file or poptions.dup_file:
-        uploader.upload_spot(poptions.alignment_id, poptions.spot_file, poptions.dup_file)
-        
+    if poptions.dups_file:
+        uploader.upload_picard_metric(poptions.alignment_id, poptions.flowcell_lane_id, poptions.dups_file, "MarkDuplicates")
+
+    if poptions.spot_file or poptions.spot_dup_file:
+        uploader.upload_spot(poptions.alignment_id, poptions.spot_file, poptions.spot_dup_file)
+
     if poptions.counts_file:
         uploader.upload_counts(poptions.alignment_id, poptions.counts_file)
-    
+
     if poptions.flowcell:
         uploader.clear_flowcell_cache(poptions.flowcell)
 
-    
+
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
 # without automatically running it
