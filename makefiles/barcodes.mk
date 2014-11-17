@@ -1,4 +1,4 @@
-TALLY_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/tallybarcodes.sh
+TALLY_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/tallybarcodes.py
 REPORT_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/barcode_report.sh
 
 SAMPLE_FASTQ = $(shell ls Project_*/Sample*/*_R1_???.fastq.gz)
@@ -14,7 +14,7 @@ info :
 	@echo "------"
 	@echo "METADATA"
 	@echo "------"
-	@echo "SAMPLE_NAME: " $(SAMPLE_NAME)
+	@echo "FLOWCELL_NAME: " $(FLOWCELL)
 	@echo "------"
 	@echo "FASTQ_COUNT: " $(words $(FASTQ))
 	@echo "------"
@@ -22,7 +22,7 @@ info :
 report: barcode_report.txt
 	
 barcode_report.txt : $(barcodes)
-	SGE_RREQ=" -N .tb$(FLOWCELL)-report " $(REPORT_SCRIPT) > $@
+	SGE_RREQ=" -N .tbr$(FLOWCELL)-report " python $(REPORT_SCRIPT) > $@
 
 barcodes : $(barcodes)
 	
