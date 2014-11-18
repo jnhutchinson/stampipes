@@ -9,15 +9,15 @@ barcodes = $(patsubst %.fastq.gz,%.barcodes.txt,$(FASTQ))
 all : info barcodes report
 
 info :
-	@echo "------"
-	@echo "PROGRAM VERSIONS"
-	@echo "------"
-	@echo "METADATA"
-	@echo "------"
-	@echo "FLOWCELL_NAME: " $(FLOWCELL)
-	@echo "------"
-	@echo "FASTQ_COUNT: " $(words $(FASTQ))
-	@echo "------"
+	@echo "------" && \
+	 echo "PROGRAM VERSIONS" && \
+	 echo "------" && \
+	 echo "METADATA" && \
+	 echo "------" && \
+	 echo "FLOWCELL_NAME: " $(FLOWCELL) && \
+	 echo "------" && \
+	 echo "FASTQ_COUNT: " $(words $(FASTQ)) && \
+	 echo "------"
 
 report: barcode_report.txt
 	
