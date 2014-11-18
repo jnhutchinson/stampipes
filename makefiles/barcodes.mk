@@ -1,5 +1,5 @@
-TALLY_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/tallybarcodes.py
-REPORT_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/barcode_report.sh
+TALLY_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/tallybarcodes.sh
+REPORT_SCRIPT ?= $(STAMPIPES)/scripts/flowcells/barcode_report.py
 
 SAMPLE_FASTQ = $(shell ls Project_*/Sample*/*_R1_???.fastq.gz)
 UNDET_FASTQ = $(shell ls Undetermined_indices/Sample*/*_R1_???.fastq.gz)
