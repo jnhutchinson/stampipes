@@ -33,6 +33,9 @@ def generate_barcodes(barcode_tuple, mismatch_tuple):
 
 def is_mismatch_level_okay(barcodes, mismatch_tuple):
     barcode_collection = set()
+    # one barcode in a lane is always okay
+    if len(barcodes) == 1:
+        return True
     for barcode in barcodes:
         new_barcodes = generate_barcodes( barcode, mismatch_tuple )
         if barcode_collection.isdisjoint( new_barcodes ):
