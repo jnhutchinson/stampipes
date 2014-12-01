@@ -44,6 +44,10 @@ def generate_barcodes(barcode_tuple, mismatch_tuple):
         for i in range(len(barcode_tuple)) ]))
 
 def is_mismatch_level_okay(barcodes, mismatch_tuple):
+    # If there's one or fewer barcodes in a lane, any number of mismatches is okay
+    if len(barcodes) <= 1:
+        return True
+
     barcode_collection = set()
     for barcode in barcodes:
         new_barcodes = generate_barcodes( barcode, mismatch_tuple )
@@ -55,7 +59,7 @@ def is_mismatch_level_okay(barcodes, mismatch_tuple):
 
 def get_max_mismatch_level(lane_set, index_count):
     mismatch_choices = list( itertools.product( POSSIBLE_MISMATCH_LEVELS, repeat=index_count))
-    lanes = lane_set.itervalues() # We don't actually care about lane labels (the key)
+    lanes = lane_set.values() # We don't actually care about lane labels (the key)
     for choice in mismatch_choices:
         no_collisions = all( [
             is_mismatch_level_okay(barcodes, choice)
@@ -66,6 +70,8 @@ def get_max_mismatch_level(lane_set, index_count):
 
 # Takes in mask & barcode, returns list of trimmed barcodes
 def apply_mask(mask, barcode_string):
+    if barcode_string is None:
+        barcode_string = u''
     orig_barcodes = barcode_string.split('-')
     while len(orig_barcodes) < len(mask):
         orig_barcodes.append(u'')
@@ -83,7 +89,7 @@ def create_lane_set(libraries, mask):
     return lanes
 
 # NB: This assumes that all index reads will start with an i, and be followed by one or more digits
-#     e.g: i6n will work, but iiiiiin and i2n2i2 will not.
+#     e.g: i6n will work, but iiiiiin, i2n3i2, or ni6 will not.
 def parse_bases_mask(mask_string):
     mask = map(int, re.findall( r"""(?: i ( \d* ) )""", mask_string, re.X | re.I))
     return mask
@@ -99,6 +105,12 @@ def main(args = sys.argv):
 
     mask_string = data['alignment_group']['bases_mask']
     mask = parse_bases_mask(mask_string)
+
+    # If the flowcell has no index, exit.
+    if len(mask) == 0:
+        sys.stderr.write("No index reads found, setting mismatches = 1\n")
+        print "1"
+        sys.exit(0)
 
     lanes = create_lane_set(data['libraries'], mask)
 
