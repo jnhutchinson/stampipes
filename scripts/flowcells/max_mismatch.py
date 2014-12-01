@@ -82,10 +82,13 @@ def create_lane_set(libraries, mask):
     lanes = {}
     for library in libraries:
         lane = library['lane']
-        barcodes = apply_mask(mask, library['barcode_index'])
+        barcodes = tuple(apply_mask(mask, library['barcode_index']))
         if lane not in lanes:
             lanes[lane] = set()
-        lanes[lane].add(tuple(barcodes))
+        if barcodes in lanes[lane]:
+            sys.stderr.write("Collision on lane %d, barcode %s\n" % ( lane, ','.join(barcodes)))
+            sys.exit(1)
+        lanes[lane].add(barcodes)
     return lanes
 
 # NB: This assumes that all index reads will start with an i, and be followed by one or more digits
