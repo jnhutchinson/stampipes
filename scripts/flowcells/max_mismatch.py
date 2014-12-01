@@ -9,12 +9,24 @@
 #     If there are any collisions, check the next tighter mismatch setting
 
 import os, sys, logging, re, math
-from optparse import OptionParser
+import argparse
 import itertools
 import json
 
 MAX_MISMATCH_LEVEL = 1  # Nextseq can allow 2, Hiseq 2500 allows only 1
 POSSIBLE_MISMATCH_LEVELS = range( MAX_MISMATCH_LEVEL, -1, -1 )
+
+script_options = {
+    "processing": "processing.json"
+}
+
+def parser_setup():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--processing", dest="processing",
+            help="The JSON file to read barcodes from")
+
+    parser.set_defaults( **script_options )
+    return parser
 
 def gen_snps(word, mismatches):
     for d in range(mismatches+1):
@@ -77,7 +89,11 @@ def parse_bases_mask(mask_string):
     return mask
 
 def main(args = sys.argv):
-    process_json = open('processing.json')
+
+    parser = parser_setup()
+    poptions = parser.parse_args()
+
+    process_json = open(poptions.processing)
     data = json.load(process_json)
     process_json.close()
 
