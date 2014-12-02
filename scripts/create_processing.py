@@ -119,8 +119,14 @@ class ProcessSetUp(object):
 
         return script_contents[base_script]
 
+    # Probably ripe for a refactoring
     def create_flowcell_script(self, inscript):
-        script_file = os.path.join(self.p['alignment_group']['directory'],
+        script_directory = os.path.join(self.p['alignment_group']['directory'], 'flowcell_scripts')
+        if not os.path.exists(script_directory):
+            print "Creating directory %s" % script_directory
+            os.makedirs(script_directory)
+
+        script_file = os.path.join(script_directory,
                 os.path.basename(inscript))
         
         outfile = open(script_file, 'w')
@@ -129,6 +135,8 @@ class ProcessSetUp(object):
         if self.p['flowcell']['paired_end']:
             outfile.write("export PAIRED=True\n")
         outfile.write("export FLOWCELL=%s\n" % self.p['flowcell']['label'])
+        outfile.write("export FLOWCELL_DIR=%s\n" % self.p['alignment_group']['directory'])
+        outfile.write("export PROCESSING=%s\n" % os.path.abspath(self.processing_configfile))
         outfile.write("\n")
         outfile.close()
 
