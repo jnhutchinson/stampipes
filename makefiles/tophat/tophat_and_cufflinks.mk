@@ -6,15 +6,16 @@ TOPHAT_THREADS ?= 8
 CUFFLINKS_THREADS ?= 8
 
 TOPHAT ?= tophat
-TOPHAT_REF ?= hg19
+TOPHAT_REF ?= $(GENOME)
 REF_SEQ ?= $(TOPHAT_REF)
 #LIBTYPE ?= libtype??
-LIBTYPE ?= "fr-unstranded" #For paired end? I think?
-STRAND_SPEC ?= "SECOND_READ_TRANSCRIPTION_STRAND" # Guessing... could also be FIRST_READ...
+LIBTYPE ?= "fr-unstranded" #This is used for alignment
+STRAND_SPEC ?= "SECOND_READ_TRANSCRIPTION_STRAND" # Used for metrics
 
 REF_DIR ?= $(STAMPIPES)/data/tophat/refseq
 ANNOT_GTF ?= $(REF_DIR)/$(GENOME)/genes.gtf
 ANNOT_GENEPRED ?= $(REF_DIR)/$(GENOME)/refFlat.txt
+CHROM_SIZES ?= $(REF_DIR)/$(GENOME)/chrom_sizes.txt
 
 ADAPTER_FA ?= $(REF_DIR)/contamination/IlluminaAdapter_min40bp_revcomp.fa
 
@@ -50,6 +51,9 @@ summary_txt = $(SAMPLE_NAME).sample_summary.txt
 marked_bam = $(SAMPLE_NAME).$(GENOME).bam
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
 coverage_finished = $(SAMPLE_NAME).coverage_finished.txt
+coverage_types = all pos neg
+bigwig = $(addsuffix .$(GENOME).bw, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
+starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
 
 .SECONDARY:
 
@@ -61,7 +65,7 @@ coverage_finished = $(SAMPLE_NAME).coverage_finished.txt
 
 default: all
 
-all: $(summary_txt) $(cufflinks_finished) $(coverage_finished)
+all: $(summary_txt) $(cufflinks_finished) $(bigwig)
 
 $(summary_txt) : $(bamcount_txt) $(ribo_txt) $(readcount_txt)
 	cat $^ | $(SCRIPT_DIR)/processStatsNameKeyValue.pl > $@
@@ -69,6 +73,16 @@ $(summary_txt) : $(bamcount_txt) $(ribo_txt) $(readcount_txt)
 $(coverage_finished) : $(marked_bam)
 	$(SCRIPT_DIR)/makeCoverageTracks.sh $(marked_bam) $(REF_SEQ) && \
 		touch $@
+
+%.bw : %.bed
+	bedGraphToBigWig $^ $(CHROM_SIZES) $@
+
+%.bed : %.starch
+	bedops --ec -u $^ | $(SCRIPT_DIR)/singleBedFileBaseCoverage.sh | $(SCRIPT_DIR)/compressBed4.pl > $@
+
+%.pos.$(GENOME).starch %.neg.$(GENOME).starch %.all.$(GENOME).starch : %.$(GENOME).bam
+	$(SCRIPT_DIR)/splitCoverageByTemplateStrand.pl $^ $(SAMPLE_NAME) $(REF_SEQ)
+
 
 $(cufflinks_finished) : $(marked_bam)
 	 $(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(CUFFLINKS_THREADS) GTF && \
