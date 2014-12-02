@@ -23,5 +23,5 @@ fi
 
 # Not ideal, eats up entire node until it's done.
 qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads 4-8 <<'__MAKE__'
-    make -f $STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$NSLOTS"
+    make --keep-going -f $STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$NSLOTS"
 __MAKE__
