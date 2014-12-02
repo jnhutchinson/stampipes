@@ -37,6 +37,7 @@ def sum_barcodes(input_files):
             if len(words) != 2:
                 continue
             count, barcode = words
+            barcode = barcode.replace('+', '-')
             if not barcode in totals:
                 totals[barcode] = 0
             totals[barcode] += int(count)
@@ -52,7 +53,7 @@ def get_input_files_for_lane(data, lane, basedir):
         if l['lane'] == lane:
             name = "Project_%s/Sample_%s/%s_%s_L%03d_R1_???.barcodes.txt" % (
                     l['project'], l['samplesheet_name'], l['samplesheet_name'],
-                    l['barcode_index'], l['lane'] )
+                    l['realbarcode'], l['lane'] )
 
             globs.append(os.path.join(basedir, name))
     globs.append("Undetermined_indices/Sample_lane%d/lane%d_Undetermined_L%03d_R1_???.barcodes.txt" % (lane, lane, lane))
