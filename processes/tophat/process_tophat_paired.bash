@@ -7,6 +7,7 @@ module load bedops/2.4.2
 module load tophat/2.0.11
 module load picard/1.118
 module load cufflinks/2.0.2
+module load samtools/0.1.19
 
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR="$STAMPIPES/data/tophat/refseq"
@@ -21,6 +22,6 @@ __SCRIPT__
 fi
 
 # Not ideal, eats up entire node until it's done.
-qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads 8 <<__MAKE__
-    make -f $STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j 8
+qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads 4-8 <<'__MAKE__'
+    make -f $STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$NSLOTS"
 __MAKE__

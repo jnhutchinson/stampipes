@@ -14,19 +14,22 @@ pushd `dirname $bam`
 bam=`basename $bam`
 picardfolder=$(dirname $(which MarkDuplicates.jar))
 
+opspecs=( "InsertSize?HISTOGRAM_FILE=histo_insert_size_$name.pdf"  \
+         "AlignmentSummary?" )
+if [ -e "$REF_FLAT" ] ; then
+    opspecs+=( "RnaSeq?REF_FLAT=$REF_FLAT STRAND_SPECIFICITY=$strandSpecificity CHART_OUTPUT=coverage_$name.pdf" )
+
+fi
     #not used in this function, but should be:  "AlignmentSummary?INCLUDE_SECONDARY_ALIGNMENTS=false"
-for opspec in \
-    "RnaSeq?REF_FLAT=$REF_FLAT STRAND_SPECIFICITY=$strandSpecificity CHART_OUTPUT=coverage_$name.pdf" \
-    "InsertSize?HISTOGRAM_FILE=histo_insert_size_$name.pdf"  \
-    "AlignmentSummary?"
+for opspec in "${opspecs[@]}"
 do 
     op=`echo $opspec | cut -f1 -d'?'`
-    params=`echo $opspec | cut -f2 -d'?'`
+    params=`echo $opspec | cut -f2- -d'?'`
     output=picard.$name.$op.txt
-    #if ! [ -f  "$output" ] ; then
+    if ! [ -f  "$output" ] ; then
         operationjar=$picardfolder/Collect${op}Metrics.jar
         /opt/jdk1.6.0_10/bin/java -Xmx1000m -jar $operationjar INPUT=$bam OUTPUT=$output $params VALIDATION_STRINGENCY=SILENT
-    #fi
+    fi
     if [ -s "$output" ] ; then
         cat $output | grep -v '^#' | grep -A4 _ | $SCRIPT_DIR/transposeTable.pl | $SCRIPT_DIR/encomma.pl  > xp.$output
     else
