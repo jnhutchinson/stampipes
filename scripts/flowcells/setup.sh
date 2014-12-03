@@ -156,7 +156,7 @@ _U_
     parallel_env=""
     link_command='#no linking to do'
     samplesheet=$(pwd)/Data/Intensities/BaseCalls/SampleSheet.csv
-    mkdir -p $(basename "$samplesheet")
+    mkdir -p $(dirname "$samplesheet")
     make_hiseq_samplesheet > "$samplesheet"
     fastq_dir="$illumina_dir/Unaligned/"  # Trailing slash is important for rsync!
 
