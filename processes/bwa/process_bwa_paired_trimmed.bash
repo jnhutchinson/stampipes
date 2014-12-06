@@ -22,7 +22,7 @@ qsub -N ".fq${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __
 __SCRIPT__
 fi
 
-NUMBER_FASTQ_FILES=`find . -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l`
+NUMBER_FASTQ_FILES=`find . -maxdepth 1 -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l`
 FASTQ_PAIR_HOLDS=""
 FASTQ_PAIR_BAMS=""
 
