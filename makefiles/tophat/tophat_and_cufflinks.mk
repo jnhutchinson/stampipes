@@ -51,7 +51,7 @@ summary_txt = $(SAMPLE_NAME).sample_summary.txt
 marked_bam = $(SAMPLE_NAME).$(GENOME).bam
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
 coverage_finished = $(SAMPLE_NAME).coverage_finished.txt
-coverage_types = all pos neg
+coverage_types = all #pos neg
 bigwig = $(addsuffix .$(GENOME).bw, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
 starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
 
@@ -80,8 +80,11 @@ $(coverage_finished) : $(marked_bam)
 %.bed : %.starch
 	bedops --ec -u $^ | $(SCRIPT_DIR)/singleBedFileBaseCoverage.sh | $(SCRIPT_DIR)/compressBed4.pl > $@
 
-%.pos.$(GENOME).starch %.neg.$(GENOME).starch %.all.$(GENOME).starch : %.$(GENOME).bam
-	$(SCRIPT_DIR)/splitCoverageByTemplateStrand.pl $^ $(SAMPLE_NAME) $(REF_SEQ)
+#%.pos.$(GENOME).starch %.neg.$(GENOME).starch %.all.$(GENOME).starch : %.$(GENOME).bam
+#	$(SCRIPT_DIR)/splitCoverageByTemplateStrand.pl $^ $(SAMPLE_NAME) $(REF_SEQ)
+
+%.all.$(GENOME).starch : %.$(GENOME).bam
+	samtools view -u $^ | bedtools bamtobed -split -i stdin | cut -f1-3 | sort-bed - | starch - > $@
 
 
 $(cufflinks_finished) : $(marked_bam)
@@ -113,7 +116,6 @@ $(ribo_txt) : $(ribosomal_files)
 $(control_txt) : $(control_files)
 	cat $^ | cut -f3 | $(SCRIPT_DIR)/countFew.pl > $@
 
-# TODO: Check if this even runs correctly on qmake
 $(bamcount_txt) : $(marked_bam)
 	$(SCRIPT_DIR)/summarizeBAM.sh $(SAMPLE_NAME) $< $(STRAND_SPEC) $(ANNOT_GENEPRED) ; \
 	$(SCRIPT_DIR)/mappedBamStats.pl $(marked_bam) $(SAMPLE_NAME) >> $@ ; \

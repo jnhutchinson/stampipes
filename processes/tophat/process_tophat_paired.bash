@@ -4,10 +4,11 @@ source $MODULELOAD
 module load bowtie/1.0.0
 module load java/jdk1.7.0_05
 module load bedops/2.4.2
-module load tophat/2.0.11
+module load tophat/2.0.13
 module load picard/1.118
-module load cufflinks/2.0.2
+module load cufflinks/2.2.1
 module load samtools/0.1.19
+module load bedtools/2.16.2
 
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR="$STAMPIPES/data/tophat/refseq"
