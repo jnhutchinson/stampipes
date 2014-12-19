@@ -49,9 +49,9 @@ if ! [ -f "$gcovpos" ] ; then
     fi
 fi
 
-chromSizes=$REF_DIR/$refseq/$refseq.chrom.sizes 
+chromSizes=$REF_DIR/$refseq.chrom.sizes 
 if ! [ -f "$chromSizes" ] ; then
-    chromSizes=$REF_DIR/$refseq/chrom_sizes.txt 
+    chromSizes=$REF_DIR/chrom_sizes.txt 
     if ! [ -f "$chromSizes" ] ; then
         echo "Failed to find $chromSizes " 1>&2
         exit 1
