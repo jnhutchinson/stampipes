@@ -13,6 +13,20 @@ module load bedtools/2.16.2
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR="$STAMPIPES/data/tophat/refseq"
 
+filesize=$( du --total *fastq.gz | tail -n1 | cut -f1)
+
+# For small files, prioritize overall throughput
+# For big files, we want them to finish someday.
+if [ "$filesize" -gt 2000000 ] ; then
+    THREADS=4
+    SLOTS=2
+    JOBS=4
+else
+    THREADS=1
+    SLOTS=1
+    JOBS=2
+fi
+
 if [ ! -e ${SAMPLE_NAME}_R1_fastqc -o ! -e ${SAMPLE_NAME}_R2_fastqc ]; then
 qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
@@ -22,7 +36,6 @@ qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
 __SCRIPT__
 fi
 
-# Not ideal, eats up entire node until it's done.
-qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads 4-8 <<'__MAKE__'
-    make --keep-going -f $STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$NSLOTS"
+qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads $SLOTS <<__MAKE__
+    make --keep-going -f \$STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$JOBS"
 __MAKE__
