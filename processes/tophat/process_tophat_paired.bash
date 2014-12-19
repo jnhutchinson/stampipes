@@ -1,7 +1,5 @@
-#FINAL_BAM=${SAMPLE_NAME}.tophat.bam
-
 source $MODULELOAD
-module load bowtie/1.0.0
+module load bowtie2/2.1.0
 module load java/jdk1.7.0_05
 module load bedops/2.4.2
 module load tophat/2.0.13
@@ -11,7 +9,6 @@ module load samtools/0.1.19
 module load bedtools/2.16.2
 
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
-export REF_DIR="$STAMPIPES/data/tophat/refseq"
 
 filesize=$( du --total *fastq.gz | tail -n1 | cut -f1)
 
