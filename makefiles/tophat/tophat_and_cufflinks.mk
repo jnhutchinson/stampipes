@@ -1,9 +1,7 @@
 # TODO: Update these
 BOWTIE ?= bowtie
-BOWTIE_THREADS ?= 8
 
-TOPHAT_THREADS ?= 8
-CUFFLINKS_THREADS ?= 8
+THREADS ?= 1
 
 TOPHAT ?= tophat
 TOPHAT_REF ?= $(GENOME)
@@ -88,7 +86,7 @@ $(coverage_finished) : $(marked_bam)
 
 
 $(cufflinks_finished) : $(marked_bam)
-	 $(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(CUFFLINKS_THREADS) GTF && \
+	 $(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(THREADS) GTF && \
 	touch $@
 
 # Mark dups
@@ -127,14 +125,14 @@ $(bamcount_txt) : $(marked_bam)
 
 $(SAMPLE_NAME)_tophat_%/accepted_hits.bam : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
 	 $(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(SAMPLE_NAME)_tophat_$* \
-		$(TOPHAT_THREADS)
+		$(THREADS)
 
 ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
-	 zcat -f $^ | $(BOWTIE) --threads $(BOWTIE_THREADS) -n 3 -e 140 \
+	 zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(RIBOSOMAL_REF) - $@
 
 spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
-	 zcat -f $^ | $(BOWTIE) --threads $(BOWTIE_THREADS) -n 3 -e 140 \
+	 zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(CONTROL_REF) - $@
 
 $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(SAMPLE_NAME)_R1_%.fastq.gz $(SAMPLE_NAME)_R2_%.fastq.gz
