@@ -19,7 +19,7 @@ if ! [ -d "$outputdir" ] ; then
     mkdir -p $outputdir
 fi
 
-bowtie_index=$REF_DIR/$refseq/$refseq
+bowtie_index=$REF_DIR/$refseq
 
 if ! [ -s "$gtf" ] ; then
     echo "Failed to find $gtf"

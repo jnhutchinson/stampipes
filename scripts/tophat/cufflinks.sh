@@ -22,7 +22,7 @@ if ! [ -d "$outputdir" ] ; then
     mkdir -p $outputdir
 fi
 
-refseqfasta=$REF_DIR/$refseq/$refseq.fa
+refseqfasta=$REF_DIR/$refseq.fa
 
 #if [ "$TMPDIR_t" == "" ] ; then
 #    TMPDIR_t=/tmp
