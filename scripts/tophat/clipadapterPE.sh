@@ -12,7 +12,7 @@ outputR=$4
 outputdir=`dirname $outputF`
 mkdir -p $outputdir
 
-adapterFA=$REF_DIR/contamination/IlluminaAdapter_min40bp_revcomp.fa
+adapterFA=$STAMPIPES/data/adapters/IlluminaAdapter_min40bp_revcomp.fa
 
 trim-adapters-illumina -f $adapterFA --length=$READLENGTH $readsF $readsR $outputF $outputR
 
