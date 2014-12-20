@@ -10,8 +10,6 @@ REF_SEQ ?= $(TOPHAT_REF)
 LIBTYPE ?= "fr-unstranded" #This is used for alignment
 STRAND_SPEC ?= "SECOND_READ_TRANSCRIPTION_STRAND" # Used for metrics
 
-REF_DIR ?= $(BWAINDEX) # This is a little silly, I know.
-
 ANNOT_GTF ?= $(REF_DIR)/genes.gtf
 ANNOT_GENEPRED ?= $(REF_DIR)/refFlat.txt
 CHROM_SIZES ?= $(REF_DIR)/chrom_sizes.txt
