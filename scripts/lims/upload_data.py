@@ -24,6 +24,7 @@ script_options = {
     "spot_dup_file": None,
     "dups_file": None,
     "counts_file": None,
+    "rna_file": None,
     "flowcell": None,
     "flowcell_lane_id": None,
     "fastqc_counts": False,
@@ -66,6 +67,8 @@ def parser_setup():
         help="A Picard CollectInsertSizeMetrics text file for an alignment.")
     parser.add_argument("--dupsfile", dest="dups_file",
         help="A Picard MarkDuplicates text file for an alignment.")
+    parser.add_argument("--rnafile", dest="rna_file",
+        help="The RNA metric output file")
     parser.add_argument("--fastqc_counts", dest="fastqc_counts", action="store_true",
         help="Use the given fastqc files to create total/pf/qc counts. Must have an alignment id.")
 
@@ -322,6 +325,52 @@ class UploadLIMS(object):
             self.flowcell_lane_cache[flowcell_lane_id] = None
 
         return self.flowcell_lane_cache[flowcell_lane_id]
+
+    def get_rna_metrics(self, alignment_id):
+        exists = requests.get("%s/rna_alignment_metrics/?alignment=%d" % (self.api_url, alignment_id), headers = self.headers)
+
+        if exists.ok:
+            results = exists.json()
+            if results['count'] > 0:
+                return results['results'][0]
+            else:
+                return None
+        else:
+            print "Error finding RNA metrics for alignment %d" % alignment_id
+            print exists
+
+
+    def upload_rna_metrics(self, alignment_id, rna_file):
+        content = open(rna_file, 'r')
+        metrics = dict()
+        for line in content:
+            values = line.split()
+            metric_name = values[0]
+            metric_value = values[1]
+            metrics[metric_name] = metric_value
+        content.close()
+
+        data = {
+            "alignment":               "%s/flowcell_lane_alignment/%d/" % (self.api_url, alignment_id),
+            "input_reads":             metrics['input_reads'],
+            "mapped_reads":            metrics['mapped'],
+            "percent_rRNA":            metrics['%rRNA'],
+            "percent_duplicates":      metrics['%duplicates'],
+            "exon_intron":             metrics['exon:intron'],
+            "percent_intergenic":      metrics['%intergenic'],
+            "percent_chrM":            metrics['%chrM'],
+            "percent_correct_strand":  metrics['%correct_strand']
+        }
+
+        exists = self.get_rna_metrics(alignment_id)
+        if exists:
+            # Currently (2014-12-22) this will fail, but that's a TODO on the LIMS side.
+            print "Updating RNA metrics for alignment ID %d" % alignment_id
+            result = requests.put(exists['url'], headers = self.headers, data = data)
+        else:
+            print "Uploading RNA metrics for alignment ID %d" % alignment_id
+            result = requests.post("%s/rna_alignment_metrics/" % self.api_url, headers = self.headers, data = data)
+        print result.json()
 
     def upload_counts(self, alignment_id, counts_file):
         
@@ -602,6 +651,9 @@ from the command line."""
 
     if poptions.counts_file:
         uploader.upload_counts(poptions.alignment_id, poptions.counts_file)
+
+    if poptions.rna_file:
+        uploader.upload_rna_metrics(poptions.alignment_id, poptions.rna_file)
 
     if poptions.flowcell:
         uploader.clear_flowcell_cache(poptions.flowcell)
