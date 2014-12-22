@@ -42,6 +42,7 @@ readcount_txt = $(SAMPLE_NAME).read_counts.txt
 bamcount_txt = $(SAMPLE_NAME).bam_counts.txt
 
 summary_txt = $(SAMPLE_NAME).sample_summary.txt
+upload_txt = $(SAMPLE_NAME).rna_metrics.txt
 
 marked_bam = $(SAMPLE_NAME).$(GENOME).bam
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
@@ -60,7 +61,13 @@ starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_
 
 default: all
 
-all: $(summary_txt) $(cufflinks_finished) $(bigwig)
+all: upload $(cufflinks_finished) $(bigwig)
+
+upload: $(upload_txt)
+	python $(STAMPIPES)/scripts/lims/upload_data.py --rnafile $^ --alignment_id $(ALIGNMENT_ID)
+
+$(upload_txt) : $(summary_txt)
+	$(SCRIPT_DIR)/transposeTable.pl $^ > $@
 
 $(summary_txt) : $(bamcount_txt) $(ribo_txt) $(readcount_txt)
 	cat $^ | $(SCRIPT_DIR)/processStatsNameKeyValue.pl > $@
