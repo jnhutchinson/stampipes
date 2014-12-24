@@ -9,7 +9,7 @@ module load samtools/0.1.19
 module load bedtools/2.16.2
 
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
-export REF_DIR="$BWAINDEX"
+export REF_DIR=$(dirname "$BWAINDEX")
 
 filesize=$( du --total *fastq.gz | tail -n1 | cut -f1)
 
