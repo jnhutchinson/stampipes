@@ -1,4 +1,5 @@
-# TODO: Update these
+SHELL=/bin/bash
+
 BOWTIE ?= bowtie
 
 THREADS ?= 1
@@ -47,16 +48,17 @@ upload_txt = $(SAMPLE_NAME).rna_metrics.txt
 marked_bam = $(SAMPLE_NAME).$(GENOME).bam
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
 coverage_finished = $(SAMPLE_NAME).coverage_finished.txt
-coverage_types = all #pos neg
+coverage_types = all pos neg
 bigwig = $(addsuffix .$(GENOME).bw, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
 starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
+
+.DELETE_ON_ERROR:
 
 .SECONDARY:
 
 .SUFFIXES:
-	
-#fake: $(SAMPLE_NAME).$(GENOME).bam
-	#echo $(SAMPLE_NAME) $(GENOME)
+
+.INTERMEDIATE: %.bed
 
 
 default: all
@@ -85,8 +87,22 @@ $(coverage_finished) : $(marked_bam)
 #%.pos.$(GENOME).starch %.neg.$(GENOME).starch %.all.$(GENOME).starch : %.$(GENOME).bam
 #	$(SCRIPT_DIR)/splitCoverageByTemplateStrand.pl $^ $(SAMPLE_NAME) $(REF_SEQ)
 
-%.all.$(GENOME).starch : %.$(GENOME).bam
+%.$(GENOME).starch : %.$(GENOME).bam
 	samtools view -u $^ | bedtools bamtobed -split -i stdin | cut -f1-3 | sort-bed - | starch - > $@
+
+%.all.bam : %.bam
+	ln -s $^ $@
+
+%.pos.$(GENOME).bam : %.$(GENOME).bam
+	samtools merge $@ \
+	<( samtools view -h  -u -f 0x90 -F 0x40 $^) \
+	<( samtools view     -u -F 0x90 -f 0x40 $^) \
+
+%.neg.$(GENOME).bam : %.$(GENOME).bam
+	samtools merge $@ \
+	<( samtools view -h  -u -f 0x50 -F 0x80 $^) \
+	<( samtools view     -u -F 0x50 -f 0x80 $^) \
+
 
 
 $(cufflinks_finished) : $(marked_bam)
