@@ -37,6 +37,12 @@ def foldercheck(*args):
                 util_log.warn("Please make sure all nonexistant parent directories have been created.")
                 sys.exit(0)
 
+def mysql_clean(input):
+  # Mysql names can contain only 0-9, a-z, A-Z, _, or $
+  # So we replace all other characters with an underscore.
+  output = re.sub("[^\w$]", "_", input)
+  return output
+
 def parser_setup():
     parser = argparse.ArgumentParser()
 
@@ -183,10 +189,10 @@ class MakeBrowserload(object):
             # _ causes UCSC browser to malfunction
             sampleid_track = lane["SampleID"].lower().replace('-', '').replace('_', '')
 
-            lane["tagtrackname"] = "%stagL%s%s%sm%d" % (self.main_label, lane["Lane"], 
-                lane["Index"], sampleid_track, self.mersize)
-            lane["dentrackname"] = "%sdenL%s%s%sm%d" % (self.main_label, lane["Lane"], 
-                lane["Index"], sampleid_track, self.mersize)
+            lane["tagtrackname"] = mysql_clean("%stagL%s%s%sm%d" % (self.main_label, lane["Lane"],
+                lane["Index"], sampleid_track, self.mersize))
+            lane["dentrackname"] = mysql_clean("%sdenL%s%s%sm%d" % (self.main_label, lane["Lane"],
+                lane["Index"], sampleid_track, self.mersize))
 
             logging.debug("tag track name: " + lane["tagtrackname"])
             logging.debug("den track name: " + lane["dentrackname"])
