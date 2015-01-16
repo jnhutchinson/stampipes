@@ -25,6 +25,7 @@ script_options = {
     "dups_file": None,
     "counts_file": None,
     "rna_file": None,
+    "barcode_report_file": None,
     "flowcell": None,
     "flowcell_lane_id": None,
     "fastqc_counts": False,
@@ -71,6 +72,8 @@ def parser_setup():
         help="The RNA metric output file")
     parser.add_argument("--fastqc_counts", dest="fastqc_counts", action="store_true",
         help="Use the given fastqc files to create total/pf/qc counts. Must have an alignment id.")
+    parser.add_argument("--barcode_report", dest="barcode_report_file",
+        help="The barcode report JSON file")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -146,21 +149,29 @@ class UploadLIMS(object):
        self.picard_metrics = None
        self.fastqc_counts = {}
        
+    def get_flowcell_url_by_label(self, label):
+        r = requests.get("%s/flowcell_run/?label=%s" % (self.api_url, label), headers = self.headers)
+        
+        if not r.ok:
+            print "Could not read flowcell %s from LIMS" % label
+            print r
+            return None
+               
+        flowcell_results = r.json()
+        if flowcell_results["count"] != 1:
+            print "Could not find exactly one flowcell for label %s" % label
+            print flowcell_results
+            return None
+        
+        return flowcell_results['results'][0]['url']
+
     def clear_flowcell_cache(self, flowcell):
-       
-       r = requests.get("%s/flowcell_run/?label=%s" % (self.api_url, flowcell), headers = self.headers)
-       
-       if not r.ok:
-           print "Failure to reset flowcell cache for %s" % flowcell
-           print r
-           return
-              
-       flowcell_results = r.json()
-       if flowcell_results["count"] != 1:
-           print "Could not find one flowcell for label %s" % flowcell
-           print flowcell_results
-       
-       print requests.get("%s/clear_cache/" % flowcell_results['results'][0]['url'], headers = self.headers).json()
+        url = self.get_flowcell_url_by_label(flowcell)
+        if url is None:
+            print "Failure to reset flowcell cache for %s" % flowcell
+            return
+
+        print requests.get("%s/clear_cache/" % url, headers = self.headers).json()
        
     def get_fastqc_tags(self):
 
@@ -371,6 +382,29 @@ class UploadLIMS(object):
             print "Uploading RNA metrics for alignment ID %d" % alignment_id
             result = requests.post("%s/rna_alignment_metrics/" % self.api_url, headers = self.headers, data = data)
         print result.json()
+
+    def upload_barcode_report(self, barcode_file):
+        datastring = open(barcode_file, 'r').read()
+        try:
+            jsondata = json.loads(datastring)
+        except ValueError, e:
+            print "Barcode report %s is not valid JSON" % barcode_file
+            return
+                
+        # This may need to be revisited if we get a new sequencer
+        flowcell_label = re.search( '.*_[AB]([A-Z0-9]{5})[AB][NG]XX$', jsondata['BaseDir'] ).group(1)
+
+        flowcell_url = self.get_flowcell_url_by_label(flowcell_label)
+
+        data = {
+            "flowcell": "http://lims:8000/api/flowcell_run/888/",
+            "json_data": datastring
+        }
+
+        # TODO: Don't upload redundant barcodes.
+        result = requests.post("%s/barcode_report/" % self.api_url, headers = self.headers, data = data)
+        print result.json()
+
 
     def upload_counts(self, alignment_id, counts_file):
         
@@ -654,6 +688,9 @@ from the command line."""
 
     if poptions.rna_file:
         uploader.upload_rna_metrics(poptions.alignment_id, poptions.rna_file)
+
+    if poptions.barcode_report_file:
+        uploader.upload_barcode_report(poptions.barcode_report_file)
 
     if poptions.flowcell:
         uploader.clear_flowcell_cache(poptions.flowcell)
