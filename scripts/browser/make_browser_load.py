@@ -538,7 +538,10 @@ def get_alignment_data(library, alignment, lims):
 
     d['Extra']         = lims_lane['extra']
     d['SampleRef']     = ""  #NYI
-    d['Factors']       = ", ".join([ lims.get_by_url(factor)['display_name'] for factor in lims_sample['factors'] ])
+    if lims_sample is not None:
+        d['Factors']       = ", ".join([ lims.get_by_url(factor)['display_name'] for factor in lims_sample['factors'] ])
+    else:
+        d['Factors'] = None
 
 
     lims_spot = lims.get_spot_for_alignment(alignment['id'])
