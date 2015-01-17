@@ -397,7 +397,7 @@ class UploadLIMS(object):
         flowcell_url = self.get_flowcell_url_by_label(flowcell_label)
 
         data = {
-            "flowcell": "http://lims:8000/api/flowcell_run/888/",
+            "flowcell": flowcell_url,
             "json_data": datastring
         }
 
