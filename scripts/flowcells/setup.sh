@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -o errexit
+set -o pipefail
+
 # Dependencies
 source $MODULELOAD
 module load python/2.7.3
@@ -141,6 +144,8 @@ case $run_type in
 
     # The quadruple-backslash syntax on this is messy and gross.
     # It works, though, and the output is readable.
+    # read -d '' always exits with status 1, so we ignore error
+    set +e
     read -d '' unaligned_command  << _U_
     bcl2fastq \\\\
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
@@ -149,6 +154,7 @@ case $run_type in
       --with-failed-reads \\\\
       --barcode-mismatches "$mismatches"
 _U_
+    set -e
     ;;
     #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
 "HISEQ V4")
@@ -160,6 +166,7 @@ _U_
     make_hiseq_samplesheet > "$samplesheet"
     fastq_dir="$illumina_dir/Unaligned/"  # Trailing slash is important for rsync!
 
+    set +e
     read -d '' unaligned_command <<_U_
     if [ ! -e "$fastq_dir" ] ; then
             configureBclToFastq.pl \\\\
@@ -174,6 +181,7 @@ _U_
     cd "$fastq_dir"
     qmake -now no -cwd -q all.q -V -- -j "$NODES"
 _U_
+    set -e
     ;;
 \?)
     echo "Unrecognized sequencer $sequencer"
