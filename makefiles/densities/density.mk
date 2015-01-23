@@ -37,26 +37,31 @@ BUCKETS_DIR ?= $(STAMPIPES)/data/densities/
 
 CHROM_BUCKET ?= $(BUCKETS_DIR)/chrom-buckets.$(GENOME).$(WIN)_$(BINI).bed.starch
 
-all : $(SAMPLE_NAME).$(WIN)_$(BINI).uniques-density.$(READLENGTH).$(GENOME).bed.starch $(SAMPLE_NAME).$(WIN)_$(BINI).$(GENOME).bw
+BED_TMP=$(TMPDIR)/$(SAMPLE_NAME).m$(READLENGTH).uniques.$(BINI).bed
+WIG_TMP=$(TMPDIR)/$(SAMPLE_NAME).$(WIN)_$(BINI).$(GENOME).wig
+
+STARCH_OUT=$(SAMPLE_NAME).$(WIN)_$(BINI).uniques-density.$(READLENGTH).$(GENOME).bed.starch
+BW_OUT=$(SAMPLE_NAME).$(WIN)_$(BINI).$(GENOME).bw
+
+all : $(STARCH_OUT) $(BW_OUT)
 
 # clip tags to single 5' end base
-$(TMPDIR)/$(SAMPLE_NAME).m$(READLENGTH).uniques.$(BINI).bed : $(BAMFILE)
+$(BED_TMP) : $(BAMFILE)
 	bamToBed -i $^ \
     | awk '{ if( $$6=="+" ){ s=$$2; e=$$2+1 } else { s=$$3-1; e=$$3 } print $$1 "\t" s "\t" e "\tid\t" 1 }' \
     | sort-bed - \
     > $@
 
-$(SAMPLE_NAME).$(WIN)_$(BINI).uniques-density.$(READLENGTH).$(GENOME).bed.starch : $(CHROM_BUCKET) $(TMPDIR)/$(SAMPLE_NAME).m$(READLENGTH).uniques.$(BINI).bed   
+$(STARCH_OUT) : $(CHROM_BUCKET) $(BED_TMP)
 	unstarch $(CHROM_BUCKET) \
-    | bedmap --faster --echo --count --delim "\t" - $(TMPDIR)/$(SAMPLE_NAME).m$(READLENGTH).uniques.$(BINI).bed \
+    | bedmap --faster --echo --count --delim "\t" - $(BED_TMP) \
     | awk -v binI=$(BINI) -v win=$(WIN) \
         'BEGIN{ halfBin=binI/2; shiftFactor=win-halfBin } { print $$1 "\t" $$2 + shiftFactor "\t" $$3-shiftFactor "\tid\t" i $$4}' \
     | starch - \
     > $@
 
-$(TMPDIR)/$(SAMPLE_NAME).$(WIN)_$(BINI).$(GENOME).wig : $(SAMPLE_NAME).$(WIN)_$(BINI).uniques-density.$(READLENGTH).$(GENOME).bed.starch
+$(WIG_TMP) : $(STARCH_OUT)
 	unstarch $^ | awk -v binI=$(BINI) -f $(STAMPIPES)/awk/bedToWig.awk > $@
       
-$(SAMPLE_NAME).$(WIN)_$(BINI).$(GENOME).bw : $(TMPDIR)/$(SAMPLE_NAME).$(WIN)_$(BINI).$(GENOME).wig
+$(BW_OUT) : $(WIG_TMP)
 	wigToBigWig -clip $^ $(FAI) $@
-
