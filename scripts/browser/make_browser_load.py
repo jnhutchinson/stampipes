@@ -26,7 +26,7 @@ options = {
 util_log = logging.getLogger("StamPy.util")
 def foldercheck(*args):
     """Checks to see if the folders exist, creates them if they are not."""
-    
+
     for folder in args:
         if not os.path.isdir(folder):
             try:
@@ -78,11 +78,11 @@ class MakeBrowserload(object):
       "borrBurg": "bacteria",
       "danRer7": "zebrafish",
     }
-    
-    #def __init__(self, browserconfig, browsersheet, basedir, outdir, priority, paired_end, project, project_dir = "", 
+
+    #def __init__(self, browserconfig, browsersheet, basedir, outdir, priority, paired_end, project, project_dir = "",
         #maintrackname = None, bigwig = True, date = None):
     def __init__(self, group_data, browserconfig, basedir, outdir, priority, paired_end, project, date):
-        
+
         self.basedir = basedir
         self.flowcell_date = date
         self.outdir = outdir
@@ -97,9 +97,9 @@ class MakeBrowserload(object):
         self.project_dirs = {}
         self.data = group_data
         project_dir = ""
-       
+
         if len(self.projects) == 1 and project_dir:
-            self.project_dirs[project] = project_dir 
+            self.project_dirs[project] = project_dir
             logging.info("Using project dir: %s" % self.project_dirs[project])
         else:
             for project in self.projects:
@@ -131,44 +131,44 @@ class MakeBrowserload(object):
            self.flowcell_date = self.date
         else:
             match = re.search("(FC[A-Z0-9]+)_([0-9]{6})_tag", self.basedir)
-            
+
             if not match:
                 logging.error("Could not figure out a main track name, no flowcell")
                 sys.exit(1)
-            
+
             self.flowcell_name = match.groups()[0]
             if not self.flowcell_date:
                  self.flowcell_date = match.groups()[1]
-        
+
             logging.info("FLOWCELL DATE: %s" % self.flowcell_date)
- 
+
             self.main_label = "%s%son%s" % (self.file_label, self.flowcell_name, self.flowcell_date)
-            
+
         logging.info("Main track name: %s" % self.main_label)
-            
+
         self.excludes_file = os.path.join(self.outdir, "excludes.%s" % self.main_label)
-        
+
         if self.flowcell_link_folder:
             logging.debug("link folder: " + self.flowcell_link_folder + " base folder: " + self.basedir_name)
             self.link_dir = os.path.join(self.flowcell_link_folder, self.basedir_name)
         else:
             self.link_dir = ""
-            
+
         self.prepare_tracks()
         logging.info("Main label: %s" % self.main_label)
- 
+
         self.create_ras()
         self.create_htmls()
         self.create_commands()
         self.create_excludes()
-    
+
     def prepare_tracks(self):
         """Splits the tracks up and makes changes to the data to make it easier for later on."""
-        
+
         self.subtrack_sets = {}
         #self.lanes = self.browsersheet.get_lanes()
         self.lanes = self.data
-        
+
         for lane in self.lanes:
 
             logging.debug("preparing tracks for lane: " + str(lane))
@@ -181,7 +181,7 @@ class MakeBrowserload(object):
             # change
             if lane["Index"] == "":
                 lane["Index"] = "NoIndex"
-            
+
             if not hgdb in self.subtrack_sets:
                 self.subtrack_sets[hgdb] = []
 
@@ -197,7 +197,7 @@ class MakeBrowserload(object):
             logging.debug("tag track name: " + lane["tagtrackname"])
             logging.debug("den track name: " + lane["dentrackname"])
 
-            project = lane["SampleProject"] 
+            project = lane["SampleProject"]
 
             if self.link_dir:
                 lane["sampleDir"] = os.path.join("Project_%s" % project, "Sample_%s" % lane["SampleID"])
@@ -205,13 +205,13 @@ class MakeBrowserload(object):
             else:
                 lane["sampleDir"] = os.path.join(self.basedir, self.project_dir[project], "Sample_%s" % lane["SampleID"])
                 lane["pathPrefix"] = lane["sampleDir"]
-                
+
             lane["wigfilename"] = "%s_%s_L00%s.75_20.%s.wig" % (lane["SampleID"], lane["Index"], lane["Lane"], hgdb)
             lane["bigwigfilename"] = "%s_%s_L00%s.75_20.%s.bw" % (lane["SampleID"], lane["Index"], lane["Lane"], hgdb)
             lane["bamfilename"] = "%s_%s_L00%s.uniques.sorted.bam" % (lane["SampleID"], lane["Index"], lane["Lane"])
-           
+
             # this is to deal with the mouse with human hg19 chr11
-            if( hgdb == "hg19" and lane["hgdb"] == "Mus_musculus" ): 
+            if( hgdb == "hg19" and lane["hgdb"] == "Mus_musculus" ):
                 lane["bamfilename"] = "%s_%s_L00%s.uniques.sorted.hg19.bam" % (lane["SampleID"], lane["Index"], lane["Lane"])
 
             if( hgdb == "hg19" and lane["SampleRef"] == "Saccharomyces_cerevisiae" ):
@@ -219,16 +219,16 @@ class MakeBrowserload(object):
 
             lane["hasTags"] = False
             lane["hasDensities"] = False
-            
+
             lane["Extra"] = lane["Extra"].strip()
-            
+
             if os.path.exists(os.path.join(lane["sampleDir"], lane["wigfilename"])) and not self.bigwig:
                 lane["hasDensities"] = True
             if os.path.exists(os.path.join(lane["sampleDir"], lane["bigwigfilename"])) and self.bigwig:
                 lane["hasDensities"] = True
             if os.path.exists(os.path.join(lane["sampleDir"], lane["bamfilename"])):
                 lane["hasTags"] = True
-            
+
             if not lane["hasDensities"] or not lane["hasTags"]:
                 logging.error("%s does not have all files" % lane["SampleID"])
                 if not lane["hasDensities"]:
@@ -240,45 +240,45 @@ class MakeBrowserload(object):
                 if not lane["hasTags"]:
                     logging.error("Missing tags")
                 logging.info("%s" % str(lane))
-            
+
             if lane["hasDensities"] or lane["hasTags"]:
                 self.subtrack_sets[hgdb].append(lane)
-        
+
     def create_htmls(self):
         self.html_files = {}
-        
-        for hgdb, subtracks in self.subtrack_sets.items():    
+
+        for hgdb, subtracks in self.subtrack_sets.items():
             self.create_html(hgdb)
-    
+
     def create_html(self, hgdb):
         self.html_files[hgdb] = os.path.join(self.outdir, hgdb, "%s.html" % self.main_label)
-        
+
         html = open( self.html_files[hgdb], 'w')
-        
+
         columns = ["Lane", "Index", "SampleID", "SampleRef", "CellType", "Assay", "Factors", "Extra",
             "u-pf-n-mm2", "u-pf-n-mm2-mito", "SPOT"]
-        
+
         html.write("<p>Total number of lanes from this flowcell for this genome: %d </p>\n" % len(self.subtrack_sets[hgdb]))
-        
+
         html.write("<table>\n")
         html.write("<thead>\n")
         html.write("<tr>\n")
         [html.write("<th>%s</th>\n" % column) for column in columns]
         html.write("</thead><tbody>\n")
-        
+
         for track in self.subtrack_sets[hgdb]:
             html.write("<tr>\n")
             [html.write("<td>%s</td>\n" % track[column]) for column in columns]
             html.write("</tr>\n")
-        
+
         html.write("</tbody>\n")
         html.write("</table>\n")
-        
+
         html.close()
-        
+
     def create_ras(self):
         self.ra_files = {}
-        
+
         for hgdb, subtracks in self.subtrack_sets.items():
             self.create_ra(hgdb)
 
@@ -286,28 +286,28 @@ class MakeBrowserload(object):
         makefile = os.path.join(self.outdir, "make.%s.doc" % self.main_label)
         logging.info("Makefile: %s" % makefile)
         commands = open( makefile, 'w')
-        
+
         commands.write("# %s\n" % makefile)
         commands.write("# %s\n\n" % ", ".join(self.subtrack_sets.keys()))
-        
+
         if self.link_dir:
             commands.write("ln -s %s %s\n\n" % (self.basedir, self.link_dir))
-        
+
         for hgdb, subtracks in self.subtrack_sets.items():
             self.create_genome_commands( hgdb, commands)
-        
+
         commands.write("\ncat %s >> %s\n" % (self.excludes_file, self.browser_excludes_file))
-        
+
         commands.close()
-    
+
     def create_subtrack_commands(self, subtrack, commandsout):
         if subtrack["hasDensities"] and not self.bigwig:
             commandsout.write("hgLoadWiggle -pathPrefix=%s %s %s %s/%s\n" % (
             subtrack["pathPrefix"], subtrack["hgdb"], subtrack["dentrackname"], subtrack["pathPrefix"], subtrack["wigfilename"]))
         # hgLoadWiggle -pathPrefix=/usr/local/UW/flowcell-density/FCB0BLA_110620_tag/005 hg19 STAM_FCB0BLA_110620_IT_DEN_L005_6_DS18466_36_DNaseI /usr/local/UW/flowcell-density/FCB0BLA_110620_tag/005/FCB0BLA_lane6_75_20.wig
-       
+
         if subtrack["hasDensities"] and self.bigwig:
-            commandsout.write("hgBbiDbLink %s %s %s/%s\n" % (subtrack["hgdb"], subtrack["dentrackname"], subtrack["pathPrefix"], subtrack["bigwigfilename"])) 
+            commandsout.write("hgBbiDbLink %s %s %s/%s\n" % (subtrack["hgdb"], subtrack["dentrackname"], subtrack["pathPrefix"], subtrack["bigwigfilename"]))
 
         if subtrack["hasTags"]:
             hgsqlcommand = "hgsql %s -e '" % subtrack["hgdb"]
@@ -315,7 +315,7 @@ class MakeBrowserload(object):
             hgsqlcommand += "create table %s (filename varchar(255) not null); " % subtrack["tagtrackname"]
             hgsqlcommand += "insert into %s values " % subtrack["tagtrackname"]
             hgsqlcommand += "(\"%s/%s\");'\n" % (subtrack["pathPrefix"], subtrack["bamfilename"])
-        
+
             commandsout.write(hgsqlcommand)
 
 #ln -s $datafile bam-links/Rudensky/Rudensky_bams/$data.bam
@@ -323,16 +323,16 @@ class MakeBrowserload(object):
 #hgsql $forg -e 'drop table if exists $trackType; create table
 #$trackType (fileName varchar(255) not null); insert into $trackType
 #values (\"/usr/local/UW/bam-links/Rudensky/Rudensky_bams/$data.bam\");'"
-        
+
     def create_genome_commands(self, hgdb, commandsout):
         if not hgdb in self.genome_organisms:
             logging.error(hgdb + " not in " + str(self.genome_organisms))
             commandsout.write("\n ERROR: no " + hgdb + " genome\n")
             return
- 
+
         organism = self.genome_organisms[hgdb]
-        
-        commandsout.write("# Creating commands for %s\n\n" % hgdb) 
+
+        commandsout.write("# Creating commands for %s\n\n" % hgdb)
         for subtrack in self.subtrack_sets[hgdb]:
             self.create_subtrack_commands(subtrack, commandsout)
 
@@ -348,18 +348,18 @@ class MakeBrowserload(object):
                 logging.debug( "subtrack contents: " + str(subtrack))
                 excludes.write("%s.%s\n" % (subtrack["tagtrackname"], suffix))
                 excludes.write("%s.%s\n" % (subtrack["dentrackname"], suffix))
-            
+
         excludes.close()
-    
-    def create_ra(self, hgdb):        
+
+    def create_ra(self, hgdb):
         logging.info("CREATING RA FOR %s" % hgdb)
         subtracks = self.subtrack_sets[hgdb]
-        
+
         foldercheck(os.path.join(self.outdir, hgdb))
-        
+
         self.ra_files[hgdb] = os.path.join(self.outdir, hgdb, "trackDb.%s.%s.ra" % (self.file_label, self.main_label))
         ra = open( self.ra_files[hgdb], 'w' )
-       
+
         samples = set([subtrack["SampleID"] for subtrack in subtracks])
 
         samples = dict()
@@ -381,22 +381,22 @@ class MakeBrowserload(object):
         ra.write("dragAndDrop subTracks\n")
         ra.write("type bed 3 +\n")
         ra.write("noInherit on\n\n")
-        
+
         ra.write("\ttrack %stag\n" % self.main_label)
         ra.write("\tsubTrack %s\n" % self.main_label)
         ra.write("\tview TAG\n")
         ra.write("\tshortLabel Tags\n")
         ra.write("\tvisibility hide\n\n")
-        
+
         for subtrack in subtracks:
             if not "u-pf-n-mm2-mito" in subtrack:
                 logging.warn("%s has no u-pf-n-mm2-mito count" % subtrack["dentrackname"] )
                 subtrack["u-pf-n-mm2-mito"] = "N/A"
             if not "u-pf-n-mm2" in subtrack:
-                logging.warn("%s has no u-pf-n-mm2 count" % subtrack["dentrackname"] ) 
+                logging.warn("%s has no u-pf-n-mm2 count" % subtrack["dentrackname"] )
                 subtrack["u-pf-n-mm2"] = "N/A"
             if not "SPOT" in subtrack:
-                logging.warn("%s has no SPOT score" % subtrack["dentrackname"] ) 
+                logging.warn("%s has no SPOT score" % subtrack["dentrackname"] )
                 subtrack["SPOT"] = "N/A";
 
         #track STAM_FC630D3_110711_IT_TAG_L5_DS18900_36_
@@ -414,27 +414,27 @@ class MakeBrowserload(object):
             ra.write("\t\tsubGroups view=TAG sample=%s\n" % subtrack["SampleID"])
             ra.write("\t\tbamColorMode strand\n")
             ra.write("\t\tlongLabel %s %s %s %s:%s %dm %s %s %s tags: %s (%s), spot: %s\n" % (
-                subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"], 
+                subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"],
                 subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack['u-pf-n-mm2'],
                 subtrack["u-pf-n-mm2-mito"], subtrack["SPOT"]))
             if self.paired_end:
                 ra.write("\t\tpairEndsByName .\n")
             ra.write("\t\ttype bam\n\n")
-        
+
         logging.info("DEN SUBTRACK GROUP")
-        
+
         ra.write( "\ttrack %sden\n" % self.main_label)
-        ra.write( "\tsubTrack %s\n" % self.main_label) 
+        ra.write( "\tsubTrack %s\n" % self.main_label)
 #        track STAM_FC630D3_110711_IT_DEN
  #       subTrack STAM_FC630D3_110711_IT
-        
+
         ra.write("\tview DEN\n")
         ra.write("\tshortLabel Density\n")
         ra.write("\tvisibility full\n")
         ra.write("\tviewLimits 1:100\n")
         ra.write("\tautoScale off\n")
         ra.write("\tmaxHeightPixels 100:32:16\n\n")
-        
+
         #  track STAM_FC62J4G_101107_IT_DEN_L5_DS13475_36_DNaseI
         #        subTrack STAM_FC62J4G_101107_IT_DEN
         #        subGroups view=DEN
@@ -442,14 +442,14 @@ class MakeBrowserload(object):
         #        longLabel D_HUVEC_DS13475_I_FC62J4G_5_36m | HUVEC DNaseI [Expansion] DS13475 101107 FC62J4G L5 - n tags = 22137427 (20360302) : ptih: 0.2946 density
         #        group illumina-raw
         #        type wig 1.00 10000
-                
+
         for subtrack in subtracks:
             ra.write("\t\ttrack %s\n" % subtrack["dentrackname"])
             ra.write("\t\tsubTrack %sden\n" % self.main_label)
             ra.write("\t\tsubGroups view=DEN sample=%s\n" % subtrack["SampleID"])
             ra.write("\t\tshortLabel %s %s:%s density\n" % (subtrack["SampleID"], subtrack["Lane"], subtrack["Index"],))
             ra.write("\t\tlongLabel %s %s %s %s:%s %dm %s %s %s tags: %s (%s), spot: %s\n" % (
-                subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"], 
+                subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"],
                 subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack['u-pf-n-mm2'],
                 subtrack["u-pf-n-mm2-mito"], subtrack["SPOT"]))
             ra.write("\t\tgroup %s\n" % self.group)
@@ -457,13 +457,13 @@ class MakeBrowserload(object):
                 ra.write("\t\ttype bigWig\n\n")
             else:
                 ra.write("\t\ttype wig 1.00 10000\n\n")
-            
+
         ra.close()
 
     def get_sample_dir(self, lane):
         sample = lane["SampleID"]
         project = lane["SampleProject"]
-        
+
         return os.path.join(self.project_dir[project], "Sample_" + sample)
 
 
