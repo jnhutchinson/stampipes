@@ -45,7 +45,7 @@ bamcount_txt = $(SAMPLE_NAME).bam_counts.txt
 summary_txt = $(SAMPLE_NAME).sample_summary.txt
 upload_txt = $(SAMPLE_NAME).rna_metrics.txt
 
-marked_bam = $(SAMPLE_NAME).$(GENOME).bam
+marked_bam = $(SAMPLE_NAME).all.$(GENOME).bam
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
 coverage_finished = $(SAMPLE_NAME).coverage_finished.txt
 coverage_types = all pos neg
@@ -84,21 +84,17 @@ $(coverage_finished) : $(marked_bam)
 %.bed : %.starch
 	bedops --ec -u $^ | $(SCRIPT_DIR)/singleBedFileBaseCoverage.sh | $(SCRIPT_DIR)/compressBed4.pl > $@
 
-#%.pos.$(GENOME).starch %.neg.$(GENOME).starch %.all.$(GENOME).starch : %.$(GENOME).bam
-#	$(SCRIPT_DIR)/splitCoverageByTemplateStrand.pl $^ $(SAMPLE_NAME) $(REF_SEQ)
 
 %.$(GENOME).starch : %.$(GENOME).bam
 	samtools view -u $^ | bedtools bamtobed -split -i stdin | cut -f1-3 | sort-bed - | starch - > $@
 
-%.all.bam : %.bam
-	ln -s $^ $@
 
-%.pos.$(GENOME).bam : %.$(GENOME).bam
+%.pos.$(GENOME).bam : %.all.$(GENOME).bam
 	samtools merge $@ \
 	<( samtools view -h  -u -f 0x90 -F 0x40 $^) \
 	<( samtools view     -u -F 0x90 -f 0x40 $^) \
 
-%.neg.$(GENOME).bam : %.$(GENOME).bam
+%.neg.$(GENOME).bam : %.all.$(GENOME).bam
 	samtools merge $@ \
 	<( samtools view -h  -u -f 0x50 -F 0x80 $^) \
 	<( samtools view     -u -F 0x50 -f 0x80 $^) \
