@@ -38,10 +38,11 @@ def foldercheck(*args):
                 sys.exit(0)
 
 def mysql_clean(input):
-  # Mysql names can contain only 0-9, a-z, A-Z, _, or $
-  # So we replace all other characters with an underscore.
-  output = re.sub("[^\w$]", "_", input)
-  return output
+    # Mysql names can contain only 0-9, a-z, A-Z, _, or $
+    # So we replace all other characters with an underscore,
+    # after removing leading/trailing whitespace.
+    output = re.sub("[^\w$]", "_", input.strip())
+    return output
 
 def parser_setup():
     parser = argparse.ArgumentParser()
@@ -78,6 +79,8 @@ class MakeBrowserload(object):
       "borrBurg": "bacteria",
       "danRer7": "zebrafish",
     }
+
+    rna_strands = [ "all", "pos", "neg" ]
 
     #def __init__(self, browserconfig, browsersheet, basedir, outdir, priority, paired_end, project, project_dir = "",
         #maintrackname = None, bigwig = True, date = None):
@@ -166,83 +169,97 @@ class MakeBrowserload(object):
         """Splits the tracks up and makes changes to the data to make it easier for later on."""
 
         self.subtrack_sets = {}
-        #self.lanes = self.browsersheet.get_lanes()
-        self.lanes = self.data
+        self.tracks = []
 
-        for lane in self.lanes:
+        for lane in self.data:
 
             logging.debug("preparing tracks for lane: " + str(lane))
             if not "hgdb" in lane:
                 logging.error("Not using lane %s: no hgdb value" % lane )
                 continue
 
-            hgdb = lane["hgdb"]
-
-            # change
             if lane["Index"] == "":
                 lane["Index"] = "NoIndex"
 
-            if not hgdb in self.subtrack_sets:
-                self.subtrack_sets[hgdb] = []
+            if not lane["hgdb"] in self.subtrack_sets:
+                self.subtrack_sets[lane["hgdb"]] = []
 
-            # - not allowed for mysql table nomes
-            # _ causes UCSC browser to malfunction
-            sampleid_track = lane["SampleID"].lower().replace('-', '').replace('_', '')
+            if lane["aligner"] == "bwa":
+                track = lane.copy()
+                track["strand"] = ""
+                self.tracks.append(track)
 
-            lane["tagtrackname"] = mysql_clean("%stagL%s%s%sm%d" % (self.main_label, lane["Lane"],
-                lane["Index"], sampleid_track, self.mersize))
-            lane["dentrackname"] = mysql_clean("%sdenL%s%s%sm%d" % (self.main_label, lane["Lane"],
-                lane["Index"], sampleid_track, self.mersize))
+            elif lane["aligner"] == "tophat":
+                for strand in self.rna_strands:
+                    track = lane.copy()
+                    track["strand"] = strand
+                    self.tracks.append(track)
 
-            logging.debug("tag track name: " + lane["tagtrackname"])
-            logging.debug("den track name: " + lane["dentrackname"])
+        for track in self.tracks:
+            hgdb = track["hgdb"]
 
-            project = lane["SampleProject"]
+            trackname_suffix = "L%s%s%s%sm%d" % (track["Lane"], track["Index"], track["SampleID"], track["strand"], self.mersize)
+            track["tagtrackname"] = mysql_clean("%stag%s" % (self.main_label, trackname_suffix))
+            track["dentrackname"] = mysql_clean("%sden%s" % (self.main_label, trackname_suffix))
+
+            logging.debug("tag track name: " + track["tagtrackname"])
+            logging.debug("den track name: " + track["dentrackname"])
+
+            project = track["SampleProject"]
 
             if self.link_dir:
-                lane["sampleDir"] = os.path.join("Project_%s" % project, "Sample_%s" % lane["SampleID"])
-                lane["pathPrefix"] = "%s/%s" % (self.link_dir, lane["sampleDir"])
+                track["sampleDir"] = os.path.join("Project_%s" % project, "Sample_%s" % track["SampleID"])
+                track["pathPrefix"] = "%s/%s" % (self.link_dir, track["sampleDir"])
             else:
-                lane["sampleDir"] = os.path.join(self.basedir, self.project_dir[project], "Sample_%s" % lane["SampleID"])
-                lane["pathPrefix"] = lane["sampleDir"]
+                track["sampleDir"] = os.path.join(self.basedir, self.project_dir[project], "Sample_%s" % track["SampleID"])
+                track["pathPrefix"] = track["sampleDir"]
 
-            lane["wigfilename"] = "%s_%s_L00%s.75_20.%s.wig" % (lane["SampleID"], lane["Index"], lane["Lane"], hgdb)
-            lane["bigwigfilename"] = "%s_%s_L00%s.75_20.%s.bw" % (lane["SampleID"], lane["Index"], lane["Lane"], hgdb)
-            lane["bamfilename"] = "%s_%s_L00%s.uniques.sorted.bam" % (lane["SampleID"], lane["Index"], lane["Lane"])
+            if lane["aligner"] == "bwa":
+                track["wigfilename"]    = "%s.75_20.%s.wig"       % (track["SampleName"], hgdb)
+                track["bigwigfilename"] = "%s.75_20.%s.bw"        % (track["SampleName"], hgdb)
+                track["bamfilename"]    = "%s.uniques.sorted.bam" % (track["SampleName"])
+            elif lane["aligner"] == "tophat":
+                filename_prefix = "%s.%s.%s"     % (track["SampleName"], track["strand"], hgdb)
+                track["wigfilename"]    = "%s.wig" % filename_prefix  # NYI
+                track["bigwigfilename"] = "%s.bw"  % filename_prefix
+                track["bamfilename"]    = "%s.bam" % filename_prefix
 
+
+            # TODO: Make the RNA pipeline aware of this
             # this is to deal with the mouse with human hg19 chr11
-            if( hgdb == "hg19" and lane["hgdb"] == "Mus_musculus" ):
-                lane["bamfilename"] = "%s_%s_L00%s.uniques.sorted.hg19.bam" % (lane["SampleID"], lane["Index"], lane["Lane"])
+            if( hgdb == "hg19" and track["hgdb"] == "Mus_musculus" ):
+                track["bamfilename"] = "%s_%s_L00%s.uniques.sorted.hg19.bam" % (track["SampleID"], track["Index"], track["Lane"])
 
-            if( hgdb == "hg19" and lane["SampleRef"] == "Saccharomyces_cerevisiae" ):
-                lane["bamfilename"] = "%s_%s_L00%s.uniques.sorted.hg19.bam" % (lane["SampleID"], lane["Index"], lane["Lane"])
+            if( hgdb == "hg19" and track["SampleRef"] == "Saccharomyces_cerevisiae" ):
+                track["bamfilename"] = "%s_%s_L00%s.uniques.sorted.hg19.bam" % (track["SampleID"], track["Index"], track["Lane"])
 
-            lane["hasTags"] = False
-            lane["hasDensities"] = False
+            track["hasTags"] = False
+            track["hasDensities"] = False
 
-            lane["Extra"] = lane["Extra"].strip()
+            track["Extra"] = track["Extra"].strip()
 
-            if os.path.exists(os.path.join(lane["sampleDir"], lane["wigfilename"])) and not self.bigwig:
-                lane["hasDensities"] = True
-            if os.path.exists(os.path.join(lane["sampleDir"], lane["bigwigfilename"])) and self.bigwig:
-                lane["hasDensities"] = True
-            if os.path.exists(os.path.join(lane["sampleDir"], lane["bamfilename"])):
-                lane["hasTags"] = True
+            if os.path.exists(os.path.join(track["sampleDir"], track["wigfilename"])) and not self.bigwig:
+                track["hasDensities"] = True
+            if os.path.exists(os.path.join(track["sampleDir"], track["bigwigfilename"])) and self.bigwig:
+                track["hasDensities"] = True
+            if os.path.exists(os.path.join(track["sampleDir"], track["bamfilename"])):
+                track["hasTags"] = True
 
-            if not lane["hasDensities"] or not lane["hasTags"]:
-                logging.error("%s does not have all files" % lane["SampleID"])
-                if not lane["hasDensities"]:
+            if not track["hasDensities"] or not track["hasTags"]:
+                logging.error("%s does not have all files" % track["SampleID"])
+                if not track["hasDensities"]:
                     logging.error( "Missing densities" )
                     if self.bigwig:
-                        logging.error("Wanted: " + os.path.join(lane["sampleDir"], lane["bigwigfilename"]))
+                        logging.error("Wanted: " + os.path.join(track["sampleDir"], track["bigwigfilename"]))
                     else:
-                        logging.error("Wanted: " + os.path.join(lane["sampleDir"], lane["wigfilename"]))
-                if not lane["hasTags"]:
+                        logging.error("Wanted: " + os.path.join(track["sampleDir"], track["wigfilename"]))
+                if not track["hasTags"]:
                     logging.error("Missing tags")
-                logging.info("%s" % str(lane))
+                    logging.error("Wanted: " + os.path.join(track["sampleDir"], track["bamfilename"]))
+                logging.info("%s" % str(track))
 
-            if lane["hasDensities"] or lane["hasTags"]:
-                self.subtrack_sets[hgdb].append(lane)
+            if track["hasDensities"] or track["hasTags"]:
+                self.subtrack_sets[hgdb].append(track)
 
     def create_htmls(self):
         self.html_files = {}
@@ -343,7 +360,7 @@ class MakeBrowserload(object):
     def create_excludes(self):
         excludes = open( self.excludes_file, 'w')
 
-        for subtrack in self.lanes:
+        for subtrack in self.tracks:
             for suffix in ["frm", "MYD", "MYI"]:
                 logging.debug( "subtrack contents: " + str(subtrack))
                 excludes.write("%s.%s\n" % (subtrack["tagtrackname"], suffix))
@@ -366,7 +383,7 @@ class MakeBrowserload(object):
         for subtrack in subtracks:
             if not subtrack["SampleID"] in subtrack:
                 samples[subtrack["SampleID"]] = "%s %s %s %s" % (subtrack["SampleID"], subtrack["CellType"], subtrack["Assay"], subtrack["Factors"])
-                samples[subtrack["SampleID"]] = samples[subtrack["SampleID"]].strip().replace(" ", "_")
+                samples[subtrack["SampleID"]] = mysql_clean(samples[subtrack["SampleID"]])
 
         ra.write("track %s\n" % self.main_label)
         ra.write("compositeTrack on\n")
@@ -519,6 +536,8 @@ def get_alignment_data(library, alignment, lims):
     d = dict()
     d['project']       = library['project']
     d['hgdb']          = alignment['genome_index']
+    d['aligner']       = alignment['aligner']
+    d['SampleName']    = alignment['sample_name']
     d['Index']         = library['barcode_index']
     d['SampleID']      = library['samplesheet_name']
     d['CellType']      = library['cell_type']
