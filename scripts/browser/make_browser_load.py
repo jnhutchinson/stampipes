@@ -198,7 +198,7 @@ class MakeBrowserload(object):
         for track in self.tracks:
             hgdb = track["hgdb"]
 
-            trackname_suffix = "L%s%s%s%sm%d" % (track["Lane"], track["Index"], track["SampleID"], track["strand"], self.mersize)
+            trackname_suffix = "L%s%s%s%sm%d" % (track["Lane"], track["Index"], track["SampleID"].lower(), track["strand"], self.mersize)
             track["tagtrackname"] = mysql_clean("%stag%s" % (self.main_label, trackname_suffix))
             track["dentrackname"] = mysql_clean("%sden%s" % (self.main_label, trackname_suffix))
 
@@ -383,7 +383,7 @@ class MakeBrowserload(object):
         for subtrack in subtracks:
             if not subtrack["SampleID"] in subtrack:
                 samples[subtrack["SampleID"]] = "%s %s %s %s" % (subtrack["SampleID"], subtrack["CellType"], subtrack["Assay"], subtrack["Factors"])
-                samples[subtrack["SampleID"]] = mysql_clean(samples[subtrack["SampleID"]])
+                samples[subtrack["SampleID"]] = samples[subtrack["SampleID"]].strip().replace(" ", "_")
 
         ra.write("track %s\n" % self.main_label)
         ra.write("compositeTrack on\n")
