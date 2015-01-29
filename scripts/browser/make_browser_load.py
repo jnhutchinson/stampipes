@@ -273,7 +273,7 @@ class MakeBrowserload(object):
         html = open( self.html_files[hgdb], 'w')
 
         columns = ["Lane", "Index", "SampleID", "SampleRef", "CellType", "Assay", "Factors", "Extra",
-            "u-pf-n-mm2", "u-pf-n-mm2-mito", "SPOT"]
+            "wellmapping", "wellmapping-no-mito", "SPOT"]
 
         html.write("<p>Total number of lanes from this flowcell for this genome: %d </p>\n" % len(self.subtrack_sets[hgdb]))
 
@@ -406,12 +406,12 @@ class MakeBrowserload(object):
         ra.write("\tvisibility hide\n\n")
 
         for subtrack in subtracks:
-            if not "u-pf-n-mm2-mito" in subtrack:
-                logging.warn("%s has no u-pf-n-mm2-mito count" % subtrack["dentrackname"] )
-                subtrack["u-pf-n-mm2-mito"] = "N/A"
-            if not "u-pf-n-mm2" in subtrack:
-                logging.warn("%s has no u-pf-n-mm2 count" % subtrack["dentrackname"] )
-                subtrack["u-pf-n-mm2"] = "N/A"
+            if not "wellmapping-no-mito" in subtrack:
+                logging.warn("%s has no wellmapping-no-mito count" % subtrack["dentrackname"] )
+                subtrack["wellmapping-no-mito"] = "N/A"
+            if not "wellmapping" in subtrack:
+                logging.warn("%s has no wellmapping count" % subtrack["dentrackname"] )
+                subtrack["wellmapping"] = "N/A"
             if not "SPOT" in subtrack:
                 logging.warn("%s has no SPOT score" % subtrack["dentrackname"] )
                 subtrack["SPOT"] = "N/A";
@@ -427,13 +427,13 @@ class MakeBrowserload(object):
         for subtrack in subtracks:
             ra.write("\t\ttrack %s\n" % subtrack["tagtrackname"])
             ra.write("\t\tsubTrack %stag\n" % self.main_label)
-            ra.write("\t\tshortLabel %s %s:%s tags\n" % (subtrack["SampleID"], subtrack["Lane"], subtrack["Index"],))
+            ra.write("\t\tshortLabel %s %s:%s %s tags\n" % (subtrack["SampleID"], subtrack["Lane"], subtrack["Index"], subtrack["strand"]))
             ra.write("\t\tsubGroups view=TAG sample=%s\n" % subtrack["SampleID"])
             ra.write("\t\tbamColorMode strand\n")
-            ra.write("\t\tlongLabel %s %s %s %s:%s %dm %s %s %s tags: %s (%s), spot: %s\n" % (
+            ra.write("\t\tlongLabel %s %s %s %s:%s %dm %s %s %s %s tags: %s (%s), spot: %s\n" % (
                 subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"],
-                subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack['u-pf-n-mm2'],
-                subtrack["u-pf-n-mm2-mito"], subtrack["SPOT"]))
+                subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack["strand"], subtrack["wellmapping"],
+                subtrack["wellmapping-no-mito"], subtrack["SPOT"]))
             if self.paired_end:
                 ra.write("\t\tpairEndsByName .\n")
             ra.write("\t\ttype bam\n\n")
@@ -465,10 +465,10 @@ class MakeBrowserload(object):
             ra.write("\t\tsubTrack %sden\n" % self.main_label)
             ra.write("\t\tsubGroups view=DEN sample=%s\n" % subtrack["SampleID"])
             ra.write("\t\tshortLabel %s %s:%s density\n" % (subtrack["SampleID"], subtrack["Lane"], subtrack["Index"],))
-            ra.write("\t\tlongLabel %s %s %s %s:%s %dm %s %s %s tags: %s (%s), spot: %s\n" % (
+            ra.write("\t\tlongLabel %s %s %s %s:%s %dm %s %s %s %s tags: %s (%s), spot: %s\n" % (
                 subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"],
-                subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack['u-pf-n-mm2'],
-                subtrack["u-pf-n-mm2-mito"], subtrack["SPOT"]))
+                subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack["strand"], subtrack["wellmapping"],
+                subtrack["wellmapping-no-mito"], subtrack["SPOT"]))
             ra.write("\t\tgroup %s\n" % self.group)
             if self.bigwig:
                 ra.write("\t\ttype bigWig\n\n")
@@ -517,6 +517,12 @@ class LimsQuery(object):
 
         return counts
 
+    def get_rna_metrics_for_alignment(self, alignment):
+        results = self.get("rna_alignment_metrics/?alignment=%s" % alignment)
+        if not results['results']:
+            return None
+        return results['results'][0]
+
     def get_alignment(self, id):
         return self.get("flowcell_lane_alignment/%s/" % id)
 
@@ -545,15 +551,22 @@ def get_alignment_data(library, alignment, lims):
     d['Lane']          = library['lane']
     d['SampleProject'] = library['project']
 
-    lims_alignment = lims.get_alignment(alignment['id'])
-
     lims_lane = lims.get("flowcell_lane/%s" % library['id'])
     lims_sample = lims.get_by_url( lims_lane['sample'] )
     lims_library = lims.get_by_url( lims_lane['library'] )
 
-    lims_counts = lims.get_counts_for_alignment(alignment['id'])
-    d.update(lims_counts)
+    if d['aligner'] == 'bwa':
+        lims_counts = lims.get_counts_for_alignment(alignment['id'])
+        d['wellmapping']        = lims_counts['u-pf-n-mm2']
+        d['wellmapping-no-mito'] = lims_counts['u-pf-n-mm2-mito']
 
+    # RNA doesn't have u-pf-no-mito counts
+    # So we set those properties from the rna metrics
+    elif d['aligner'] == 'tophat':
+        r = lims.get_rna_metrics_for_alignment(alignment['id'])
+        # Subtract off ribosomal RNA
+        d['wellmapping']         = int(r['mapped_reads'])
+        d['wellmapping-no-mito'] = int(int(r['mapped_reads']) * (1 - (float(r['percent_chrM']) / 100.0)))
 
     d['Extra']         = lims_lane['extra']
     d['SampleRef']     = ""  #NYI
@@ -564,7 +577,7 @@ def get_alignment_data(library, alignment, lims):
 
 
     lims_spot = lims.get_spot_for_alignment(alignment['id'])
-    d['SPOT'] = lims_spot['spot_score'] if lims_spot else ""
+    d['SPOT'] = lims_spot['spot_score'] if lims_spot else "N/A"
     d['failed_lane'] = lims_lane['failed']
 
     return d
