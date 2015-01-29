@@ -47,7 +47,6 @@ upload_txt = $(SAMPLE_NAME).rna_metrics.txt
 
 marked_bam = $(SAMPLE_NAME).all.$(GENOME).bam
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
-coverage_finished = $(SAMPLE_NAME).coverage_finished.txt
 coverage_types = all pos neg
 bigwig = $(addsuffix .$(GENOME).bw, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
 starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
@@ -73,10 +72,6 @@ $(upload_txt) : $(summary_txt)
 
 $(summary_txt) : $(bamcount_txt) $(ribo_txt) $(readcount_txt)
 	cat $^ | $(SCRIPT_DIR)/processStatsNameKeyValue.pl > $@
-
-$(coverage_finished) : $(marked_bam)
-	$(SCRIPT_DIR)/makeCoverageTracks.sh $(marked_bam) $(REF_SEQ) && \
-		touch $@
 
 %.bw : %.bed
 	bedGraphToBigWig $^ $(CHROM_SIZES) $@
