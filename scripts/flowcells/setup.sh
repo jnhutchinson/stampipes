@@ -201,15 +201,13 @@ module load bcl2fastq/1.8.4
 module load bcl2fastq2/2.15.0.4
 module load python/2.7.3
 
-until bcl_barcode_count --isready --mask=$mask $bc_flag ; do sleep 60 ; done
+while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
 qsub -cwd -N "bc-$flowcell" -pe threads 8 -V -S /bin/bash <<__BARCODES__
   GOMAXPROCS=16 bcl_barcode_count --mask=$mask $bc_flag > barcodes.json
 
   python $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
 __BARCODES__
-
-while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
 qsub -cwd -N "u-$flowcell" $parallel_env  -V -S /bin/bash  <<__FASTQ__
 
