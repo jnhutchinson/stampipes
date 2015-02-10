@@ -515,11 +515,17 @@ class LimsQuery(object):
                     counts[count_name] = count['count']
             page += 1
 
+        # Check to see if we got all the types we wanted
+        for count  in self.count_types:
+            if count not in counts:
+                logging.warn("Could not fetch count %s for alignment: %s" % (count, alignment))
+
         return counts
 
     def get_rna_metrics_for_alignment(self, alignment):
         results = self.get("rna_alignment_metrics/?alignment=%s" % alignment)
         if not results['results']:
+            logging.warn("Could not fetch RNA metrics for alignment: %s" % alignment)
             return None
         return results['results'][0]
 
@@ -535,10 +541,10 @@ class LimsQuery(object):
 
 
 def get_alignment_data(library, alignment, lims):
-
     # This is mainly a shim.
-    #d = copy.deepcopy(library)
-    #d['alignment']     = alignment
+
+    logging.debug("Fetching data for library: %s" % library)
+
     d = dict()
     d['project']       = library['project']
     d['hgdb']          = alignment['genome_index']
@@ -555,18 +561,24 @@ def get_alignment_data(library, alignment, lims):
     lims_sample = lims.get_by_url( lims_lane['sample'] )
     lims_library = lims.get_by_url( lims_lane['library'] )
 
+    d['failed_lane'] = lims_lane['failed']
+    if d['failed_lane']:
+        logging.warn("Lane marked as failed, not using: %s" % library['id'])
+        return d
+
     if d['aligner'] == 'bwa':
         lims_counts = lims.get_counts_for_alignment(alignment['id'])
-        d['wellmapping']        = lims_counts['u-pf-n-mm2']
-        d['wellmapping-no-mito'] = lims_counts['u-pf-n-mm2-mito']
+        d['wellmapping']         = lims_counts.get('u-pf-n-mm2', None)
+        d['wellmapping-no-mito'] = lims_counts.get('u-pf-n-mm2-mito', None)
 
     # RNA doesn't have u-pf-no-mito counts
     # So we set those properties from the rna metrics
     elif d['aligner'] == 'tophat':
         r = lims.get_rna_metrics_for_alignment(alignment['id'])
-        # Subtract off ribosomal RNA
-        d['wellmapping']         = int(r['mapped_reads'])
-        d['wellmapping-no-mito'] = int(int(r['mapped_reads']) * (1 - (float(r['percent_chrM']) / 100.0)))
+        if r is not None:
+            # Subtract off ribosomal RNA
+            d['wellmapping']         = int(r['mapped_reads'])
+            d['wellmapping-no-mito'] = int(int(r['mapped_reads']) * (1 - (float(r['percent_chrM']) / 100.0)))
 
     d['Extra']         = lims_lane['extra']
     d['SampleRef']     = ""  #NYI
@@ -578,7 +590,6 @@ def get_alignment_data(library, alignment, lims):
 
     lims_spot = lims.get_spot_for_alignment(alignment['id'])
     d['SPOT'] = lims_spot['spot_score'] if lims_spot else "N/A"
-    d['failed_lane'] = lims_lane['failed']
 
     return d
 
