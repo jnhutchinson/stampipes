@@ -40,6 +40,7 @@ READ_LENGTH ?= 36
 
 # Ideally this will be set in the environment or on the command line to an actual temp directory
 TMPDIR ?= $(shell pwd)
+ADAPTER_REPORT ?= $(shell pwd)/trimming_adapters.txt
 
 # Discard reads failing chastity filter, use 32 bases as a seed
 # and set the mismatch level appropriate to the read length
@@ -50,10 +51,13 @@ BWA_ALN_OPTIONS ?= -Y -l 32 -n 0.04
 # set the inset size to a generous 750
 BWA_SAMPE_OPTIONS ?= -n 10 -a 750
 
+ADAPTER1 ?= "P5_single_no_index"
+ADAPTER2 ?= "P7_truseq_default" # Probably at least one of these should not have a default
+
 # List the intermediate files that can be deleted when we finish up
 .INTERMEDIATE : 
 
-all : info align 
+all : info adapters align
 
 info : 
 	@echo "------"
@@ -63,6 +67,8 @@ info :
 	@$(BWA) 2>&1 | grep "Version"
 	@echo "samtools:"
 	@$(SAMTOOLS) 2>&1 | grep "Version"
+	@echo "trim-adapters-illumina:"
+	@trim-adapters-illumina -v
 	@echo "------"
 	@echo "METADATA"
 	@echo "------"
@@ -70,6 +76,8 @@ info :
 	@echo "BWAINDEX: " $(BWAINDEX)
 	@echo "FAI: " $(FAI)
 	@echo "READ LENGTH: " $(READ_LENGTH)
+	@echo "ADAPTER1: " $(ADAPTER1)
+	@echo "ADAPTER2: " $(ADAPTER2)
 	@echo "------"
 	@echo "PROGRAM OPTIONS"
 	@echo "------"
@@ -78,6 +86,11 @@ info :
 	@echo "------"
 
 align : $(OUTBAM)
+
+adapters: $(ADAPTER_REPORT)
+
+$(ADAPTER_REPORT) : $(ADAPTERFILE)
+	egrep '^$(ADAPTER1)|^$(ADAPTER2)' $^ > $@
 
 # Copy the final sorted bam to its finished place
 $(OUTBAM) : $(TMPDIR)/align.sorted.bam
@@ -104,4 +117,10 @@ $(TMPDIR)/%.sai : $(TMPDIR)/trimmed.%.fastq.gz
 # Trim each FASTQ file pair
 # Keep track of the output by passing it to a file, so we can know how many pairs were trimmed
 $(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz : $(FASTQ1_FILE) $(FASTQ2_FILE)
-	time trim-adapters-illumina -f $(ADAPTERFILE) --length=$(READ_LENGTH) $(FASTQ1_FILE) $(FASTQ2_FILE) $(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz &> $(TRIMSTATS) && echo trimmed $(SAMPLE_NAME) >&2
+	time trim-adapters-illumina \
+		-f $(ADAPTERFILE) \
+		-1 $(ADAPTER1) -2 $(ADAPTER2) \
+		$(FASTQ1_FILE) $(FASTQ2_FILE) \
+		$(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz \
+		&> $(TRIMSTATS) \
+		&& echo trimmed $(SAMPLE_NAME) >&2
