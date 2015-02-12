@@ -90,7 +90,8 @@ align : $(OUTBAM)
 adapters: $(ADAPTER_REPORT)
 
 $(ADAPTER_REPORT) : $(ADAPTERFILE)
-	egrep '^$(ADAPTER1)|^$(ADAPTER2)' $^ > $@
+	awk '$$1 == $(ADAPTER1)' $^ > $@
+	awk '$$1 == $(ADAPTER2)' $^ >> $@
 
 # Copy the final sorted bam to its finished place
 $(OUTBAM) : $(TMPDIR)/align.sorted.bam
