@@ -181,6 +181,10 @@ class ProcessSetUp(object):
         outfile.write("export FLOWCELL_LANE_ID=%s\n" % lane['id'])
         outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
         outfile.write("export FLOWCELL=%s\n" % self.p['flowcell']['label'])
+        if 'adapter1' in lane:
+            outfile.write("export ADAPTER1=%s\n" % lane['adapter1'])
+        if 'adapter2' in lane:
+            outfile.write("export ADAPTER2=%s\n" % lane['adapter2'])
         outfile.write("\n")
         outfile.write(self.get_script_template(lane))
         outfile.close()
