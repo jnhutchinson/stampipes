@@ -106,7 +106,9 @@ $(TMPDIR)/align.sorted.bam : $(TMPDIR)/align.unsorted.bam
 
 # Create unsorted raw BAM files
 $(TMPDIR)/align.unsorted.bam : $(TMPDIR)/align.sam
-	time $(SAMTOOLS) view -bS -t $(FAI) $^ > $@ && echo made $(TMPDIR)/align.unsorted.bam >&2
+	time $(SAMTOOLS) view -bS -t $(FAI) $^ \
+		| python $(STAMPIPES)/scripts/bwa/fix_bam_pairing.py - $@ \
+		&& echo made $(TMPDIR)/align.unsorted.bam >&2
 
 # Create the SAM files from each pair of SAI and FASTQ files
 $(TMPDIR)/align.sam : $(TMPDIR)/R1.sai $(TMPDIR)/R2.sai $(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz
