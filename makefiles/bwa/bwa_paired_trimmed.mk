@@ -51,8 +51,8 @@ BWA_ALN_OPTIONS ?= -Y -l 32 -n 0.04
 # set the inset size to a generous 750
 BWA_SAMPE_OPTIONS ?= -n 10 -a 750
 
-ADAPTER1 ?= "P5_single_no_index"
-ADAPTER2 ?= "P7_truseq_default" # Probably at least one of these should not have a default
+ADAPTER1 ?= P5_single_no_index
+ADAPTER2 ?= P7_truseq_default # Probably at least one of these should not have a default
 
 # List the intermediate files that can be deleted when we finish up
 .INTERMEDIATE : 
@@ -78,6 +78,7 @@ info :
 	@echo "READ LENGTH: " $(READ_LENGTH)
 	@echo "ADAPTER1: " $(ADAPTER1)
 	@echo "ADAPTER2: " $(ADAPTER2)
+	@echo "ADAPTERFILE: " $(ADAPTERFILE)
 	@echo "------"
 	@echo "PROGRAM OPTIONS"
 	@echo "------"
@@ -89,9 +90,9 @@ align : $(OUTBAM)
 
 adapters: $(ADAPTER_REPORT)
 
+# We don't really need the file written multiple times, but this'll solve races
 $(ADAPTER_REPORT) : $(ADAPTERFILE)
-	awk '$$1 == $(ADAPTER1)' $^ > $@
-	awk '$$1 == $(ADAPTER2)' $^ >> $@
+	flock -x $@ awk '$$1 == "$(ADAPTER1)" {a1=$$0} $$1 == "$(ADAPTER2)" {a2=$$0} END {print a1; print a2}' $^ > $@
 
 # Copy the final sorted bam to its finished place
 $(OUTBAM) : $(TMPDIR)/align.sorted.bam
