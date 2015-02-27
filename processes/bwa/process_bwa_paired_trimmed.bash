@@ -7,6 +7,8 @@ module load java/jdk1.7.0_05
 module load picard/1.118
 module load python/2.7.3
 module load samtools/0.1.19
+module load gcc/4.7.2
+module load R/3.1.0
 
 FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
