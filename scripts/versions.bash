@@ -37,3 +37,5 @@ echo "---"
 echo "BASH:"
 bash --version
 echo "---"
+echo "R:"
+R --version | grep "R version"
