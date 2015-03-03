@@ -9,6 +9,8 @@ In order to set up these scripts, checkout the repository.  There are some envir
 * LIMS_API_URL -- URL to the LIMS API
 * LIMS_API_TOKEN -- Auth to the LIMS API
 * MODULELOAD -- Full path to the GNU modules init script
+* HOTSPOT_DIR -- Path to HOTSPOT, defaults to `~/hotspot/hotspot-distr` - download at [https://github.com/rthurman/hotspot]
+
 
 Modules
 -------------
