@@ -14,16 +14,17 @@ parser.add_argument('--mismatches', type=int, default=0, help='number of mismatc
 parser.add_argument('--barcodes', dest='barcodelist_file', action='store', required=True,
         help='barcode file (mandatory)')
 parser.add_argument('--suffix', dest='suffix', default='', help='suffix to add to sample names')
+parser.add_argument('--autosuffix', action="store_true", default=False, help='Automatically guess a suffix name')
 parser.add_argument('infile', nargs='+')
-#
+
 args = parser.parse_args()
 
 barcode_re = re.compile(r"""
-        [012]:
-        ([YN]):
-        [01]:
-        ( [AGCTN] {6,8} )
-        \+? ( [AGCTN] {6,8} )?
+        [012]:                  #
+        ([YN]):                 # Fail/pass chastity filtering
+        [01]:                   #
+        ( [AGCTN] {6,8} )       # First barcode
+        \+? ( [AGCTN] {6,8} )?  # Optionally, separator (+) and second barcode
         $
         """, re.X)
 
@@ -40,14 +41,34 @@ def mismatch(word, mismatches):
             for poss in itertools.product(*thisWord):
                 yield "".join(poss)    
 
+def guess_suffix(filename):
+    regex = re.compile(r"""
+    ^                  # Start
+    (?: lane \d+ _ )?               # lane number
+    Undetermined
+    (?: _S0 )?
+    _L \d{3}           # lane number again
+    ( _ R \d _ \d{3} ) # R1 or R2, and count
+    .fastq.gz
+    $
+    """, re.X)
+
+    print filename
+    match = regex.search(filename)
+    if match:
+        return match.group(1)
+
+    return ""
+
 global lengths
 lengths = set([])
 
-#barcodelist_file = sys.argv[1]
-#infiles = sys.argv[2:]
-
 barcodes = dict()
 labels = dict()
+
+if args.autosuffix:
+    args.suffix = guess_suffix(args.infile[0])
+    print("Setting suffix to %s", args.suffix)
 
 for line in open(args.barcodelist_file, 'r'):
     vals = line.strip().split("\t")
@@ -56,26 +77,27 @@ for line in open(args.barcodelist_file, 'r'):
     if (len(vals) > 2):
         barcode2 = vals[2]
     else:
-        barcode2 = ""
+        if '-' in barcode1:
+            b = barcode1.split('-')
+            barcode1 = b[0]
+            barcode2 = b[1]
+        else:
+            barcode2 = ""
 
     lengths.add(( len(barcode1), len(barcode2) ))
-    #for l in lengths:
-        #print l
 
     # TODO: This doesn't work right yet! Only works for mm=0
     for b1 in mismatch(barcode1, args.mismatches):
         for b2 in mismatch(barcode2, args.mismatches):
-            #barcode = "%s+%s" % (b1, b2)
             barcode = (b1, b2)
+            # TODO: This can be smarter
             if barcode in barcodes:
                 print "Error! Barcode %s already taken! (from %s+%s)" % (barcode, barcode1, barcode2)
                 sys.exit(1)
             barcodes[barcode] = label
-    #print "--"
-    #for b in barcodes:
-        #print b
+
     labels[label] = { "filtered": 0, "unfiltered": 0, "total": 0 }
-    labels[label]["outfile"] = open("%s%s.fastq" % (label, args.suffix), 'w')
+    labels[label]["outfile"] = gzip.open("%s%s.fastq.gz" % (label, args.suffix), 'wb')
 
 tally = 0
 
@@ -108,17 +130,13 @@ def split_file(filename):
             barcode2 = ""
         matched=False
         for format in lengths:
-            #barcode = "%s+%s" % ( barcode1[:format[0]], barcode2[:format[1]] )
             barcode = ( barcode1[:format[0]], barcode2[:format[1]] )
-            #print "barcode-%s" % barcode
             if barcode in barcodes.keys():
                 label = barcodes[barcode]
                 matched=True
                 break
 
         if matched:
-            #print "match! %s" % barcode
-
             labels[label]['total'] += 1
 
             #write to FASTQ
@@ -131,10 +149,6 @@ def split_file(filename):
 
     parsein.close()
 
-#print "BARCODES"
-#print str(barcodes)
-#print "LABELS"
-#print str(labels)
 
 [split_file(filename) for filename in args.infile]
 
