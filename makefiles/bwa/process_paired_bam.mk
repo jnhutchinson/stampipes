@@ -21,7 +21,7 @@ FAI ?= $(BWAINDEX).fai
 
 READ_LENGTH ?= 36
 
-MIN_MAP_QUALITY ?= 30
+MIN_MAP_QUALITY ?= 20
 
 # Filter to a minimum mapping quality, where both pairs
 # are properly paired in the mapping

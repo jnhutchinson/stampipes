@@ -41,7 +41,7 @@ class BAMFilter(object):
 
         self.max_mismatches = 2
         self.previous_read = None
-        self.min_map_quality = 30
+        self.min_map_quality = 20
 
     def process_read(self, read, counts, chrcounts, inbam):
 
