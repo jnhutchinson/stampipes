@@ -120,6 +120,8 @@ class ProcessSetUp(object):
 
         return script_contents[base_script]
 
+
+
     # Probably ripe for a refactoring
     def create_flowcell_script(self, inscript):
         script_directory = os.path.join(self.p['alignment_group']['directory'], 'flowcell_scripts')
@@ -129,7 +131,7 @@ class ProcessSetUp(object):
 
         script_file = os.path.join(script_directory,
                 os.path.basename(inscript))
-        
+
         outfile = open(script_file, 'w')
         outfile.write("set -e -o pipefail\n")
         outfile.write("export READLENGTH=%s\n" % self.p['flowcell']['read_length'])
@@ -181,10 +183,15 @@ class ProcessSetUp(object):
         outfile.write("export FLOWCELL_LANE_ID=%s\n" % lane['id'])
         outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
         outfile.write("export FLOWCELL=%s\n" % self.p['flowcell']['label'])
-        if 'adapter1' in lane:
-            outfile.write("export ADAPTER1=%s\n" % lane['adapter1'])
-        if 'adapter2' in lane:
-            outfile.write("export ADAPTER2=%s\n" % lane['adapter2'])
+        if "barcode1" in lane and lane["barcode1"]:
+            p7_adapter = lane['barcode1']['adapter7']
+            p5_adapter = lane['barcode1']['adapter5']
+            if "barcode2" in lane and lane['barcode2']:
+                # Override the "default" end adapter from barcode1
+                # TODO: Make sure we want adapter7, double-check lims methods
+                p5_adapter = lane['barcode2']['adapter7']
+            outfile.write("export ADAPTER_P7=%s\n" % p7_adapter)
+            outfile.write("export ADAPTER_P5=%s\n" % p5_adapter)
         outfile.write("\n")
         outfile.write(self.get_script_template(lane))
         outfile.close()

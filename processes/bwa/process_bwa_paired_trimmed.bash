@@ -13,6 +13,10 @@ UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 
 bash $STAMPIPES/scripts/versions.bash &> ${SAMPLE_NAME}.versions.txt
 
+if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
+  echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > ${SAMPLE_NAME}.adapters.txt
+fi
+
 if [ ! -e ${SAMPLE_NAME}_R1_fastqc -o ! -e ${SAMPLE_NAME}_R2_fastqc -o -n "$FORCE_FASTQ" ]; then
 qsub -N ".fq${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
@@ -41,8 +45,7 @@ qsub -l h_data=5650M -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
     FASTQ1_FILE=${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
     FASTQ2_FILE=${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
     OUTBAM=${BAMFILE} \
-    TRIMSTATS=${SAMPLE_NAME}_${filenum}.trimstats.txt \
-    ADAPTERFILE=$STAMPIPES/data/adapters/default.adapters
+    TRIMSTATS=${SAMPLE_NAME}_${filenum}.trimstats.txt
 __SCRIPT__
 
   # Only hold on alignments that are being run
