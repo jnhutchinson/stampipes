@@ -15,6 +15,13 @@ OPTIONS:
 EOF
 }
 
+check_folder(){
+  if [ ! -d "$1" ] ; then
+    echo "Directory $1 does not exist, aborting." >&2
+    exit 1
+  fi
+}
+
 demux_script="$STAMPIPES/scripts/flowcells/demux_fastq.py"
 demux_config="demux.config"  # This'll be in $unaligneddir
 
@@ -63,29 +70,28 @@ if [ ! -s "$samplesheet" ] ; then
 	exit 1
 fi
 
-cd "$destination"
 
 if grep -q '^FCID,Lane,SampleID,' "$samplesheet" ; then
 	# Hiseq format
   destination="$unaligneddir/Undetermined_indices/Sample_lane$lane"
+  check_folder "$destination"
+  cd "$destination"
 	# TODO: What do we do about dual-index names??
 	awk -F, -v "l=$lane" \
-		  'BEGIN{OFS="\t"} l == $2 { print $3 "_" $5 "_L00" $2   , $5 }' \
+		  'BEGIN{OFS="\t"} l == $2 { print $3 "_" $5, $5 }' \
 		  "$samplesheet" \
 		> "$demux_config"
 else
   # NextSeq Format
   destination="$unaligneddir"
+  check_folder "$destination"
+  cd "$destination"
   awk -F, \
-    'BEGIN{OFS="\t";seqline=0}  seqline>0 {print $1 "_" $3 "_S" seqline "_L001", $3; seqline++} /SampleID,SampleName/ {seqline=1}' \
+    'BEGIN{OFS="\t";seqline=0}  seqline>0 {print $1 "_S" seqline "_" $3, $3; seqline++} /SampleID,SampleName/ {seqline=1}' \
     "$samplesheet" \
     > "$demux_config"
 fi
 
-if [ ! -d "$destination" ] ; then
-	echo "$destination is not a place, oops. Aborting." >&2
-	exit 1
-fi
 
 for i in *Undetermined_*fastq.gz ; do
 	echo python "$demux_script" --autosuffix $i --barcodes "$demux_config" \

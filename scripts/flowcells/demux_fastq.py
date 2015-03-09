@@ -43,12 +43,15 @@ def mismatch(word, mismatches):
 
 def guess_suffix(filename):
     regex = re.compile(r"""
-    ^                  # Start
-    (?: lane \d+ _ )?               # lane number
-    Undetermined
-    (?: _S0 )?
-    _L \d{3}           # lane number again
-    ( _ R \d _ \d{3} ) # R1 or R2, and count
+    ^                 # Start
+    (?: lane \d+ _ )? # optional lane number
+    Undetermined      # TODO: Maybe change someday?
+    (?: _S0 )?        # Optional index
+    (                 # Start suffix
+      _ L \d{3}       # lane number again
+      _ R \d          # Read number
+      _   \d{3}       # Count
+    )                 # End suffix
     .fastq.gz
     $
     """, re.X)
