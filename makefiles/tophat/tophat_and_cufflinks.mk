@@ -7,8 +7,7 @@ THREADS ?= 1
 TOPHAT ?= tophat
 TOPHAT_REF ?= $(GENOME)
 REF_SEQ ?= $(TOPHAT_REF)
-#LIBTYPE ?= libtype??
-LIBTYPE ?= "fr-unstranded" #This is used for alignment
+LIBTYPE ?= "fr-firststrand" #This is used for alignment
 STRAND_SPEC ?= "SECOND_READ_TRANSCRIPTION_STRAND" # Used for metrics
 
 ANNOT_GTF ?= $(REF_DIR)/genes.gtf
