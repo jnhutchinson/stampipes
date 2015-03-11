@@ -25,8 +25,13 @@ SCRIPT_DIR ?= $(STAMPIPES)/scripts/tophat
 RIBOSOMAL_REF ?= $(REF_DIR)/contamination/hg_rRNA
 CONTROL_REF   ?= $(REF_DIR)/spikeInControlRNA/ERCC92
 
-R1_FASTQ_FILES ?= $(wildcard $(SAMPLE_NAME)_R1_*.fastq.gz)
-R2_FASTQ_FILES ?= $(wildcard $(SAMPLE_NAME)_R2_*.fastq.gz)
+FASTQ_DIRECTORY ?= $(shell pwd)/..
+
+R1_FASTQ_FILES_ORIG ?= $(wildcard $(FASTQ_DIRECTORY)/$(SAMPLE_NAME)_R1_*.fastq.gz)
+R2_FASTQ_FILES_ORIG ?= $(wildcard $(FASTQ_DIRECTORY)/$(SAMPLE_NAME)_R2_*.fastq.gz)
+
+R1_FASTQ_FILES ?= $(notdir $(R1_FASTQ_FILES_ORIG))
+R2_FASTQ_FILES ?= $(notdir $(R2_FASTQ_FILES_ORIG))
 
 TRIM_DIR ?= trimmed
 R1_trimmed_fastq_files ?= $(prefix $(TRIM_DIR)/$(R1_FASTQ_FILES))
@@ -148,3 +153,7 @@ spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.
 $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(SAMPLE_NAME)_R1_%.fastq.gz $(SAMPLE_NAME)_R2_%.fastq.gz
 	$(SCRIPT_DIR)/clipadapterPE.sh $^ $(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz \
 		$(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz
+
+# TODO: If READ_LENGTH > 76; truncate the reads to 76 bases.
+%.fastq.gz : ../%.fastq.gz
+	ln -s $^ $@
