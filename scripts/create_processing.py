@@ -160,7 +160,8 @@ class ProcessSetUp(object):
             print "# Aligning %s with bwa" % lane['sample']
             base_script = "bwa"
 
-        script_directory = os.path.join(self.p['alignment_group']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
+        alignment_dir = "align_%d_%s_%s-%s" % (alignment["id"], alignment["genome_index"], alignment["aligner"], alignment["aligner_version"] )
+        script_directory = os.path.join(self.p['alignment_group']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'], alignment_dir)
 
         if not os.path.exists(script_directory):
             print "Creating directory %s" % script_directory
