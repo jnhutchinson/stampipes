@@ -11,7 +11,7 @@ module load bedtools/2.16.2
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR=$(dirname "$BWAINDEX")
 
-filesize=$( du --total *fastq.gz | tail -n1 | cut -f1)
+filesize=$( du --total ../*fastq.gz | tail -n1 | cut -f1)
 
 # For small files, prioritize overall throughput
 # For big files, we want them to finish someday.
