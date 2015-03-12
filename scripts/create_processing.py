@@ -28,7 +28,7 @@ script_options = {
     "outfile": os.path.join(os.getcwd(), "run.bash"),
     "sample_script_basename": "run.bash",
     "template_script": None,
-    "project_filter": None,
+    "project_filter": [],
 }
 
 def parser_setup():
@@ -46,8 +46,8 @@ def parser_setup():
         help="The process config to work off of.")
     parser.add_argument("-b", "--sample-script-basename", dest="sample_script_basename",
         help="Name of the script that goes after the sample name.")
-    parser.add_argument("--project", dest="project_filter",
-        help="Run for this particular project.")
+    parser.add_argument("--project", dest="project_filter", action="append",
+        help="Run for this particular project. Can be specified multiple times.")
     parser.add_argument("-t", "--template-script", dest="template_script",
         help="Template script to make for each valid library if not defaults")
 
@@ -75,7 +75,7 @@ class ProcessSetUp(object):
         self.p = json.loads(open(self.processing_configfile, 'r').read())
 
         for lane in self.p['libraries']:
-            if not self.project_filter or (self.project_filter and lane["project"] == self.project_filter):
+            if not self.project_filter or (lane["project"] in self.project_filter):
                 self.create_script(lane)
 
         for script in flowcell_script_files.values():
