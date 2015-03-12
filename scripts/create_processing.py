@@ -29,6 +29,7 @@ script_options = {
     "sample_script_basename": "run.bash",
     "template_script": None,
     "project_filter": [],
+    "dry_run": False,
 }
 
 def parser_setup():
@@ -48,6 +49,8 @@ def parser_setup():
         help="Name of the script that goes after the sample name.")
     parser.add_argument("--project", dest="project_filter", action="append",
         help="Run for this particular project. Can be specified multiple times.")
+    parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
+        help="Take no action, only print messages.")
     parser.add_argument("-t", "--template-script", dest="template_script",
         help="Template script to make for each valid library if not defaults")
 
@@ -59,13 +62,14 @@ def parser_setup():
 
 class ProcessSetUp(object):
 
-    def __init__(self, processing_configfile, qsub_scriptname, outfile, template_script=None, project_filter=None):
+    def __init__(self, processing_configfile, qsub_scriptname, outfile, template_script=None, project_filter=None, dry_run=False):
 
         self.processing_configfile = processing_configfile
         self.qsub_scriptname = qsub_scriptname
         self.outfile = outfile
         self.template_script = template_script
         self.project_filter = project_filter
+        self.dry_run = dry_run
 
         if self.template_script:
             self.template_script_content = open(self.template_script, 'r').read()
@@ -91,6 +95,9 @@ class ProcessSetUp(object):
         self.processing_scripts[priority].append((sample_name, script_file))
 
     def run_scripts(self):
+
+        if self.dry_run:
+            return
 
         outfile = open(self.qsub_scriptname, 'w')
 
@@ -130,6 +137,12 @@ class ProcessSetUp(object):
         script_file = os.path.join(script_directory,
                 os.path.basename(inscript))
         
+        # TODO: Figure out the appropriate priority here.
+        self.add_script(script_file, 'flowcell_script', 0)
+
+        if self.dry_run:
+            return
+
         outfile = open(script_file, 'w')
         outfile.write("set -e -o pipefail\n")
         outfile.write("export READLENGTH=%s\n" % self.p['flowcell']['read_length'])
@@ -143,8 +156,6 @@ class ProcessSetUp(object):
 
         os.system("cat %s >> %s" % ( inscript, script_file ) )
 
-        # TODO: Figure out the appropriate priority here.
-        self.add_script(script_file, 'flowcell_script', 0)
 
     def create_script(self, lane):
 
@@ -170,6 +181,11 @@ class ProcessSetUp(object):
         script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         print script_file
 
+        self.add_script(script_file, alignment['sample_name'], alignment['priority'])
+
+        if self.dry_run:
+            return
+
         outfile = open(script_file, 'w')
         outfile.write("set -e -o pipefail\n")
         outfile.write("export SAMPLE_NAME=%s\n" % alignment['sample_name'])
@@ -186,7 +202,6 @@ class ProcessSetUp(object):
         outfile.write(self.get_script_template(lane))
         outfile.close()
 
-        self.add_script(script_file, alignment['sample_name'], alignment['priority'])
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
@@ -204,7 +219,7 @@ from the command line."""
         logging.basicConfig(level=logging.INFO, format=log_format)
 
     process = ProcessSetUp(poptions.process_config, poptions.sample_script_basename,
-        poptions.outfile, template_script=poptions.template_script, project_filter=poptions.project_filter)
+        poptions.outfile, template_script=poptions.template_script, project_filter=poptions.project_filter, dry_run=poptions.dry_run)
 
     process.create()
 
