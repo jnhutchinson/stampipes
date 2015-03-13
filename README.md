@@ -11,6 +11,7 @@ In order to set up these scripts, checkout the repository.  There are some envir
 * MODULELOAD -- Full path to the GNU modules init script
 * HOTSPOT_DIR -- Path to HOTSPOT, defaults to `~/hotspot/hotspot-distr` - download at [https://github.com/rthurman/hotspot]
 
+A python version that includes pip needs to be installed for proper python package version recording.
 
 Modules
 -------------
