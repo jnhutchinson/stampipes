@@ -95,8 +95,12 @@ $(OUTBAM) : $(TMPDIR)/align.sorted.bam
 # Create sorted BAM files
 # Note: samtools expects the output name without a .bam suffix and will
 # add it, so take it away to prevent .bam.bam
-$(TMPDIR)/align.sorted.bam : $(TMPDIR)/align.unsorted.bam
+$(TMPDIR)/align.sorted.bam : $(TMPDIR)/align.filtered.bam
 	time $(SAMTOOLS) sort $^ $(basename $@) && echo made $(TMPDIR)/align.sorted.bam >&2
+
+# Create unsorted filtered BAM files
+$(TMPDIR)/align.filtered.bam : $(TMPDIR)/align.unsorted.bam
+	time $(STAMPIPES)/scripts/bwa/filter_reads.py $(TMPDIR)/align.unsorted.bam $(TMPDIR)/align.filtered.bam
 
 # Create unsorted raw BAM files
 $(TMPDIR)/align.unsorted.bam : $(TMPDIR)/align.sam
