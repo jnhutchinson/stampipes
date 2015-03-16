@@ -42,7 +42,7 @@ fi
 
 if [[ $MarkDuplicates ]]; then
 echo "MarkDuplicates"
-java -jar $MarkDuplicates --versiot
+java -jar $MarkDuplicates --version
 fi
 
 if [[ $CollectInsertSizeMetrics || $MarkDuplicates ]]; then
