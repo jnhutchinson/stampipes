@@ -12,7 +12,6 @@ module load python/2.7.3
 #########
 
 NODES=40
-THREADS=8
 
 usage(){
 cat << EOF
@@ -136,7 +135,7 @@ mismatches=$( "$STAMPIPES/scripts/flowcells/max_mismatch.py" )
 case $run_type in
 "NextSeq 500")
     echo "Regular NextSeq 500 run detected"
-    parallel_env="-pe threads $THREADS"
+    parallel_env="-pe threads 4-8"
     link_command="python $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
@@ -146,6 +145,16 @@ case $run_type in
     # The quadruple-backslash syntax on this is messy and gross.
     # It works, though, and the output is readable.
     # read -d '' always exits with status 1, so we ignore error
+
+    # The NSLOTS lines are for scaling the various threads (2 per slot).
+    # WARNING: Does not work for threads < 4
+    # Table:
+    # NSLOTS  l w d p   total
+    # 4       1 1 2 4 = 8
+    # 5       1 1 2 5 = 9
+    # 6       2 2 3 6 = 13
+    # 7       2 2 3 7 = 14
+    # 8       2 2 4 8 = 16
     set +e
     read -d '' unaligned_command  << _U_
     bcl2fastq \\\\
@@ -153,7 +162,11 @@ case $run_type in
       --use-bases-mask "$mask" \\\\
       --output-dir "$fastq_dir" \\\\
       --with-failed-reads \\\\
-      --barcode-mismatches "$mismatches"
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
+      --processing-threads     \\\$(( NSLOTS ))
 _U_
     set -e
     ;;
@@ -203,13 +216,13 @@ module load python/2.7.3
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
-qsub -cwd -N "bc-$flowcell" -pe threads 8 -V -S /bin/bash <<__BARCODES__
-  GOMAXPROCS=16 bcl_barcode_count --mask=$mask $bc_flag > barcodes.json
+qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
+  GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=$mask $bc_flag > barcodes.json
 
   python $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
 __BARCODES__
 
-qsub -cwd -N "u-$flowcell" $parallel_env  -V -S /bin/bash  <<__FASTQ__
+qsub -cwd -N "u-$flowcell" $parallel_env  -V -S /bin/bash  <<'__FASTQ__'
 
 set -x -e -o pipefail
 
