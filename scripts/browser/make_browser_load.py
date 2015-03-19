@@ -214,11 +214,11 @@ class MakeBrowserload(object):
                 track["sampleDir"] = os.path.join(self.basedir, self.project_dir[project], "Sample_%s" % track["SampleID"])
                 track["pathPrefix"] = track["sampleDir"]
 
-            if lane["aligner"] == "bwa":
+            if track["aligner"] == "bwa":
                 track["wigfilename"]    = "%s.75_20.%s.wig"       % (track["SampleName"], hgdb)
                 track["bigwigfilename"] = "%s.75_20.%s.bw"        % (track["SampleName"], hgdb)
                 track["bamfilename"]    = "%s.uniques.sorted.bam" % (track["SampleName"])
-            elif lane["aligner"] == "tophat":
+            elif track["aligner"] == "tophat":
                 filename_prefix = "%s.%s.%s"     % (track["SampleName"], track["strand"], hgdb)
                 track["wigfilename"]    = "%s.wig" % filename_prefix  # NYI
                 track["bigwigfilename"] = "%s.bw"  % filename_prefix
