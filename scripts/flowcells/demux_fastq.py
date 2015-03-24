@@ -9,24 +9,24 @@ from Bio.SeqIO.QualityIO import FastqGeneralIterator
 import logging
 
 import argparse
-parser = argparse.ArgumentParser(description='Split up fastq files by barcode')
-parser.add_argument('--mismatches', type=int, default=0, help='number of mismatches')
-parser.add_argument('--barcodes', dest='barcodelist_file', action='store', required=True,
-        help='barcode file (mandatory)')
-parser.add_argument('--suffix', dest='suffix', default='', help='suffix to add to sample names')
-parser.add_argument('--autosuffix', action="store_true", default=False, help='Automatically guess a suffix name')
-parser.add_argument('infile', nargs='+')
 
-args = parser.parse_args()
 
-barcode_re = re.compile(r"""
-        [012]:                  #
-        ([YN]):                 # Fail/pass chastity filtering
-        [01]:                   #
-        ( [AGCTN] {6,8} )       # First barcode
-        \+? ( [AGCTN] {6,8} )?  # Optionally, separator (+) and second barcode
-        $
-        """, re.X)
+def parseArgs():
+    parser = argparse.ArgumentParser(description='Split up fastq files by barcode')
+    parser.add_argument('--mismatches', type=int, default=0, help='number of mismatches')
+    parser.add_argument('--barcodes', dest='barcodelist_file', action='store', required=True,
+            help='barcode file (mandatory)')
+    #parser.add_argument('--processing', dest='processing_file', action='store', required=True,
+    #        help='processing.json to use (mandatory)')
+    parser.add_argument('--suffix', dest='suffix', default='', help='suffix to add to sample names')
+    #parser.add_argument('--lane', dest='lane', default=1, help='Lane to process (default 1)')
+    parser.add_argument('--autosuffix', action="store_true", default=False, help='Automatically guess a suffix name')
+    parser.add_argument('infile', nargs='+')
+
+    args = parser.parse_args()
+    return args
+
+
 
 import itertools
 # Generator for mismatches
@@ -39,7 +39,7 @@ def mismatch(word, mismatches):
                 origChar = word[loc]
                 thisWord[loc] = [l for l in "ACGTN" if l != origChar]
             for poss in itertools.product(*thisWord):
-                yield "".join(poss)    
+                yield "".join(poss)
 
 def guess_suffix(filename):
     regex = re.compile(r"""
@@ -56,56 +56,61 @@ def guess_suffix(filename):
     $
     """, re.X)
 
-    print filename
+    #print filename
     match = regex.search(filename)
     if match:
         return match.group(1)
 
     return ""
 
-global lengths
-lengths = set([])
-
-barcodes = dict()
-labels = dict()
-
-if args.autosuffix:
-    args.suffix = guess_suffix(args.infile[0])
-    print("Setting suffix to %s", args.suffix)
-
-for line in open(args.barcodelist_file, 'r'):
-    vals = line.strip().split("\t")
-    label = vals[0]
-    barcode1 = vals[1]
-    if (len(vals) > 2):
-        barcode2 = vals[2]
-    else:
-        if '-' in barcode1:
-            b = barcode1.split('-')
-            barcode1 = b[0]
-            barcode2 = b[1]
+def parse_barcode_file(file, mismatches, suffix):
+    barcodes = dict()
+    labels = dict()
+    for line in open(file, 'r'):
+        vals = line.strip().split("\t")
+        label = vals[0]
+        barcode1 = vals[1]
+        if (len(vals) > 2):
+            barcode2 = vals[2]
         else:
-            barcode2 = ""
+            if '-' in barcode1:
+                b = barcode1.split('-')
+                barcode1 = b[0]
+                barcode2 = b[1]
+            else:
+                barcode2 = ""
 
-    lengths.add(( len(barcode1), len(barcode2) ))
+        lengths.add(( len(barcode1), len(barcode2) ))
 
-    # TODO: This doesn't work right yet! Only works for mm=0
-    for b1 in mismatch(barcode1, args.mismatches):
-        for b2 in mismatch(barcode2, args.mismatches):
-            barcode = (b1, b2)
-            # TODO: This can be smarter
-            if barcode in barcodes:
-                print "Error! Barcode %s already taken! (from %s+%s)" % (barcode, barcode1, barcode2)
-                sys.exit(1)
-            barcodes[barcode] = label
+        # TODO: This doesn't work right yet! Only works for mm=0
+        for b1 in mismatch(barcode1, mismatches):
+            for b2 in mismatch(barcode2, mismatches):
+                barcode = (b1, b2)
+                # TODO: This can be smarter
+                if barcode in barcodes:
+                    print "Error! Barcode %s already taken! (from %s+%s)" % (barcode, barcode1, barcode2)
+                    sys.exit(1)
+                barcodes[barcode] = label
 
-    labels[label] = { "filtered": 0, "unfiltered": 0, "total": 0 }
-    labels[label]["outfile"] = gzip.open("%s%s.fastq.gz" % (label, args.suffix), 'wb')
+        labels[label] = { "filtered": 0, "unfiltered": 0, "total": 0 }
+        labels[label]["outfile"] = gzip.open("%s%s.fastq.gz" % (label, suffix), 'wb')
+    return barcodes, labels
 
-tally = 0
 
-def split_file(filename):
-    global tally, labels, barcodes, barcode_re
+def split_file(filename, barcodes, labels):
+
+    barcode_re = re.compile(r"""
+            [012]:                  #
+            ([YN]):                 # Fail/pass chastity filtering
+            [01]:                   #
+            ( [AGCTN] {6,8} )       # First barcode
+            \+?                     # Optional separator (+)
+            ( [AGCTN] {6,8} )?      # Optionally, second barcode
+            $
+            """, re.X)
+
+    global tally
+    tally = 0
 
     print "Splitting up file: %s" % filename
 
@@ -153,12 +158,28 @@ def split_file(filename):
     parsein.close()
 
 
-[split_file(filename) for filename in args.infile]
+def main(argv):
+    args = parseArgs()
 
-print "BARCODE MATCHING"
+    global lengths
+    lengths = set([])
 
-for label, info in labels.iteritems():
-    print "%s\t%s" % (label, str(info))
+    if args.autosuffix:
+        args.suffix = guess_suffix(args.infile[0])
+        print("Setting suffix to %s", args.suffix)
 
-for label, info in labels.iteritems():
-    info['outfile'].close()
+    barcodes, labels = parse_barcode_file(args.barcodelist_file, args.mismatches, args.suffix)
+
+    for filename in args.infile:
+        split_file(filename, barcodes, labels) 
+
+    print "BARCODE MATCHING"
+
+    for label, info in labels.iteritems():
+        print "%s\t%s" % (label, str(info))
+
+    for label, info in labels.iteritems():
+        info['outfile'].close()
+
+if __name__ == "__main__":
+    main(sys.argv)
