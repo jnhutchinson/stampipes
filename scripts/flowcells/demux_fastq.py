@@ -14,8 +14,6 @@ import argparse
 def parseArgs():
     parser = argparse.ArgumentParser(description='Split up fastq files by barcode')
     parser.add_argument('--mismatches', type=int, default=0, help='number of mismatches')
-    parser.add_argument('--barcodes', dest='barcodelist_file', action='store',
-            help='barcode file (mandatory)')
     parser.add_argument('--processing', dest='processing_file', action='store', required=True,
             help='processing.json to use (mandatory)')
     parser.add_argument('--suffix', dest='suffix', default='', help='suffix to add to sample names')
@@ -56,7 +54,6 @@ def guess_suffix(filename):
     $
     """, re.X)
 
-    #print filename
     match = regex.search(filename)
     if match:
         return match.group(1)
@@ -93,40 +90,6 @@ def parse_processing_file(file, mismatches, suffix, lane):
         labels[label]["outfile"] = gzip.open("%s%s.fastq.gz" % (label, suffix), 'wb')
 
     return barcodes, labels
-
-def parse_barcode_file(file, mismatches, suffix):
-    barcodes = dict()
-    labels = dict()
-    for line in open(file, 'r'):
-        vals = line.strip().split("\t")
-        label = vals[0]
-        barcode1 = vals[1]
-        if (len(vals) > 2):
-            barcode2 = vals[2]
-        else:
-            if '-' in barcode1:
-                b = barcode1.split('-')
-                barcode1 = b[0]
-                barcode2 = b[1]
-            else:
-                barcode2 = ""
-
-        lengths.add(( len(barcode1), len(barcode2) ))
-
-        # TODO: This doesn't work right yet! Only works for mm=0
-        for b1 in mismatch(barcode1, mismatches):
-            for b2 in mismatch(barcode2, mismatches):
-                barcode = (b1, b2)
-                # TODO: This can be smarter
-                if barcode in barcodes:
-                    print "Error! Barcode %s already taken! (from %s+%s)" % (barcode, barcode1, barcode2)
-                    sys.exit(1)
-                barcodes[barcode] = label
-
-        labels[label] = { "filtered": 0, "unfiltered": 0, "total": 0 }
-        labels[label]["outfile"] = gzip.open("%s%s.fastq.gz" % (label, suffix), 'wb')
-    return barcodes, labels
-
 
 def split_file(filename, barcodes, labels):
 
