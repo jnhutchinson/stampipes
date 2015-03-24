@@ -1,8 +1,6 @@
 # This is a quick script to split up FASTQ files by barcode given
 # Used to rescue tags from undeterminde state
 
-# usage: splitbarcodes.py FILE1 FILE2 FILE3 FILE4 ...
-
 import sys, os, gzip, re, operator
 from Bio import SeqIO
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
@@ -17,7 +15,7 @@ def parseArgs():
     parser.add_argument('--processing', dest='processing_file', action='store', required=True,
             help='processing.json to use (mandatory)')
     parser.add_argument('--suffix', dest='suffix', default='', help='suffix to add to sample names')
-    parser.add_argument('--lane', dest='lane', default=1, help='Lane to process (default 1)')
+    parser.add_argument('--lane', dest='lane', type=int, default=1, help='Lane to process (default 1)')
     parser.add_argument('--autosuffix', action="store_true", default=False, help='Automatically guess a suffix name')
     parser.add_argument('infile', nargs='+')
 
@@ -103,7 +101,6 @@ def split_file(filename, barcodes, labels):
             $
             """, re.X)
 
-
     tally = 0
     print "Splitting up file: %s" % filename
 
@@ -140,6 +137,9 @@ def split_file(filename, barcodes, labels):
         if matched:
             labels[label]['total'] += 1
 
+            # Replace recorded barcode
+            sepIndex = record.rfind(':')
+            record = record[:sepIndex + 1] + barcode1 + "+" + barcode2
             #write to FASTQ
             labels[label]['outfile'].write('@%s\n%s\n+\n%s\n' % (record, seq, qual))
 
@@ -161,7 +161,6 @@ def main(argv):
         args.suffix = guess_suffix(args.infile[0])
         print("Setting suffix to %s", args.suffix)
 
-    #barcodes, labels = parse_barcode_file(args.barcodelist_file, args.mismatches, args.suffix)
     barcodes, labels = parse_processing_file(args.processing_file, args.mismatches, args.suffix, args.lane)
 
     for filename in args.infile:
