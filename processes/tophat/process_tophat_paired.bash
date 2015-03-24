@@ -7,6 +7,7 @@ module load picard/1.118
 module load cufflinks/2.2.1
 module load samtools/0.1.19
 module load bedtools/2.16.2
+module load gcc/4.7.2
 
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR=$(dirname "$BWAINDEX")
@@ -34,6 +35,12 @@ qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
 __SCRIPT__
 fi
 
-qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads $SLOTS <<__MAKE__
+qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads $SLOTS -S /bin/bash <<__MAKE__
+  set -e
+
+  if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
+    echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > ${SAMPLE_NAME}.adapters.txt
+  fi
+
     make --keep-going -f \$STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$JOBS"
 __MAKE__
