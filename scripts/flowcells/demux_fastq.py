@@ -64,7 +64,6 @@ def guess_suffix(filename):
     return ""
 
 import json
-from pprint import pprint
 def parse_processing_file(file, mismatches, suffix, lane):
     barcodes = dict()
     labels = dict()
@@ -81,22 +80,18 @@ def parse_processing_file(file, mismatches, suffix, lane):
 
         lengths.add(( len(barcode1), len(barcode2) ))
 
-        # TODO: This doesn't work right yet! Only works for mm=0
         for b1 in mismatch(barcode1, mismatches):
             for b2 in mismatch(barcode2, mismatches):
                 barcode = (b1, b2)
-                pprint(barcode)
                 # TODO: This can be smarter
                 if barcode in barcodes:
-                    print "Error! Barcode %s already taken! (from %s+%s)" % (barcode, barcode1, barcode2)
+                    print "Error! Barcode %s already taken, lower mismatches! (from %s+%s)" % (barcode, barcode1, barcode2)
                     sys.exit(1)
                 barcodes[barcode] = label
 
         labels[label] = { "filtered": 0, "unfiltered": 0, "total": 0 }
         labels[label]["outfile"] = gzip.open("%s%s.fastq.gz" % (label, suffix), 'wb')
 
-    #pprint(barcodes)
-    #pprint(labels)
     return barcodes, labels
 
 def parse_barcode_file(file, mismatches, suffix):
@@ -145,9 +140,8 @@ def split_file(filename, barcodes, labels):
             $
             """, re.X)
 
-    global tally
-    tally = 0
 
+    tally = 0
     print "Splitting up file: %s" % filename
 
     if filename.endswith('.gz'):
@@ -162,7 +156,7 @@ def split_file(filename, barcodes, labels):
         if not match:
             print "Could not match %s" % record
             print str(seq)
-            print "Record %d" % (tally)
+            print "Record %d in %s" % (tally, filename)
             sys.exit(1)
 
         matches = match.groups()
