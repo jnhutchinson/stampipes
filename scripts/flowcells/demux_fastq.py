@@ -14,12 +14,12 @@ import argparse
 def parseArgs():
     parser = argparse.ArgumentParser(description='Split up fastq files by barcode')
     parser.add_argument('--mismatches', type=int, default=0, help='number of mismatches')
-    parser.add_argument('--barcodes', dest='barcodelist_file', action='store', required=True,
+    parser.add_argument('--barcodes', dest='barcodelist_file', action='store',
             help='barcode file (mandatory)')
-    #parser.add_argument('--processing', dest='processing_file', action='store', required=True,
-    #        help='processing.json to use (mandatory)')
+    parser.add_argument('--processing', dest='processing_file', action='store', required=True,
+            help='processing.json to use (mandatory)')
     parser.add_argument('--suffix', dest='suffix', default='', help='suffix to add to sample names')
-    #parser.add_argument('--lane', dest='lane', default=1, help='Lane to process (default 1)')
+    parser.add_argument('--lane', dest='lane', default=1, help='Lane to process (default 1)')
     parser.add_argument('--autosuffix', action="store_true", default=False, help='Automatically guess a suffix name')
     parser.add_argument('infile', nargs='+')
 
@@ -47,8 +47,8 @@ def guess_suffix(filename):
     (?: lane \d+ _ )? # optional lane number
     Undetermined      # TODO: Maybe change someday?
     (?: _S0 )?        # Optional index
+    _ L \d{3}       # lane number again
     (                 # Start suffix
-      _ L \d{3}       # lane number again
       _ R \d          # Read number
       _   \d{3}       # Count
     )                 # End suffix
@@ -62,6 +62,42 @@ def guess_suffix(filename):
         return match.group(1)
 
     return ""
+
+import json
+from pprint import pprint
+def parse_processing_file(file, mismatches, suffix, lane):
+    barcodes = dict()
+    labels = dict()
+    with open(file) as data_file:
+        data = json.load(data_file)
+
+    lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
+
+    for library in lane_libraries:
+        label = library['alignments'][0]['sample_name']
+        barcode_indices = library['barcode_index'].split("-")
+        barcode1 = barcode_indices[0]
+        barcode2 = barcode_indices[1] if len(barcode_indices) > 1 else "" 
+
+        lengths.add(( len(barcode1), len(barcode2) ))
+
+        # TODO: This doesn't work right yet! Only works for mm=0
+        for b1 in mismatch(barcode1, mismatches):
+            for b2 in mismatch(barcode2, mismatches):
+                barcode = (b1, b2)
+                pprint(barcode)
+                # TODO: This can be smarter
+                if barcode in barcodes:
+                    print "Error! Barcode %s already taken! (from %s+%s)" % (barcode, barcode1, barcode2)
+                    sys.exit(1)
+                barcodes[barcode] = label
+
+        labels[label] = { "filtered": 0, "unfiltered": 0, "total": 0 }
+        labels[label]["outfile"] = gzip.open("%s%s.fastq.gz" % (label, suffix), 'wb')
+
+    #pprint(barcodes)
+    #pprint(labels)
+    return barcodes, labels
 
 def parse_barcode_file(file, mismatches, suffix):
     barcodes = dict()
@@ -168,7 +204,8 @@ def main(argv):
         args.suffix = guess_suffix(args.infile[0])
         print("Setting suffix to %s", args.suffix)
 
-    barcodes, labels = parse_barcode_file(args.barcodelist_file, args.mismatches, args.suffix)
+    #barcodes, labels = parse_barcode_file(args.barcodelist_file, args.mismatches, args.suffix)
+    barcodes, labels = parse_processing_file(args.processing_file, args.mismatches, args.suffix, args.lane)
 
     for filename in args.infile:
         split_file(filename, barcodes, labels) 
