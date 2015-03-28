@@ -23,10 +23,13 @@ OPTIONS:
 -h        Show this message
 -v        Verbose
 -f        Flowcell Label
+-d        Requires by-hand demuxing
 EOF
 }
 
-while getopts ":hvf:" opt ; do
+verbose=
+demux=
+while getopts ":hvdf:" opt ; do
     case $opt in
     h)
         usage
@@ -34,6 +37,9 @@ while getopts ":hvf:" opt ; do
         ;;
     v)
         verbose=true
+        ;;
+    d)
+        demux=true
         ;;
     f)
         flowcell="$OPTARG"
@@ -132,6 +138,12 @@ run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 
 mismatches=$( "$STAMPIPES/scripts/flowcells/max_mismatch.py" )
 
+if [ -n "$demux" ] ; then
+  echo -e "\n----WARNING!-----"
+  echo "Demuxing is not yet automatic. Before running this script, you must edit the SampleSheet.csv!"
+  echo -e "-----------------\n"
+fi
+
 case $run_type in
 "NextSeq 500")
     echo "Regular NextSeq 500 run detected"
@@ -204,6 +216,13 @@ _U_
     ;;
 esac
 
+copy_from_dir="$fastq_dir"
+if [ -n "$demux" ] ; then
+  copy_from_dir="$(pwd)/Demultiplexed/"
+  demux_cmd="$STAMPIPES/scripts/flowcells/demux_flowcell.sh -i "$fastq_dir" -o "$copy_from_dir" -p "$json" "
+  link_command="#Demuxing happened, no linking to do"
+fi
+
 
 # The final script is below:
 cat > run_bcl2fastq.sh <<__BCL2FASTQ__
@@ -232,10 +251,18 @@ $unaligned_command
 
 __FASTQ__
 
-qsub -cwd -N "c-$flowcell" -hold_jid "u-$flowcell" -V -S /bin/bash <<__COPY__
+qsub -cwd -N "dmx-$flowcell" -hold_jid "u-$flowcell" -V -S /bin/bash <<__DMX__
+  $demux_cmd
+  # Wait for jobs to finish
+  while ( qstat -xml | grep -q '<JB_name>.dmx' ) ; do
+    sleep 60
+  done
+__DMX__
+
+qsub -cwd -N "c-$flowcell" -hold_jid "dmx-$flowcell" -V -S /bin/bash <<__COPY__
 mkdir -p "$analysis_dir"
 
-rsync -avP "$fastq_dir" "$analysis_dir/"
+rsync -avP "$copy_from_dir" "$analysis_dir/"
 rsync -avP "$illumina_dir/InterOp" "$analysis_dir/"
 rsync -avP "$illumina_dir/RunInfo.xml" "$analysis_dir/"
 rsync -avP "$samplesheet" "$analysis_dir"
