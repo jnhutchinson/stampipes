@@ -116,7 +116,8 @@ SampleID,SampleName,index,index2
 __SHEET__
 
 # This bit of cryptic magic generates the samplesheet part.
-jq -r '.libraries[] | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json"
+jq -r '.libraries[] | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
+  | sed 's/\([ACTG]\+\)-\([ACTG]\+\),$/\1,\2/'  # Changes dual-index barcodes to proper format
 
 }
 
