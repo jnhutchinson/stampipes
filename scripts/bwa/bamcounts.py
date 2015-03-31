@@ -43,9 +43,21 @@ class BAMFilter(object):
         self.previous_read = None
         self.min_map_quality = 30
 
-    def process_read(self, read, counts, chrcounts, inbam):
+    def process_read(self, read, counts, chrcounts,  mapqcounts, samflagcounts, inbam):
 
         tags = dict(read.tags)
+
+        mapq = "mapq-%d" % read.mapq
+        if not mapq in mapqcounts:
+            mapqcounts[mapq] = 1
+        else:
+            mapqcounts[mapq] += 1
+
+        samflag = "samflag-%d" % read.flag
+        if not samflag in samflagcounts:
+            samflagcounts[samflag] = 1
+        else:
+            samflagcounts[samflag] += 1
 
         # This might not be the most perfect indicator, but it will do for now
         # Must take place before minimum quality filter--multiple matching
@@ -53,10 +65,15 @@ class BAMFilter(object):
         if "XT" in tags and tags["XT"] == "R":
             counts['mm'] += 1
 
-        if self.min_map_quality > read.mapq:
-            return
+        if read.is_unmapped:
+            counts['nm'] += 1
+            return False
+        else:
+            counts['all-aligned'] += 1
 
-        if not read.tags:
+        # Figure out how many alignments aren't included because of mapq
+        if self.min_map_quality > read.mapq:
+            counts['all-mapq-filter']
             return
 
         # do not use reads with
@@ -65,16 +82,25 @@ class BAMFilter(object):
         if read.flag & 12:
             return False
 
-        if read.is_unmapped:
-            counts['nm'] += 1
-            return False
-
         # only use reads with
         # 0x1 read paired
         # 0x2 read mapped in proper pair
         if not (read.flag & 1 and read.flag & 2):
             return False
 
+        # Figure out how many alignments aren't included because of mapq
+        if self.min_map_quality > read.mapq:
+            counts['paired-mapq-filter']
+            return
+
+        # do not use reads with
+        # Keep track of how many are still flagged between all aligned and paired
+        # 0x512
+        if read.flag & 512:
+            counts['qc-flagged'] += 1
+            return
+
+        counts['paired-aligned'] += 1
         counts['u'] += 1
 
         if read.is_qcfail:
@@ -106,27 +132,34 @@ class BAMFilter(object):
 
         return True
 
+    def write_dict(self, countout, counts):
+
+        for count in sorted(counts.keys()):
+            countout.write("%s\t%d\n" % (count, counts[count]))
+
     def filter(self, infile, countfile):
 
         inbam = Samfile(infile, 'rb')
 
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
-          'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm' ]
+          'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged',
+          'all-aligned', 'paired-aligned', 'all-mapq-filter', 'paired-mapq-filter']
 
         counts = dict([(label, 0) for label in count_labels])
 
         chrcounts = {}
+        mapqcounts = {}
+        samflagcounts = {}
 
         for read in inbam:
-            self.process_read(read, counts, chrcounts, inbam)
+            self.process_read(read, counts, chrcounts, mapqcounts, samflagcounts, inbam)
 
         countout = open(countfile, 'w')
 
-        for count in count_labels:
-            countout.write("%s\t%d\n" % (count, counts[count]))
-
-        for count in sorted(chrcounts.keys()):
-            countout.write("%s\t%d\n" % (count, chrcounts[count]))
+        self.write_dict(countout, counts)
+        self.write_dict(countout, chrcounts)
+        self.write_dict(countout, mapqcounts)
+        self.write_dict(countout, samflagcounts)
 
         countout.close()
 
