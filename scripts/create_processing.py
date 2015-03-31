@@ -30,7 +30,7 @@ script_options = {
     "qsub_prefix": ".proc",
     "template_script": None,
     "project_filter": None,
-    "no_mask": True,
+    "no_mask": False,
 }
 
 def parser_setup():
