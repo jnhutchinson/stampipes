@@ -37,7 +37,7 @@ while getopts ":hi:o:p:m:" opt ; do
       indir=$(readlink -f "$OPTARG")
       ;;
     o)
-      outdir=$(readlink -f "$OPTARG")
+      outdir="$OPTARG"
       ;;
     p)
       processing=$(readlink -f "$OPTARG")
@@ -59,7 +59,6 @@ while getopts ":hi:o:p:m:" opt ; do
 
 done
 
-
 if [ -z "$processing" ] || [ -z "$indir" ] || [ -z "$outdir" ] ; then
   usage >&2
   exit 1
@@ -74,13 +73,15 @@ inputfiles=($(find "$indir" -name '*Undetermined_*fastq.gz'))
 
 for i in "${inputfiles[@]}" ; do
   lane=$( sed 's/.*_L\(00.\)_.*/\1/' <(basename "$i" ))
-  echo python "$demux_script"   \
-    --autosuffix                \
-    --processing "$processing"  \
-    --outdir "$outdir"          \
-    --mismatches "$mismatches"  \
-    --lane "$lane"              \
-    "$i"                        \
-    #| qsub -cwd -V -q all.q -N .dmx$(basename i)
+
+  qsub -cwd -V -q all.q -N .dmx$(basename $i) <<__DEMUX__
+    python "$demux_script"        \
+      --autosuffix                \
+      --processing "$processing"  \
+      --outdir "$outdir"          \
+      --mismatches "$mismatches"  \
+      --lane "$lane"              \
+      "$i"
+__DEMUX__
 
 done
