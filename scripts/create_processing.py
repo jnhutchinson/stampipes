@@ -27,8 +27,10 @@ script_options = {
     "process_config": "processing.json",
     "outfile": os.path.join(os.getcwd(), "run.bash"),
     "sample_script_basename": "run.bash",
+    "qsub_prefix": ".proc",
     "template_script": None,
     "project_filter": None,
+    "no_mask": True,
 }
 
 def parser_setup():
@@ -46,10 +48,14 @@ def parser_setup():
         help="The process config to work off of.")
     parser.add_argument("-b", "--sample-script-basename", dest="sample_script_basename",
         help="Name of the script that goes after the sample name.")
+    parser.add_argument("--qsub-prefix", dest="qsub_prefix",
+        help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
     parser.add_argument("--project", dest="project_filter",
         help="Run for this particular project.")
     parser.add_argument("-t", "--template-script", dest="template_script",
         help="Template script to make for each valid library if not defaults")
+    parser.add_argument("--no-mask", dest="no_mask", action="store_true",
+        help="If this is set to true, remake SAMPLE_NAME with no barcode mask.")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -59,13 +65,16 @@ def parser_setup():
 
 class ProcessSetUp(object):
 
-    def __init__(self, processing_configfile, qsub_scriptname, outfile, template_script=None, project_filter=None):
+    def __init__(self, processing_configfile, qsub_scriptname, outfile, qsub_prefix,
+        template_script=None, project_filter=None, no_mask=False):
 
         self.processing_configfile = processing_configfile
         self.qsub_scriptname = qsub_scriptname
+        self.qsub_prefix = qsub_prefix
         self.outfile = outfile
         self.template_script = template_script
         self.project_filter = project_filter
+        self.no_mask = no_mask
 
         if self.template_script:
             self.template_script_content = open(self.template_script, 'r').read()
@@ -92,13 +101,13 @@ class ProcessSetUp(object):
 
     def run_scripts(self):
 
-        outfile = open(self.qsub_scriptname, 'w')
+        outfile = open(self.outfile, 'w')
 
         for priority in sorted(self.processing_scripts.keys(), reverse=True):
             outfile.write("# Priority %s\n" % str(priority))
             for sample_name, script_file in self.processing_scripts[priority]:
                 outfile.write("cd %s && " % os.path.dirname(script_file))
-                outfile.write("qsub -N .proc%s-%s -cwd -V -S /bin/bash %s\n\n" % (sample_name, self.p['flowcell']['label'], script_file))
+                outfile.write("qsub -N %s%s-%s -cwd -V -S /bin/bash %s\n\n" % (self.qsub_prefix, sample_name, self.p['flowcell']['label'], script_file))
 
         outfile.close()
 
@@ -119,8 +128,6 @@ class ProcessSetUp(object):
             script_contents[base_script] = open(script_files[base_script], 'r').read()
 
         return script_contents[base_script]
-
-
 
     # Probably ripe for a refactoring
     def create_flowcell_script(self, inscript):
@@ -168,8 +175,16 @@ class ProcessSetUp(object):
             print "Creating directory %s" % script_directory
             os.makedirs(script_directory)
 
+        # Reset the alignment's sample name if we decied not to use the barcode index mask
+        if self.no_mask:
+            alignment['sample_name'] = "%s_%s_L00%d" % (lane['samplesheet_name'], lane['barcode_index'], lane['lane'])
+
         script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         print script_file
+
+        align_dir = "align_%d_%s_%s" % (alignment['id'], alignment['genome_index'], alignment['aligner'])
+        if alignment['aligner_version']:
+            align_dir = "%s-%s" % (align_dir, alignment['aligner_version'])
 
         outfile = open(script_file, 'w')
         outfile.write("set -e -o pipefail\n")
@@ -182,6 +197,7 @@ class ProcessSetUp(object):
             outfile.write("export PAIRED=True\n")
         outfile.write("export FLOWCELL_LANE_ID=%s\n" % lane['id'])
         outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
+        outfile.write("export ALIGN_DIR=%s\n" % align_dir)
         outfile.write("export FLOWCELL=%s\n" % self.p['flowcell']['label'])
         if "barcode1" in lane and lane["barcode1"]:
             p7_adapter = lane['barcode1']['adapter7']
@@ -214,7 +230,8 @@ from the command line."""
         logging.basicConfig(level=logging.INFO, format=log_format)
 
     process = ProcessSetUp(poptions.process_config, poptions.sample_script_basename,
-        poptions.outfile, template_script=poptions.template_script, project_filter=poptions.project_filter)
+        poptions.outfile, poptions.qsub_prefix, template_script=poptions.template_script,
+        project_filter=poptions.project_filter, no_mask=poptions.no_mask)
 
     process.create()
 
