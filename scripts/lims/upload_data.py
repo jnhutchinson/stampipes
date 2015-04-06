@@ -245,13 +245,15 @@ class UploadLIMS(object):
 
         is_mapq = name.startswith("mapq")
         is_samflag = name.startswith("samflag")
-        is_chromosome = not(is_mapq or is_samflag)
+        is_alignment = "readlength" in name
+
+        is_chromosome = not(is_mapq or is_samflag or is_alignment)
 
         data = {
             "is_chromosome": is_chromosome,
             "is_samflag": is_samflag,
             "is_mapq": is_mapq,
-            "is_alignment": False,
+            "is_alignment": is_alignment,
             "codename": name,
             "title": name,
         }
