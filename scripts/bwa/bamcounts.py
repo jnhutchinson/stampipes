@@ -60,10 +60,13 @@ class BAMFilter(object):
             samflagcounts[samflag] += 1
 
         # This might not be the most perfect indicator, but it will do for now
-        # Must take place before minimum quality filter--multiple matching
+        # Must take place before minimum quality filter--most multiple matching
         # reads have mapq set to 0
         if "XT" in tags and tags["XT"] == "R":
             counts['mm'] += 1
+
+        if read.is_qcfail:
+            counts['qc-flagged'] += 1
 
         if read.is_unmapped:
             counts['nm'] += 1
@@ -93,11 +96,9 @@ class BAMFilter(object):
             counts['paired-mapq-filter']
             return
 
-        # do not use reads with
-        # Keep track of how many are still flagged between all aligned and paired
-        # 0x512
+        # do not use reads with QC fail even if they pass all other checks
+        # 0x512 QC Fail
         if read.flag & 512:
-            counts['qc-flagged'] += 1
             return
 
         counts['paired-aligned'] += 1
