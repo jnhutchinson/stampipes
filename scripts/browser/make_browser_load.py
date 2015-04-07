@@ -640,7 +640,14 @@ def main(args = sys.argv):
         lane_group = load_groups[group_key]
 
         browserconfig = os.path.join( os.getenv("STAMPIPES"), "config", "ucsc_browser", "%s-%s.config" % (browser, project) )
-        print browserconfig
+
+        if not os.path.isfile(browserconfig):
+            logging.error("No configuration file '%s' exists, don't know how to load project %s into browser %s"
+                          % (browserconfig, project, browser ))
+            sys.exit(1)
+
+
+        logging.info("Reading browser configuration from %s" % browserconfig)
 
         outdir = os.path.join( basedir, "browser-load-%s-%s" % (project, browser))
 
