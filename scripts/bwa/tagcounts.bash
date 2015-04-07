@@ -7,8 +7,6 @@ if [ -e $OUTPUT ]; then
     rm $OUTPUT
 fi
 
-python $STAMPIPES/scripts/bwa/bamcounts.py $INBAM $OUTPUT
-
 echo "Calculating total/pf/qc counts"
 if [ -e ${SAMPLE_NAME}_R1_001.fastq.gz ]; then
 zcat ${SAMPLE_NAME}_R?_???.fastq.gz \
@@ -28,4 +26,7 @@ fi
 
 echo "Calculate tags trimmed"
 TRIMMED=`find . -maxdepth 1 -name "$SAMPLE_NAME*trimstats.txt" | xargs awk 'BEGIN { total=0 } { match($0, /Total read-pairs trimmed: ([0-9]+)/, a); total=total+a[1];} END{ print total }'`
-echo -e "adapter_trimmed\t$TRIMMED" >> $OUTPUT
+echo -e "adapter-trimmed\t$TRIMMED" >> $OUTPUT
+
+echo "Creating bam counts"
+python $STAMPIPES/scripts/bwa/bamcounts.py $INBAM $OUTPUT

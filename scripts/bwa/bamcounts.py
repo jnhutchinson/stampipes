@@ -169,7 +169,7 @@ class BAMFilter(object):
         for read in inbam:
             self.process_read(read, inbam)
 
-        countout = open(countfile, 'w')
+        countout = open(countfile, 'a')
 
         self.write_dict(countout, self.counts)
         self.write_dict(countout, self.chrcounts)
