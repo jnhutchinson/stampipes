@@ -105,6 +105,7 @@ class BAMFilter(object):
         # do not use reads with QC fail even if they pass all other checks
         # 0x512 QC Fail
         if read.flag & 512:
+            self.counts['paired-aligned-qcfail'] += 1
             return
 
         self.counts['paired-aligned'] += 1
@@ -156,7 +157,7 @@ class BAMFilter(object):
 
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
           'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged',
-          'all-aligned', 'paired-aligned', 'all-mapq-filter', 'paired-mapq-filter']
+          'all-aligned', 'paired-aligned', 'all-mapq-filter', 'paired-mapq-filter', 'paired-aligned-qcfail']
 
         self.counts = dict([(label, 0) for label in count_labels])
 
