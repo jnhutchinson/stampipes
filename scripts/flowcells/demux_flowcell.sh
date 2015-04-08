@@ -12,6 +12,7 @@ OPTIONS:
 -i        Unaligned input directory
 -o        Unaligned output directory
 -p        processing.json
+-l        lane; integer (default: all lanes)
 EOF
 }
 
@@ -26,6 +27,7 @@ demux_script="$STAMPIPES/scripts/flowcells/demux_fastq.py"
 indir=
 outdir=
 processing=
+LANE=
 mismatches=0
 while getopts ":hi:o:p:m:" opt ; do
   case $opt in
@@ -44,6 +46,9 @@ while getopts ":hi:o:p:m:" opt ; do
       ;;
     m)
       mismatches="$OPTARG"
+      ;;
+    l)
+      LANE="L00$OPTARG"
       ;;
     :)
       echo "Option -$OPTARG requires an argument" >&2
@@ -69,7 +74,7 @@ if [ ! -s "$processing" ] ; then
   exit 1
 fi
 
-inputfiles=($(find "$indir" -name '*Undetermined_*fastq.gz'))
+inputfiles=($(find "$indir" -name '*Undetermined_*$LANE*fastq.gz'))
 
 for i in "${inputfiles[@]}" ; do
   lane=$( sed 's/.*_L\(00.\)_.*/\1/' <(basename "$i" ))
