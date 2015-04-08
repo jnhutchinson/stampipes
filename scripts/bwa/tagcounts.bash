@@ -25,7 +25,8 @@ zcat ${SAMPLE_NAME}_R?_???.fastq.gz \
 fi
 
 echo "Calculate tags trimmed"
-TRIMMED=`find . -maxdepth 1 -name "$SAMPLE_NAME*trimstats.txt" | xargs awk 'BEGIN { total=0 } { match($0, /Total read-pairs trimmed: ([0-9]+)/, a); total=total+a[1];} END{ print total }'`
+# count is in read pairs, double for accuracy in LIMS display % wise
+TRIMMED=`find . -maxdepth 1 -name "$SAMPLE_NAME*trimstats.txt" | xargs awk 'BEGIN { total=0 } { match($0, /Total read-pairs trimmed: ([0-9]+)/, a); total=total+a[1];} END{ print total * 2 }'`
 echo -e "adapter-trimmed\t$TRIMMED" >> $OUTPUT
 
 echo "Creating bam counts"

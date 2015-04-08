@@ -111,7 +111,7 @@ class BAMFilter(object):
         self.counts['paired-aligned'] += 1
         self.counts['u'] += 1
 
-        passreadlength = "aligned_readlength-%d" % read.rlen
+        passreadlength = "aligned-readlength-%d" % read.rlen
         if not passreadlength in self.readlengthcounts:
             self.readlengthcounts[passreadlength] = 1
         else:
