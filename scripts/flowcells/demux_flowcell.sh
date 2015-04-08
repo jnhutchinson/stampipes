@@ -3,7 +3,7 @@ set -e
 
 usage(){
 cat << EOF
-usage: $0 [-f flowcell_label]
+usage: $0 -i <input_dir> -o <output_dir> -p <processing.json>
 
 Setup analysis for a flowcell
 
