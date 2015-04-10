@@ -10,6 +10,8 @@ import argparse
 
 import errno
 
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
 def parseArgs():
     parser = argparse.ArgumentParser(description='Split up fastq files by barcode')
     parser.add_argument('--mismatches', type=int, default=0, help='number of mismatches')
@@ -19,6 +21,7 @@ def parseArgs():
     parser.add_argument('--lane', dest='lane', type=int, default=1, help='Lane to process (default 1)')
     parser.add_argument('--autosuffix', action="store_true", default=False, help='Automatically guess a suffix name')
     parser.add_argument('--outdir', dest='outdir', default='.', help='Output directory')
+    parser.add_argument('--dry-run', dest='dry_run', default=False, action='store_true', help='Do not actually demultiplex')
     parser.add_argument('infile', nargs='+')
 
     args = parser.parse_args()
@@ -40,23 +43,42 @@ def mismatch(word, mismatches):
                 yield "".join(poss)
 
 def guess_suffix(filename):
-    regex = re.compile(r"""
-    ^                 # Start
-    (?: lane \d+ _ )? # optional lane number
-    Undetermined      # TODO: Maybe change someday?
-    (?: _S0 )?        # Optional index
-    _ L \d{3}       # lane number again
-    (                 # Start suffix
-      _ R \d          # Read number
-      _   \d{3}       # Count
-    )                 # End suffix
+    file = os.path.basename(filename)
+
+    nextseq_format = re.compile(r"""
+    ^                       # Start
+    Undetermined            #
+    _ S0                    # index
+    _ L (?P<lane> \d{3} )   # lane number
+                            # Start suffix
+    _ R (?P<read>   \d    ) # Read number
+    _   (?P<count>  \d{3} ) # Count
+                            # End suffix
     .fastq.gz
     $
     """, re.X)
 
-    match = regex.search(os.path.basename(filename))
+    match = nextseq_format.search(file)
     if match:
-        return match.group(1)
+        suffix = "_R%s_%s" % ( match.group('read'), match.group('lane'))
+        return suffix
+
+    hiseq_format = re.compile(r"""
+    ^                  # Start
+    lane \d+ _         # lane number
+    Undetermined       #
+    _ L (\d{3})        # lane number again
+    (?P<suffix>        # Start suffix
+      _ R \d           # Read number
+      _   \d{3}        # Count
+    )                  # End suffix
+    .fastq.gz
+    $
+    """, re.X)
+
+    match = hiseq_format.search(file)
+    if match:
+        return match.group('suffix')
 
     return ""
 
@@ -67,7 +89,15 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir):
     with open(file) as data_file:
         data = json.load(data_file)
 
-    lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
+    run_type = data['flowcell']['run_type']
+    # Only some flowcell types need to treat different lanes differently
+    if run_type == "NextSeq 500":
+        lane_libraries = data['libraries']
+    elif run_type == "HISEQ V4":
+        lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
+    else:
+        logging.warn("Run type %s not supported; using all libraries" % run_type)
+        lane_libraries = data['libraries']
 
     for library in lane_libraries:
         label = library['alignments'][0]['sample_name']
@@ -94,7 +124,7 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir):
                 barcode = (b1, b2)
                 # TODO: This can be smarter
                 if barcode in barcodes:
-                    print "Error! Barcode %s already taken, lower mismatches! (from %s+%s)" % (barcode, barcode1, barcode2)
+                    logging.error("Barcode %s already taken, lower --mismatches! (taken by %s+%s)" % (barcode, barcode1, barcode2))
                     sys.exit(1)
                 barcodes[barcode] = label
 
@@ -102,6 +132,9 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir):
         # TODO: Warning! this will overwrite files!
         labels[label]["outfile"] = gzip.open(outfile_name, 'wb')
 
+    logging.info("Mapping %d barcodes to %s libraries" % (len(barcodes), len(lane_libraries)))
+    logging.debug(barcodes)
+        
     return barcodes, labels
 
 def split_file(filename, barcodes, labels):
@@ -117,7 +150,7 @@ def split_file(filename, barcodes, labels):
             """, re.X)
 
     tally = 0
-    print "Splitting up file: %s" % filename
+    logging.info("Demultiplexing file: %s" % filename)
 
     if filename.endswith('.gz'):
         parsein = gzip.open(filename)
@@ -129,9 +162,9 @@ def split_file(filename, barcodes, labels):
         match = barcode_re.search(record)
 
         if not match:
-            print "Could not match %s" % record
-            print str(seq)
-            print "Record %d in %s" % (tally, filename)
+            debug.error("Could not match %s" % record)
+            debug.error(str(seq))
+            debug.error("Record %d in %s" % (tally, filename))
             sys.exit(1)
 
         matches = match.groups()
@@ -169,19 +202,30 @@ def split_file(filename, barcodes, labels):
 def main(argv):
     args = parseArgs()
 
+    logging.basicConfig(level=logging.INFO, format=log_format)
+
     global lengths
     lengths = set([])
 
+    logging.info("File(s): %s" % args.infile)
+    logging.info("OutDir:  %s" % args.outdir)
+    logging.info("JSON:    %s" % args.processing_file)
+
     if args.autosuffix:
         args.suffix = guess_suffix(args.infile[0])
-        print("Setting suffix to %s" % args.suffix)
+        logging.info("--autosuffix, guessing suffix as %s" % args.suffix)
 
     barcodes, labels = parse_processing_file(args.processing_file, args.mismatches, args.suffix, args.lane, args.outdir)
+
+    if args.dry_run:
+        logging.info("Dry run, exiting")
+        sys.exit(0)
+
 
     for filename in args.infile:
         split_file(filename, barcodes, labels) 
 
-    print "BARCODE MATCHING"
+    print("Barcode matching tallies:")
 
     for label, info in labels.iteritems():
         print "%s\t%s" % (label, str(info))

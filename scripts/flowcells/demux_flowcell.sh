@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+source $MODULELOAD
+module unload anaconda
+module load python
+
 usage(){
 cat << EOF
 usage: $0 -i <input_dir> -o <output_dir> -p <processing.json>
@@ -9,10 +13,11 @@ Setup analysis for a flowcell
 
 OPTIONS:
 -h        Show this message
--i        Unaligned input directory
--o        Unaligned output directory
--p        processing.json
--l        lane; integer (default: all lanes)
+-i [dir]  Unaligned input directory
+-o [dir]  Unaligned output directory
+-p [json] processing.json
+-l [int]  lane; integer (default: all lanes)
+-n        Dry-run - do not actually demux
 EOF
 }
 
@@ -28,8 +33,9 @@ indir=
 outdir=
 processing=
 LANE=
+dryrun=
 mismatches=0
-while getopts ":hi:o:p:m:" opt ; do
+while getopts ":hi:o:p:m:l:n" opt ; do
   case $opt in
     h)
       usage
@@ -49,6 +55,9 @@ while getopts ":hi:o:p:m:" opt ; do
       ;;
     l)
       LANE="L00$OPTARG"
+      ;;
+    n)
+      dryrun="--dry-run"
       ;;
     :)
       echo "Option -$OPTARG requires an argument" >&2
@@ -74,19 +83,27 @@ if [ ! -s "$processing" ] ; then
   exit 1
 fi
 
-inputfiles=($(find "$indir" -name '*Undetermined_*$LANE*fastq.gz'))
+inputfiles=($(find "$indir" -name "*Undetermined_*$LANE*fastq.gz"))
 
 for i in "${inputfiles[@]}" ; do
   lane=$( sed 's/.*_L\(00.\)_.*/\1/' <(basename "$i" ))
 
-  qsub -cwd -V -q all.q -N .dmx$(basename $i) <<__DEMUX__
+  # If dryrun; we want the output on stdout, not qsubbed.
+  if [ -z "$dryrun" ] ; then
+    submitjob="qsub -cwd -V -q all.q -N .dmx$(basename $i)"
+  else
+    submitjob="bash"
+  fi
+
+  cat <<__DEMUX__ | $submitjob
     python "$demux_script"        \
       --autosuffix                \
       --processing "$processing"  \
       --outdir "$outdir"          \
       --mismatches "$mismatches"  \
       --lane "$lane"              \
-      "$i"
+      $dryrun                     \
+      $i
 __DEMUX__
 
 done
