@@ -54,16 +54,25 @@ starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_
 
 .DELETE_ON_ERROR:
 
-.SECONDARY:
-
 .SUFFIXES:
 
 .INTERMEDIATE: %.bed
 
+.PHONY: default all summary cufflinks density ribosomal alignment upload
 
 default: all
 
-all: upload $(cufflinks_finished) $(bigwig)
+all: upload cufflinks density
+
+summary: $(summary_txt)
+
+cufflinks: $(cufflinks_finished)
+
+density: $(bigwig)
+
+ribosomal: $(ribosomal_files) $(ribo_txt)
+
+alignment: $(marked_bam)
 
 upload: $(upload_txt)
 	python $(STAMPIPES)/scripts/lims/upload_data.py --rnafile $^ --alignment_id $(ALIGNMENT_ID)
@@ -98,7 +107,7 @@ $(summary_txt) : $(bamcount_txt) $(ribo_txt) $(readcount_txt)
 
 
 $(cufflinks_finished) : $(marked_bam)
-	 $(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(THREADS) GTF && \
+	$(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(THREADS) GTF && \
 	touch $@
 
 # Mark dups
@@ -136,22 +145,22 @@ $(bamcount_txt) : $(marked_bam)
 # the filetype transformation, but my make-fu is weak.
 
 $(SAMPLE_NAME)_tophat_%/accepted_hits.bam : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
-	 $(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(SAMPLE_NAME)_tophat_$* \
+	$(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(SAMPLE_NAME)_tophat_$* \
 		$(THREADS)
 
 ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
-	 zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
+	zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(RIBOSOMAL_REF) - $@
 
 spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
-	 zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
+	zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(CONTROL_REF) - $@
 
 $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(SAMPLE_NAME)_R1_%.fastq.gz $(SAMPLE_NAME)_R2_%.fastq.gz
 	mkdir $(TRIM_DIR) -p ; \
 	trim-adapters-illumina \
-	  -f $(ADAPTERFILE) \
-	  -1 P5 -2 P7 \
-	  $+ \
-	  $(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz
+		-f $(ADAPTERFILE) \
+		-1 P5 -2 P7 \
+		$+ \
+		$(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz
 
