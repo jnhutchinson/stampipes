@@ -14,6 +14,8 @@ ANNOT_GTF ?= $(REF_DIR)/genes.gtf
 ANNOT_GENEPRED ?= $(REF_DIR)/refFlat.txt
 CHROM_SIZES ?= $(REF_DIR)/chrom_sizes.txt
 
+TMPDIR ?= $(shell pwd)
+
 SAMTOOLS ?= samtools
 JAVA ?= java
 
@@ -30,13 +32,13 @@ R2_FASTQ_FILES ?= $(wildcard $(SAMPLE_NAME)_R2_*.fastq.gz)
 
 ADAPTERFILE ?= $(SAMPLE_NAME).adapters.txt
 
-TRIM_DIR ?= trimmed
-R1_trimmed_fastq_files ?= $(prefix $(TRIM_DIR)/$(R1_FASTQ_FILES))
-R2_trimmed_fastq_files ?= $(prefix $(TRIM_DIR)/$(R2_FASTQ_FILES))
+TRIM_DIR ?= $(TMPDIR)/trimmed
+R1_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(R1_FASTQ_FILES))
+R2_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(R2_FASTQ_FILES))
 
-ribosomal_files ?= $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(R1_FASTQ_FILES))
-control_files     ?= $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(R1_FASTQ_FILES))
-tophat_files    ?= $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,$(SAMPLE_NAME)_tophat_%/accepted_hits.bam,$(R1_FASTQ_FILES))
+ribosomal_files ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(R1_FASTQ_FILES)))
+control_files   ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(R1_FASTQ_FILES)))
+tophat_files    ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,$(SAMPLE_NAME)_tophat_%/accepted_hits.bam,$(R1_FASTQ_FILES)))
 
 ribo_txt = $(SAMPLE_NAME).rRNAcounts.txt
 control_txt = $(SAMPLE_NAME).spikeInControlCounts.txt
@@ -47,6 +49,8 @@ summary_txt = $(SAMPLE_NAME).sample_summary.txt
 upload_txt = $(SAMPLE_NAME).rna_metrics.txt
 
 marked_bam = $(SAMPLE_NAME).all.$(GENOME).bam
+merged_bam = $(TMPDIR)/$(SAMPLE_NAME)_tophat_merged.bam
+
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
 coverage_types = all pos neg
 bigwig = $(addsuffix .$(GENOME).bw, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
@@ -56,7 +60,7 @@ starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_
 
 .SUFFIXES:
 
-.INTERMEDIATE: %.bed
+.INTERMEDIATE: $(merged_bam) $(tophat_files) $(R1_trimmed_fastq_files) $(R2_trimmed_fastq_files) $(ribosomal_files)
 
 .PHONY: default all summary cufflinks density ribosomal alignment upload
 
@@ -83,10 +87,10 @@ $(upload_txt) : $(summary_txt)
 $(summary_txt) : $(bamcount_txt) $(ribo_txt) $(readcount_txt)
 	cat $^ | $(SCRIPT_DIR)/processStatsNameKeyValue.pl > $@
 
-%.bw : %.bed
+%.bw : $(TMPDIR)/%.bed
 	bedGraphToBigWig $^ $(CHROM_SIZES) $@
 
-%.bed : %.starch
+$(TMPDIR)/%.bed : %.starch
 	bedops --ec -u $^ | $(SCRIPT_DIR)/singleBedFileBaseCoverage.sh | $(SCRIPT_DIR)/compressBed4.pl > $@
 
 
@@ -110,18 +114,13 @@ $(cufflinks_finished) : $(marked_bam)
 	$(SCRIPT_DIR)/cufflinks.sh $(marked_bam) $(REF_SEQ) $(LIBTYPE) $(ANNOT_GTF) $(dir $@) $(THREADS) GTF && \
 	touch $@
 
-# Mark dups
-$(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(SAMPLE_NAME).tophat_merged.bam
-	$(JAVA) -Xmx24g -jar $(MARK_DUPS) \
-		INPUT=$< \
-		METRICS_FILE=$(SAMPLE_NAME).spotdups.txt \
-		OUTPUT=$(marked_bam) \
-		REMOVE_DUPLICATES=false \
-		ASSUME_SORTED=true
+#### Counts
 
-# Merge alignments together
-$(SAMPLE_NAME).tophat_merged.bam : $(tophat_files)
-	$(SCRIPT_DIR)/merge_or_copy_bam.sh $@ $^
+# BAM counts
+$(bamcount_txt) : $(marked_bam)
+	$(SCRIPT_DIR)/summarizeBAM.sh $(SAMPLE_NAME) $< $(STRAND_SPEC) $(ANNOT_GENEPRED) ; \
+	$(SCRIPT_DIR)/mappedBamStats.pl $(marked_bam) $(SAMPLE_NAME) >> $@ ; \
+	$(SCRIPT_DIR)/collectStatsFromTransposedPicardTables.pl . $(SAMPLE_NAME) >> $@
 
 # Read counts:
 $(readcount_txt) : $(R1_FASTQ_FILES) $(R2_FASTQ_FILES)
@@ -135,24 +134,33 @@ $(ribo_txt) : $(ribosomal_files)
 $(control_txt) : $(control_files)
 	cat $^ | cut -f3 | $(SCRIPT_DIR)/countFew.pl > $@
 
-$(bamcount_txt) : $(marked_bam)
-	$(SCRIPT_DIR)/summarizeBAM.sh $(SAMPLE_NAME) $< $(STRAND_SPEC) $(ANNOT_GENEPRED) ; \
-	$(SCRIPT_DIR)/mappedBamStats.pl $(marked_bam) $(SAMPLE_NAME) >> $@ ; \
-	$(SCRIPT_DIR)/collectStatsFromTransposedPicardTables.pl . $(SAMPLE_NAME) >> $@
+
+# Final (all) BAM
+$(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(merged_bam)
+	$(JAVA) -Xmx24g -jar $(MARK_DUPS) \
+		INPUT=$< \
+		METRICS_FILE=$(SAMPLE_NAME).spotdups.txt \
+		OUTPUT=$(marked_bam) \
+		REMOVE_DUPLICATES=false \
+		ASSUME_SORTED=true
+
+# Merge alignments together
+$(merged_bam) : $(tophat_files)
+	$(SCRIPT_DIR)/merge_or_copy_bam.sh $@ $^
 
 # File-specific processing
 # TODO: These rules are hecka ugly. There's probably a nice make-way to write
 # the filetype transformation, but my make-fu is weak.
 
-$(SAMPLE_NAME)_tophat_%/accepted_hits.bam : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
-	$(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(SAMPLE_NAME)_tophat_$* \
+$(TMPDIR)/$(SAMPLE_NAME)_tophat_%/accepted_hits.bam : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
+	$(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(TMPDIR)/$(SAMPLE_NAME)_tophat_$* \
 		$(THREADS)
 
-ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
+$(TMPDIR)/ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
 	zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(RIBOSOMAL_REF) - $@
 
-spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
+$(TMPDIR)/spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
 	zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(CONTROL_REF) - $@
 
