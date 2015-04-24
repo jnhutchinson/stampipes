@@ -1,15 +1,21 @@
 SAMPLE_NAME=$1
 INBAM=$2
 OUTPUT=$3
+FASTQ_DIR=$4
 
 # Delete output if it already exists; do not want to append to existing output
 if [ -e $OUTPUT ]; then
     rm $OUTPUT
 fi
 
+if [ ! -e $INBAM ]; then
+  echo "Could not find $INBAM"
+  exit 1
+fi
+
 echo "Calculating total/pf/qc counts"
-if [ -e ${SAMPLE_NAME}_R1_001.fastq.gz ]; then
-zcat ${SAMPLE_NAME}_R?_???.fastq.gz \
+if [ -e ${FASTQ_DIR}/${SAMPLE_NAME}_R1_001.fastq.gz ]; then
+zcat ${FASTQ_DIR}/${SAMPLE_NAME}_R?_???.fastq.gz \
      | awk 'BEGIN{
      filter = 0;
    }{ \
