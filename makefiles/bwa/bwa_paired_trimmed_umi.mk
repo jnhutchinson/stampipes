@@ -1,5 +1,5 @@
 ###################
-# This makefile takes one set of FastQ files and aligns them using BWA, using a trimmer.
+# This makefile takes one set of FastQ files (with UMI) and aligns them using BWA, using a trimmer.
 # It then provides a sorted BAM file.  The TMPDIR is best passed in as an empty directory
 # to prevent collisions.
 ###################
@@ -54,7 +54,6 @@ MAX_INSERT_SIZE ?= 750
 BWA_ALN_OPTIONS ?= -Y -l 32 -n 0.04
 
 # Include up to 10 matches for each read and
-# set the inset size to a generous 750
 BWA_SAMPE_OPTIONS ?= -n 10 -a $(MAX_INSERT_SIZE)
 
 # List the intermediate files that can be deleted when we finish up
@@ -121,11 +120,17 @@ $(TMPDIR)/%.sai : $(TMPDIR)/trimmed.%.fastq.gz
 
 # Trim each FASTQ file pair
 # Keep track of the output by passing it to a file, so we can know how many pairs were trimmed
-$(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz : $(FASTQ1_FILE) $(FASTQ2_FILE) $(ADAPTER_FILE)
+$(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz : $(TMPDIR)/umi.R1.fastq.gz $(TMPDIR)/umi.R2.fastq.gz $(ADAPTER_FILE)
 	time trim-adapters-illumina \
 		-f $(ADAPTER_FILE) \
 		-1 $(ADAPTER_P5_NAME) -2 $(ADAPTER_P7_NAME) \
-		$(FASTQ1_FILE) $(FASTQ2_FILE) \
+		$(TMPDIR)/umi.R1.fastq.gz $(TMPDIR)/umi.R2.fastq.gz \
 		$(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz \
 		&> $(TRIMSTATS) \
 		&& echo trimmed $(SAMPLE_NAME) >&2
+
+$(TMPDIR)/umi.R1.fastq.gz : $(FASTQ1_FILE)
+	time python $(STAMPIPES)/scripts/umi/fastq_umi_add.py $^ $@
+
+$(TMPDIR)/umi.R2.fastq.gz : $(FASTQ2_FILE)
+	time python $(STAMPIPES)/scripts/umi/fastq_umi_add.py $^ $@
