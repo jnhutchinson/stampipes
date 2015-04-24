@@ -56,6 +56,8 @@ def parser_setup():
         help="The process config to work off of.")
     parser.add_argument("-p", "--priority", dest="priority", required=True,
         help="The priority of this flowcell")
+    parser.add_argument("-n", "--post-aggregation", dest="post_aggregation", action="store_true",
+        help="Pass this option to indicate that the directory structure for this flowcell is post-aggregation")
 
     parser.set_defaults( **options )
     parser.set_defaults( quiet=False, debug=False )
@@ -215,6 +217,8 @@ class MakeBrowserload(object):
             else:
                 track["sampleDir"] = os.path.join(self.basedir, self.project_dir[project], "Sample_%s" % track["SampleID"])
                 track["pathPrefix"] = track["sampleDir"]
+            if poptions.post_aggregation: 
+                track["sampleDir"] = os.path.join(track["sampleDir"], track['AlignDir'])
 
             if track["aligner"] == "bwa":
                 track["wigfilename"]    = "%s.75_20.%s.wig"       % (track["SampleName"], hgdb)
@@ -552,6 +556,7 @@ def get_alignment_data(library, alignment, lims):
     d['hgdb']          = alignment['genome_index']
     d['aligner']       = alignment['aligner']
     d['SampleName']    = alignment['sample_name']
+    d['AlignDir']      = alignment['align_dir']
     d['Index']         = library['barcode_index']
     d['SampleID']      = library['samplesheet_name']
     d['CellType']      = library['cell_type']
@@ -597,6 +602,7 @@ def get_alignment_data(library, alignment, lims):
 
 def main(args = sys.argv):
     parser = parser_setup()
+    global poptions
     poptions = parser.parse_args()
 
     if poptions.quiet:
