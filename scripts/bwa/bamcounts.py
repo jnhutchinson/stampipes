@@ -9,12 +9,9 @@ Useful SAM flag reference: http://broadinstitute.github.io/picard/explain-flags.
 
 import os, sys, logging, re
 from pysam import Samfile
-from optparse import OptionParser
+import argparse
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-
-usage = """usage:
-%prog BAMFILE COUNTFILE [OPTIONS]"""
 
 script_options = {
   "debug": False,
@@ -23,12 +20,21 @@ script_options = {
 
 def parser_setup():
 
-    parser = OptionParser(usage=usage)
+    parser = argparse.ArgumentParser()
 
-    parser.add_option("-q", "--quiet", dest="quiet", action="store_true", 
+    parser.add_argument("bamfile", help="The BAM file to make counts on.")
+    parser.add_argument("outfile",
+        help="The file to write the counts to.")
+
+    parser.add_argument("-q", "--quiet", dest="quiet", action="store_true",
         help="Don't print info messages to standard out.")
-    parser.add_option("-d", "--debug", dest="debug", action="store_true", 
+    parser.add_argument("-d", "--debug", dest="debug", action="store_true",
         help="Print all debug messages to standard out.")
+
+    parser.add_argument("--min_mapping_quality", dest="min_mapping_quality", type=int, default=10,
+        help="Minimum mapping quality for filtering.")
+    parser.add_argument("--max_mismatches", dest="max_mismatches", type=int, default=2,
+        help="Maximum mismatches for filtering")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -37,11 +43,11 @@ def parser_setup():
 
 class BAMFilter(object):
 
-    def __init__(self):
+    def __init__(self, max_mismatches=2, min_mapping_quality=10):
 
-        self.max_mismatches = 2
+        self.max_mismatches = max_mismatches
         self.previous_read = None
-        self.min_map_quality = 30
+        self.min_mapping_quality = min_mapping_quality
 
     def process_read(self, read, inbam): 
 
@@ -74,6 +80,9 @@ class BAMFilter(object):
         if read.is_qcfail:
             self.counts['qc-flagged'] += 1
 
+        if read.flag & 1024:
+            self.counts['umi-duplicate'] += 1
+
         if read.is_unmapped:
             self.counts['nm'] += 1
             return False
@@ -81,7 +90,7 @@ class BAMFilter(object):
             self.counts['all-aligned'] += 1
 
         # Figure out how many alignments aren't included because of mapq
-        if self.min_map_quality > read.mapq:
+        if self.min_mapping_quality > read.mapq:
             self.counts['all-mapq-filter'] += 1
             return
 
@@ -98,7 +107,7 @@ class BAMFilter(object):
             return False
 
         # Figure out how many alignments aren't included because of mapq
-        if self.min_map_quality > read.mapq:
+        if self.min_mapping_quality > read.mapq:
             self.counts['paired-mapq-filter'] += 1
             return
 
@@ -156,7 +165,7 @@ class BAMFilter(object):
         inbam = Samfile(infile, 'rb')
 
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
-          'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged',
+          'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged', 'umi-duplicate',
           'all-aligned', 'paired-aligned', 'all-mapq-filter', 'paired-mapq-filter', 'paired-aligned-qcfail']
 
         self.counts = dict([(label, 0) for label in count_labels])
@@ -184,22 +193,20 @@ def main(args = sys.argv):
 from the command line."""
 
     parser = parser_setup()
-    (poptions, pargs) = parser.parse_args()
+    args = parser.parse_args()
 
-    if poptions.quiet:
+    if args.quiet:
         logging.basicConfig(level=logging.WARNING, format=log_format)
-    elif poptions.debug:
+    elif args.debug:
         logging.basicConfig(level=logging.DEBUG, format=log_format)
     else:
         # Set up the logging levels
         logging.basicConfig(level=logging.INFO, format=log_format)
 
-    bamfile = pargs[0]
-    # outfile = pargs[1]
-    countfile = pargs[1]
+    bamfile = args.bamfile
+    countfile = args.outfile
 
-    filter = BAMFilter()
-
+    filter = BAMFilter(max_mismatches=args.max_mismatches, min_mapping_quality=args.min_mapping_quality)
     filter.filter(bamfile, countfile)
 
 # This is the main body of the program that only runs when running this script
