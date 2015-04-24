@@ -23,3 +23,5 @@ if [ ! -s $FILE ]; then
     EXIT=1
 fi
 done
+
+exit $EXIT
