@@ -25,5 +25,5 @@ all : $(DUP_OUT)
 
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(BAMFILE)
-	java -jar `which MarkDuplicates.jar` INPUT=$(BAMFILE) OUTPUT=$(OUTBAM) \
+	time java -jar `which MarkDuplicates.jar` INPUT=$(BAMFILE) OUTPUT=$(OUTBAM) \
 	  METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT
