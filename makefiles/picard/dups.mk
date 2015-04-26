@@ -17,7 +17,7 @@
 # module load java
 ###################
 
-BAMFILE ?= $(SAMPLE_NAME).sorted.bam
+BAMFILE ?= $(SAMPLE_NAME).uniques.sorted.bam
 DUP_OUT ?= $(SAMPLE_NAME).MarkDuplicates.picard
 OUTBAM ?= /dev/null
 
