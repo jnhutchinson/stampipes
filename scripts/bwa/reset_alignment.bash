@@ -19,14 +19,14 @@ files=( \
     "${SAMPLE_NAME}.MarkDuplicates.picard" \
     "${SAMPLE_NAME}.75_20.uniques-density.${READLENGTH}.${GENOME}.bed.starch" \
     "${SAMPLE_NAME}.75_20.${GENOME}.bw" \
-    "${SAMPLE_NAME}.adapters.txt"
+    "${SAMPLE_NAME}.adapters.txt" \
 )
 
 for FILE in "${files[@]}"; do
-if [ -e $FILE ]; then
-    echo "Removing $FILE"
-    rm $FILE
-fi
+    if [ -e "$FILE" ]; then
+        echo "Removing $FILE"
+        rm $FILE
+    fi
 done
 
 # Remove all trim stat files
