@@ -209,13 +209,6 @@ class ProcessSetUp(object):
 
         alignment = lane["alignments"][0]
 
-        if not alignment['aligner']:
-            logging.info("# FastQC only %s" % lane['sample'])
-            base_script = "fastqc"
-        else:
-            logging.info("# Aligning %s with bwa" % lane['sample'])
-            base_script = "bwa"
-
         fastq_directory = os.path.join(self.p['alignment_group']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
 
         # Reset the alignment's sample name if we decied not to use the barcode index mask
