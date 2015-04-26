@@ -520,6 +520,11 @@ class UploadLIMS(object):
         if start_time:
             alignment["start_time"] = datetime.datetime.now()
 
+            # If we are not setting this, we will want to reset the complete_time
+            # so we know this alignment is running
+            if not complete_time:
+                alignment["complete_time"] = None
+
         if complete_time:
             alignment["complete_time"] = datetime.datetime.now()
 
