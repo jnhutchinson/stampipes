@@ -22,6 +22,10 @@ export UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 export ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 export VERSION_FILE=${SAMPLE_NAME}.versions.txt
 
+if [ -n "$REDO_ALIGNMENT" ]; then
+    bash $STAMPIPES/scripts/bwa/reset_alignment.bash
+fi
+
 bash $STAMPIPES/scripts/versions.bash &> $VERSION_FILE
 
 if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
