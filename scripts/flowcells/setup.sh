@@ -274,7 +274,7 @@ python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell"
 
 $link_command
 
-python "$STAMPIPES/scripts/create_processing.py"
+python "$STAMPIPES/scripts/create_processing.py" --add_flowcell_scripts
 
 bash run.bash
 __COPY__

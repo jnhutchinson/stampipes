@@ -32,6 +32,7 @@ script_options = {
     "project_filter": [],
     "no_mask": False,
     "dry_run": False,
+    "add_flowcell_scripts": False,
 }
 
 def parser_setup():
@@ -59,7 +60,6 @@ def parser_setup():
     parser.add_argument("--alignment", dest="alignment_filter", type=int, action="append",
         help="Run for this particular alignment. Can be specified multiple times.")
 
-
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
@@ -68,6 +68,8 @@ def parser_setup():
         help="Template script to make for each valid library if not defaults")
     parser.add_argument("--no-mask", dest="no_mask", action="store_true",
         help="If this is set to true, remake SAMPLE_NAME with no barcode mask.")
+    parser.add_argument("--add_flowcell_scripts", dest="add_flowcell_scripts", action="store_true",
+        help="If this is set to true, add on flowcell level scripts to the end of the run collection.")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -78,7 +80,7 @@ def parser_setup():
 class ProcessSetUp(object):
 
     def __init__(self, processing_configfile, qsub_scriptname, outfile, qsub_prefix,
-        template_script=None, no_mask=False, dry_run=False,
+        template_script=None, no_mask=False, dry_run=False, add_flowcell_scripts=False,
         project_filter=None, library_filter=None, sample_filter=None, alignment_filter=None,):
 
         self.processing_configfile = processing_configfile
@@ -92,6 +94,7 @@ class ProcessSetUp(object):
         self.alignment_filter = alignment_filter
         self.no_mask = no_mask
         self.dry_run = dry_run
+        self.add_flowcell_scripts = add_flowcell_scripts
 
         if self.template_script:
             self.template_script_content = open(self.template_script, 'r').read()
@@ -124,8 +127,10 @@ class ProcessSetUp(object):
             if self.include_lane(lane):
                 self.create_script(lane)
 
-        for script in flowcell_script_files.values():
-            self.create_flowcell_script(script)
+        if self.add_flowcell_scripts:
+            logging.info("Adding flowcell level scripts.")
+            for script in flowcell_script_files.values():
+                self.create_flowcell_script(script)
 
         self.run_scripts()
 
@@ -285,7 +290,9 @@ from the command line."""
     process = ProcessSetUp(poptions.process_config, poptions.sample_script_basename,
         poptions.outfile, poptions.qsub_prefix, template_script=poptions.template_script,
         no_mask=poptions.no_mask, dry_run=poptions.dry_run,
-        project_filter=poptions.project_filter, library_filter=poptions.library_filter, sample_filter=poptions.sample_filter, alignment_filter=poptions.alignment_filter)
+        add_flowcell_scripts=poptions.add_flowcell_scripts,
+        project_filter=poptions.project_filter, library_filter=poptions.library_filter,
+        sample_filter=poptions.sample_filter, alignment_filter=poptions.alignment_filter)
 
     process.create()
 
