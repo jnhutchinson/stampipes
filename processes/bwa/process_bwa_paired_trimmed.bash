@@ -130,7 +130,7 @@ PROCESSING="$PROCESSING,$JOBNAME"
 
 # If we are processing UMI, we will need a lot of power for sorting!
 if [ "$UMI" = "True" ]; then
-  export SUBMIT_SLOTS="-pe threads 2-4"
+  export SUBMIT_SLOTS="-pe threads 2"
 fi
 
 export PRE_DUP_BAM=${SAMPLE_NAME}.predup.sorted.bam
