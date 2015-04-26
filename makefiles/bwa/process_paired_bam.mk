@@ -38,7 +38,7 @@ INBAM ?= $(OUTDIR)/$(SAMPLE_NAME).sorted.bam
 OUTBAM ?= $(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam
 INSERTMETRICS ?= $(OUTDIR)/$(SAMPLE_NAME).CollectInsertSizeMetrics.picard
 
-all : info metrics uniques
+all : info metrics uniques $(INSERTMETRICS)
 
 info : 
 	@echo "------"
@@ -60,7 +60,7 @@ uniques : $(INBAM).bai $(OUTBAM).bai
 
 # Sometimes this will report errors about a read not mapping that should have a mapq of 0
 # See this for more info: http://seqanswers.com/forums/showthread.php?t=4246
-$(INSERTMETRICS) : $(INBAM) 
+$(INSERTMETRICS) : $(OUTBAM) 
 	time java -Xmx1000m -jar `which CollectInsertSizeMetrics.jar` INPUT=$^ OUTPUT=$@ \
                 HISTOGRAM_FILE=$(INSERTMETRICS).pdf \
                 VALIDATION_STRINGENCY=LENIENT \
