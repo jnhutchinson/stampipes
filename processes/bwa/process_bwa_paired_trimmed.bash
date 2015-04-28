@@ -45,6 +45,11 @@ qsub -N ".fq${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __
   cd $FASTQ_DIR
   make -f $STAMPIPES/makefiles/fastqc.mk
 
+  if [ "$UMI" = "True" ]; then
+      echo "Tallying up top UMI tags seen in R1"
+      zcat ${SAMPLE_NAME}_R1_???.fastq.gz | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | head -n 100 > ${SAMPLE_NAME}.topumis.txt
+  fi
+
   echo "FINISH: "
   date
 __SCRIPT__
