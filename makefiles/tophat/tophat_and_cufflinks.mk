@@ -97,13 +97,12 @@ $(TMPDIR)/%.bed : %.starch
 %.$(GENOME).starch : %.$(GENOME).bam
 	samtools view -u $^ | bedtools bamtobed -split -i stdin | cut -f1-3 | sort-bed - | starch - > $@
 
-
-%.pos.$(GENOME).bam : %.all.$(GENOME).bam
+%.neg.$(GENOME).bam : %.all.$(GENOME).bam
 	samtools merge $@ \
 	<( samtools view -h  -u -f 0x90 -F 0x40 $^) \
 	<( samtools view     -u -F 0x90 -f 0x40 $^) \
 
-%.neg.$(GENOME).bam : %.all.$(GENOME).bam
+%.pos.$(GENOME).bam : %.all.$(GENOME).bam
 	samtools merge $@ \
 	<( samtools view -h  -u -f 0x50 -F 0x80 $^) \
 	<( samtools view     -u -F 0x50 -f 0x80 $^) \
