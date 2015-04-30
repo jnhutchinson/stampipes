@@ -53,8 +53,11 @@ merged_bam = $(TMPDIR)/$(SAMPLE_NAME)_tophat_merged.bam
 
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
 coverage_types = all pos neg
-bigwig = $(addsuffix .$(GENOME).bw, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
-starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
+strand_prefix = $(addsuffix .$(GENOME), $(addprefix $(SAMPLE_NAME)., $(coverage_types)))
+strand_bam = $(addsuffix .bam, $(strand_prefix))
+bai = $(addsuffix .bam.bai, $(strand_prefix))
+bigwig = $(addsuffix .bw, $(strand_prefix))
+starch = $(addsuffix .starch, $(strand_prefix))
 
 .DELETE_ON_ERROR:
 
@@ -62,40 +65,43 @@ starch = $(addsuffix .$(GENOME).starch, $(addprefix $(SAMPLE_NAME)., $(coverage_
 
 .INTERMEDIATE: $(merged_bam) $(tophat_files) $(R1_trimmed_fastq_files) $(R2_trimmed_fastq_files) $(ribosomal_files)
 
-.PHONY: default all summary cufflinks density ribosomal alignment upload
+.PHONY: default all summary cufflinks coverage ribosomal alignment upload
+
+#### Targets
 
 default: all
 
-all: upload cufflinks density
+all: upload cufflinks coverage alignment
 
 summary: $(summary_txt)
 
 cufflinks: $(cufflinks_finished)
 
-density: $(bigwig)
+coverage: $(bigwig) $(starch)
 
 ribosomal: $(ribosomal_files) $(ribo_txt)
 
-alignment: $(marked_bam)
+alignment: $(marked_bam) $(strand_bam) $(bai)
 
 upload: $(upload_txt)
 	python $(STAMPIPES)/scripts/lims/upload_data.py --rnafile $^ --alignment_id $(ALIGNMENT_ID)
 
-$(upload_txt) : $(summary_txt)
-	$(SCRIPT_DIR)/transposeTable.pl $^ > $@
 
-$(summary_txt) : $(bamcount_txt) $(ribo_txt) $(readcount_txt)
-	cat $^ | $(SCRIPT_DIR)/processStatsNameKeyValue.pl > $@
+#### Coverage files
 
 %.bw : $(TMPDIR)/%.bed
 	bedGraphToBigWig $^ $(CHROM_SIZES) $@
 
-$(TMPDIR)/%.bed : %.starch
-	bedops --ec -u $^ | $(SCRIPT_DIR)/singleBedFileBaseCoverage.sh | $(SCRIPT_DIR)/compressBed4.pl > $@
+%.starch : $(TMPDIR)/%.bed
+	starch $^ > $@
 
+$(TMPDIR)/%.bed : %.bam
+	bam2bed --split < $^ | $(SCRIPT_DIR)/bed_coverage.pl > $@
 
-%.$(GENOME).starch : %.$(GENOME).bam
-	samtools view -u $^ | bedtools bamtobed -split -i stdin | cut -f1-3 | sort-bed - | starch - > $@
+%.bam.bai : %.bam
+	samtools index $^
+
+#### Strand-specific BAM
 
 %.neg.$(GENOME).bam : %.all.$(GENOME).bam
 	samtools merge $@ \
@@ -115,6 +121,12 @@ $(cufflinks_finished) : $(marked_bam)
 
 #### Counts
 
+$(upload_txt) : $(summary_txt)
+	$(SCRIPT_DIR)/transposeTable.pl $^ > $@
+
+$(summary_txt) : $(bamcount_txt) $(ribo_txt) $(readcount_txt)
+	cat $^ | $(SCRIPT_DIR)/processStatsNameKeyValue.pl > $@
+
 # BAM counts
 $(bamcount_txt) : $(marked_bam)
 	$(SCRIPT_DIR)/summarizeBAM.sh $(SAMPLE_NAME) $< $(STRAND_SPEC) $(ANNOT_GENEPRED) ; \
@@ -133,6 +145,7 @@ $(ribo_txt) : $(ribosomal_files)
 $(control_txt) : $(control_files)
 	cat $^ | cut -f3 | $(SCRIPT_DIR)/countFew.pl > $@
 
+#### Alignment
 
 # Final (all) BAM
 $(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(merged_bam)
