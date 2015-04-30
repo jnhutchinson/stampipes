@@ -1,7 +1,7 @@
 source $MODULELOAD
 module load bowtie/1.0.0
 module load java/jdk1.7.0_05
-module load bedops/2.4.2
+module load bedops/2.4.14
 module load tophat/2.0.13
 module load picard/1.118
 module load cufflinks/2.2.1
