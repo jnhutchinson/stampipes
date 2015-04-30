@@ -27,18 +27,21 @@ SCRIPT_DIR ?= $(STAMPIPES)/scripts/tophat
 RIBOSOMAL_REF ?= $(REF_DIR)/contamination/hg_rRNA
 CONTROL_REF   ?= $(REF_DIR)/spikeInControlRNA/ERCC92
 
-R1_FASTQ_FILES ?= $(wildcard $(SAMPLE_NAME)_R1_*.fastq.gz)
-R2_FASTQ_FILES ?= $(wildcard $(SAMPLE_NAME)_R2_*.fastq.gz)
+R1_FASTQ_FILES ?= $(wildcard $(FASTQ_DIR)/$(SAMPLE_NAME)_R1_*.fastq.gz)
+R2_FASTQ_FILES ?= $(wildcard $(FASTQ_DIR)/$(SAMPLE_NAME)_R2_*.fastq.gz)
+
+r1_fastq_names = $(notdir $(R1_FASTQ_FILES))
+r2_fastq_names = $(notdir $(R2_FASTQ_FILES))
 
 ADAPTERFILE ?= $(SAMPLE_NAME).adapters.txt
 
 TRIM_DIR ?= $(TMPDIR)/trimmed
-R1_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(R1_FASTQ_FILES))
-R2_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(R2_FASTQ_FILES))
+R1_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(r1_fastq_names)))
+R2_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(r2_fastq_names))
 
-ribosomal_files ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(R1_FASTQ_FILES)))
-control_files   ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(R1_FASTQ_FILES)))
-tophat_files    ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,$(SAMPLE_NAME)_tophat_%/accepted_hits.bam,$(R1_FASTQ_FILES)))
+ribosomal_files ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(r1_fastq_names)))
+control_files   ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(r1_fastq_names)))
+tophat_files    ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,$(SAMPLE_NAME)_tophat_%/accepted_hits.bam,$(r1_fastq_names)))
 
 ribo_txt = $(SAMPLE_NAME).rRNAcounts.txt
 control_txt = $(SAMPLE_NAME).spikeInControlCounts.txt
@@ -176,7 +179,7 @@ $(TMPDIR)/spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_N
 	zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(CONTROL_REF) - $@
 
-$(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(SAMPLE_NAME)_R1_%.fastq.gz $(SAMPLE_NAME)_R2_%.fastq.gz
+$(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(FASTQ_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(FASTQ_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
 	mkdir $(TRIM_DIR) -p ; \
 	trim-adapters-illumina \
 		-f $(ADAPTERFILE) \

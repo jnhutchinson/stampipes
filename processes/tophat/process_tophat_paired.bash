@@ -12,7 +12,7 @@ module load gcc/4.7.2
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR=$(dirname "$BWAINDEX")
 
-filesize=$( du --total *fastq.gz | tail -n1 | cut -f1)
+filesize=$( du --total "$FASTQ_DIR"/*fastq.gz | tail -n1 | cut -f1)
 
 # For small files, prioritize overall throughput
 # For big files, we want them to finish someday.
@@ -31,6 +31,7 @@ qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: " `hostname`
   
+  cd $FASTQ_DIR
   make -f $STAMPIPES/makefiles/fastqc.mk
 __SCRIPT__
 fi
