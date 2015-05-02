@@ -50,6 +50,8 @@ qsub -N ".fq${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __
       zcat ${SAMPLE_NAME}_R1_???.fastq.gz | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | head -n 100 > ${SAMPLE_NAME}.topumis.txt
   fi
 
+  bash /home/audrakj/stampipes/scripts/fastq/attachfiles.bash
+
   echo "FINISH: "
   date
 __SCRIPT__
@@ -326,6 +328,8 @@ qsub -hold_jid ${PROCESSING} -N ".com${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin
     -f ${FLOWCELL} \
     --alignment_id ${ALIGNMENT_ID} \
     --finish_alignment
+
+  bash /home/audrakj/stampipes/scripts/bwa/attachfiles.bash
 
   echo "FINISH: "
   date
