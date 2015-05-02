@@ -4,6 +4,8 @@ import json
 import fileinput
 import argparse
 import datetime
+import hashlib
+import os
 
 token = None
 headers = None
@@ -35,6 +37,13 @@ script_options = {
     "adapter_file": None,
     "align_start_time": False,
     "align_complete_time": False,
+
+    "attach_file": None,
+    "attach_directory": None,
+    "attach_file_contenttype": None,
+    "attach_file_objectid": None,
+    "attach_file_purpose": None,
+    "attach_file_type": None,
 }
 
 def parser_setup():
@@ -93,6 +102,19 @@ def parser_setup():
     parser.add_argument("--barcode_report", dest="barcode_report_file",
         help="The barcode report JSON file")
 
+    parser.add_argument("--attach_file", dest="attach_file",
+        help="The full path to a file to attach to a LIMS object.")
+    parser.add_argument("--attach_directory", dest="attach_directory",
+        help="The full path to a directory to attach to a LIMS object.")
+    parser.add_argument("--attach_file_contenttype", dest="attach_file_contenttype",
+        help="The content type to attach to, aka SequencingData.flowcelllanealignment")
+    parser.add_argument("--attach_file_objectid", dest="attach_file_objectid",
+        help="The object ID to attach to.")
+    parser.add_argument("--attach_file_purpose", dest="attach_file_purpose",
+        help="The file's purpose slug.")
+    parser.add_argument("--attach_file_type", dest="attach_file_type",
+        help="The file's type slug.")
+
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
 
@@ -101,56 +123,65 @@ def parser_setup():
 def split_sample_name(samplename):
 
     m = re.match(r'(?P<sample>[^/]+)_(?P<barcode>[AGTC-]+|NoIndex)_L00(?P<lane>[0-9])', samplename)
-    
+
     if not m:
-        print "Could not parse sample name: %s" % samplename
+        logging.error("Could not parse sample name: %s" % samplename)
         return None
-    
+
     return { "sample": m.group('sample'), "barcode": m.group('barcode'), "lane": m.group('lane') }
 
 def get_spot_score(spot_file):
-    
+
     contents = open(spot_file, 'r').read()
     stats = contents.split("\n")[1].split()
-    
+
     return {"total_tags": int(stats[0]), "tags_in_hotspots": int(stats[1]), "spot_score": stats[2]}
 
 def get_dup_score(spotdup_file):
-    
+
     infile = open(spotdup_file, 'r')
-    
+
     try:
         for line in infile:
             if line.startswith("LIBRARY"):
                 percent_duplication = float(infile.next().strip().split("\t")[7])
-        
+
         return percent_duplication
     except UnboundLocalError as e:
-        print "Unbound Local Error for %s" % spotdup_file
-        print e
+        logging.error("Unbound Local Error for %s" % spotdup_file)
+        logging.error(e)
     except IndexError as e:
-        print e
-    
+        logging.error(e)
+
     return None
 
 def get_fastqc_counts(fastqc_input):
 
     total_m = re.search('Total Sequences\t(?P<total>\d+)', fastqc_input)
-    
+
     if not total_m:
-        print "Could not get total sequences from fastqc_input"
+        logging.error("Could not get total sequences from fastqc_input")
         return None
 
     filtered_m = re.search('Filtered Sequences\t(?P<filtered>\d+)', fastqc_input)
-    
+
     if not filtered_m:
-        print "Could not get filtered sequences from fastqc_input"
+        logging.error("Could not get filtered sequences from fastqc_input")
         return None
-    
+
     return {
         'total': int(total_m.group('total')),
         'filtered': int(filtered_m.group('filtered')),
     }
+
+def md5sum_file(path):
+    md5sum = hashlib.md5()
+
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1024*1024), ''):
+            md5sum.update(chunk)
+
+    return md5sum.hexdigest()
 
 class UploadLIMS(object):
 
@@ -166,37 +197,49 @@ class UploadLIMS(object):
        self.alignment_counts = {}
        self.picard_metrics = None
        self.fastqc_counts = {}
-       
+
+    def get_single_result(self, fetch_url, field=None):
+        """
+        Using a list API url that should bring up a single item, retrieve that single item if it exists.
+        """
+
+        fetch_results = requests.get(fetch_url, headers = self.headers)
+
+        if fetch_results.ok:
+            results = fetch_results.json()
+            if results['count'] > 1:
+                logging.error("More than one matching item for fetch query: %s" % fetch_url)
+            elif results['count'] == 0:
+                logging.debug("No matching items for fetch query: %s" % fetch_url)
+            else:
+                result = results['results'][0]
+                if field:
+                    return result[field]
+                return result
+        else:
+            logging.error("Could not execute api query: %s" % fetch_url)
+
+        return None
+
     def get_flowcell_url_by_label(self, label):
-        r = requests.get("%s/flowcell_run/?label=%s" % (self.api_url, label), headers = self.headers)
-        
-        if not r.ok:
-            print "Could not read flowcell %s from LIMS" % label
-            print r
-            return None
-               
-        flowcell_results = r.json()
-        if flowcell_results["count"] != 1:
-            print "Could not find exactly one flowcell for label %s" % label
-            print flowcell_results
-            return None
-        
-        return flowcell_results['results'][0]['url']
+
+        flowcell_url = "%s/flowcell_run/?label=%s" % (self.api_url, label)
+        return self.get_single_result(flowcell_url, field = 'url')
 
     def clear_flowcell_cache(self, flowcell):
         url = self.get_flowcell_url_by_label(flowcell)
         if url is None:
-            print "Failure to reset flowcell cache for %s" % flowcell
+            logging.error("Failure to reset flowcell cache for %s" % flowcell)
             return
 
-        print requests.get("%s/clear_cache/" % url, headers = self.headers).json()
-       
+        logging.debug(requests.get("%s/clear_cache/" % url, headers = self.headers).json())
+
     def get_fastqc_tags(self):
 
        if not self.fastqc_tags:
            tags_url = '%s/fastqc_tag/' % self.api_url
            tags = list()
-           
+
            tags_results = requests.get(tags_url, headers = self.headers).json()
            tags.extend(tags_results['results'])
 
@@ -205,7 +248,7 @@ class UploadLIMS(object):
                tags.extend(tags_results['results'])
 
            self.fastqc_tags = dict([(tag['slug'], tag) for tag in tags])
-        
+
        return self.fastqc_tags
 
     def get_picard_metrics(self):
@@ -222,22 +265,143 @@ class UploadLIMS(object):
                picard_metrics.extend(metrics_results['results'])
 
            self.picard_metrics = dict([(metric['name'], metric) for metric in picard_metrics])
-        
+
        return self.picard_metrics
 
+    def get_contenttype(self, contenttype_name):
+        """
+        Appname uses capitalization, modelname does not.
+        """
+
+        (appname, modelname) = contenttype_name.split(".")
+
+        contenttype_url = '%s/content_type/?app_label=%s&model=%s' % (self.api_url, appname, modelname)
+
+        return self.get_single_result(contenttype_url, field="url")
+
+    def get_file_purpose(self, slug):
+
+        filepurpose_url = '%s/file_purpose/?slug=%s' % (self.api_url, slug)
+
+        return self.get_single_result(filepurpose_url, field="url")
+
+    def get_file_type(self, slug):
+
+        filetype_url = '%s/file_type/?slug=%s' % (self.api_url, slug)
+
+        return self.get_single_result(filetype_url, field="url")        
+
+    def upload_directory_attachment(self, path, contenttype_name, object_id, file_purpose=None):
+        path = os.path.abspath(path)
+
+        if not (contenttype_name and object_id):
+            logging.error("Cannot attach file %s without both content type and object_id" % path)
+            return False
+
+        contenttype = self.get_contenttype(contenttype_name)
+
+        if not contenttype:
+            logging.error("Cannot attach file %s without contenttype result" % path)
+            return False
+
+        purpose = self.get_file_purpose(file_purpose)
+
+        if file_purpose and not purpose:
+            logging.error("Could not find file purpose %s for uploading directory %s" % (file_purpose, path))
+            return False
+        elif purpose:
+            logging.debug("File purpose: %s" % purpose)
+
+        check_exist_url = "%s/directory/?path=%s" % (self.api_url, path)
+        exists = self.get_single_result(check_exist_url)
+
+        if exists:
+            data = exists
+        else:
+            data = {}
+
+        data.update({
+            'path': path,
+            'content_type': contenttype,
+            'object_id': object_id,
+            'purpose': purpose
+        })
+
+        if exists:
+            logging.info("Updating information for directory %s" % path)
+            result = requests.put(data['url'], headers = self.headers, data = data)
+        else:
+            logging.info("Uploading information for directory %s" % path)
+            result = requests.post("%s/directory/" % self.api_url, headers = self.headers, data = data)
+
+        logging.debug(result.json())
+
+    def upload_file_attachment(self, path, contenttype_name, object_id, file_purpose=None, file_type=None):
+        path = os.path.abspath(path)
+
+        if not (contenttype_name and object_id):
+            logging.error("Cannot attach file %s without both content type and object_id" % path)
+            return False
+
+        contenttype = self.get_contenttype(contenttype_name)
+
+        if not contenttype:
+            logging.error("Cannot attach file %s without contenttype result" % path)
+            return False
+
+        purpose = self.get_file_purpose(file_purpose)
+
+        if file_purpose and not purpose:
+            logging.error("Could not find file purpose %s for uploading file %s" % (file_purpose, path))
+            return False
+        elif purpose:
+            logging.debug("File Purpose: %s" % purpose)
+
+        ftype = self.get_file_type(file_type)
+
+        if file_type and not ftype:
+            logging.error("Could not find file type %s for uploading file %s" % (file_type, path))
+            return False
+        elif purpose:
+            logging.debug("File Type: %s" % ftype)
+
+        check_exist_url = "%s/file/?path=%s" % (self.api_url, path)
+        exists = self.get_single_result(check_exist_url)
+
+        if exists:
+            data = exists
+        else:
+            data = {}
+
+        md5sum = md5sum_file(path)
+        file_size = os.path.getsize(path)
+        last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+
+        data.update({
+            'path': path,
+            'content_type': contenttype,
+            'object_id': object_id,
+            'purpose': purpose,
+            'filetype': ftype,
+            'md5sum': md5sum,
+            'file_last_modified': last_modified,
+            'size_bytes': file_size,
+        })
+
+        if exists:
+            logging.info("Updating information for file %s" % path)
+            result = requests.put(data['url'], headers = self.headers, data = data)
+        else:
+            logging.info("Uploading information for file %s" % path)
+            result = requests.post("%s/file/" % self.api_url, headers = self.headers, data = data)
+
+        logging.debug(result.json())
+
     def get_flowcelllane_contenttype(self):
-        if not self.flowcelllane_contenttype: 
-            contenttype_url = '%s/content_type/?model=flowcelllane' % self.api_url
-            contenttype_results = requests.get(contenttype_url, headers = self.headers).json()
-            self.flowcelllane_contenttype = contenttype_results['results'][0]
-        return self.flowcelllane_contenttype
+        return self.get_contenttype('SequencingData.flowcelllane')
 
     def get_alignment_contenttype(self):
-        if not self.alignment_contenttype: 
-            contenttype_url = '%s/content_type/?model=flowcelllanealignment' % self.api_url
-            contenttype_results = requests.get(contenttype_url, headers = self.headers).json()
-            self.alignment_contenttype = contenttype_results['results'][0]
-        return self.alignment_contenttype
+        return self.get_contenttype('SequencingData.flowcelllanealignment')
 
     def create_count_type(self, name):
 
@@ -259,7 +423,7 @@ class UploadLIMS(object):
         }
 
         result = requests.post("%s/flowcell_lane_count_type/" % self.api_url, headers = self.headers, data = data)
-        
+
         if result.ok:
             self.count_types[name] = result.json()
         else:
@@ -270,10 +434,10 @@ class UploadLIMS(object):
     def get_count_type(self, name):
 
         logging.debug("Getting count type %s" % name)
-        
+
         if not name:
             return None
-        
+
         if not name in self.count_types:
             exists = requests.get("%s/flowcell_lane_count_type/?codename=%s" % (self.api_url, name), headers = self.headers)
             logging.debug("%s/flowcell_lane_count_type/?codename=%s" % (self.api_url, name))
@@ -285,59 +449,59 @@ class UploadLIMS(object):
                 else:
                     return self.create_count_type(name)
             else:
-                print "Error finding count type %s through API" % name
+                logging.error("Error finding count type %s through API" % name)
                 self.count_types[name] = None
 
         return self.count_types[name]
-                
+
     # TODO : make sure that no more of one count type exists
     def get_alignment_counts(self, alignment_id):
-        
-        print "Getting alignment counts for %d" % alignment_id
-        
+
+        logging.debug("Getting alignment counts for %d" % alignment_id)
+
         if not alignment_id in self.alignment_counts:
             counts_url = "%s/flowcell_lane_count/?alignment=%d" % (self.api_url, alignment_id)
             counts = list()
-            
+
             counts_results = requests.get(counts_url, headers = self.headers).json()
             counts.extend(counts_results['results'])
-            
+
             while counts_results['next']:
                 counts_results = requests.get(counts_results['next'], headers = self.headers).json()
                 counts.extend(counts_results['results'])
-            
+
             self.alignment_counts[alignment_id] = dict([(count['count_type_name'], count) for count in counts])
         else:
             return self.alignment_counts[alignment_id]
-        
+
     def get_flowcell_lane(self, flowcell_lane_id):
-        
+
         if flowcell_lane_id in self.flowcell_lane_cache:
             return self.flowcell_lane_cache[flowcell_lane_id]
-        print "%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id)
+        logging.debug("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id))
         exists = requests.get("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id), headers = self.headers)
         if exists.ok:
             self.flowcell_lane_cache[flowcell_lane_id] = exists.json()
         else:
-            print "Flowcell lane %d not found" % flowcell_lane_id
-            print exists
+            logging.error("Flowcell lane %d not found" % flowcell_lane_id)
+            logging.error(exists)
             self.flowcell_lane_cache[flowcell_lane_id] = None
 
         return self.flowcell_lane_cache[flowcell_lane_id]
 
     def upload_counts(self, alignment_id, counts_file):
-        
+
         content = open(counts_file, 'r')
-                
+
     # TODO : make sure that no more of one count type exists
     def get_alignment_counts(self, alignment_id):
-        
-        print "Getting alignment counts for %d" % alignment_id
-        
+
+        logging.info("Getting alignment counts for %d" % alignment_id)
+
         if not alignment_id in self.alignment_counts:
             counts_url = "%s/flowcell_lane_count/?alignment=%d" % (self.api_url, alignment_id)
             counts = list()
-            
+
             counts_results = requests.get(counts_url, headers = self.headers)
 
             if counts_results.ok:
@@ -350,22 +514,22 @@ class UploadLIMS(object):
                 logging.error("Could not get existing alignment counts (%s)" % str(counts_results))
                 self.alignment_counts[alignment_id] = {}
                 return self.alignment_counts[alignment_id]
-            
+
             self.alignment_counts[alignment_id] = dict([(count['count_type_name'], count) for count in counts])
-        
+
         return self.alignment_counts[alignment_id]
-        
+
     def get_flowcell_lane(self, flowcell_lane_id):
-        
+
         if flowcell_lane_id in self.flowcell_lane_cache:
             return self.flowcell_lane_cache[flowcell_lane_id]
-        print "%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id)
+        logging.info("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id))
         exists = requests.get("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id), headers = self.headers)
         if exists.ok:
             self.flowcell_lane_cache[flowcell_lane_id] = exists.json()
         else:
-            print "Flowcell lane %d not found" % flowcell_lane_id
-            print exists
+            logging.error("Flowcell lane %d not found" % flowcell_lane_id)
+            logging.error(exists)
             self.flowcell_lane_cache[flowcell_lane_id] = None
 
         return self.flowcell_lane_cache[flowcell_lane_id]
@@ -380,9 +544,8 @@ class UploadLIMS(object):
             else:
                 return None
         else:
-            print "Error finding RNA metrics for alignment %d" % alignment_id
-            print exists
-
+            logging.error("Error finding RNA metrics for alignment %d" % alignment_id)
+            logging.error(exists)
 
     def upload_rna_metrics(self, alignment_id, rna_file):
         content = open(rna_file, 'r')
@@ -415,21 +578,21 @@ class UploadLIMS(object):
 
         if exists:
             # Currently (2014-12-22) this will fail, but that's a TODO on the LIMS side.
-            print "Updating RNA metrics for alignment ID %d" % alignment_id
+            logging.info("Updating RNA metrics for alignment ID %d" % alignment_id)
             result = requests.put(data['url'], headers = self.headers, data = data)
         else:
-            print "Uploading RNA metrics for alignment ID %d" % alignment_id
+            logging.info("Uploading RNA metrics for alignment ID %d" % alignment_id)
             result = requests.post("%s/rna_alignment_metrics/" % self.api_url, headers = self.headers, data = data)
-        print result.json()
+        logging.debug(result.json())
 
     def upload_barcode_report(self, barcode_file):
         datastring = open(barcode_file, 'r').read()
         try:
             jsondata = json.loads(datastring)
         except ValueError, e:
-            print "Barcode report %s is not valid JSON" % barcode_file
+            logging.error("Barcode report %s is not valid JSON" % barcode_file)
             return
-                
+
         # This may need to be revisited if we get a new sequencer
         flowcell_label = re.search( '.*_[AB]([A-Z0-9]{5})[AB][NG]XX$', jsondata['BaseDir'] ).group(1)
 
@@ -442,58 +605,58 @@ class UploadLIMS(object):
 
         # TODO: Don't upload redundant barcodes.
         result = requests.post("%s/barcode_report/" % self.api_url, headers = self.headers, data = data)
-        print result.json()
+        logging.debug(result.json())
 
 
     def upload_counts(self, alignment_id, counts_file):
-        
+
         content = open(counts_file, 'r')
-        
+
         self.get_alignment_counts(alignment_id)
-        
+
         for line in content:
             values = line.split()
             count_type_name = values[0]
             count = int(values[1])
-            
+
             if not count_type_name:
                 continue
-            
+
             self.upload_count(alignment_id, count_type_name, count)
 
         content.close()
 
     def upload_count(self, alignment_id, count_type_name, count):
-     
+
         if count_type_name in self.alignment_counts[alignment_id]:
             exists = self.alignment_counts[alignment_id][count_type_name]
             if exists['count'] != count:
-                print "Updating count %s (%d) for alignment %d" % (count_type_name, count, alignment_id)
+                logging.info("Updating count %s (%d) for alignment %d" % (count_type_name, count, alignment_id))
                 exists['count'] = count
                 result = requests.put(exists['url'], headers = self.headers, data = exists)
-                print result.json()
+                logging.debug(result.json())
             return
 
         count_type = self.get_count_type(count_type_name)
-        
+
         if not count_type:
-            print "Error: no count type named %s" % count_type_name
+            logging.error("Error: no count type named %s" % count_type_name)
             return
 
-        print "Uploading new count %s (%d) for alignment ID %d" % (count_type_name, count, alignment_id)
+        logging.info("Uploading new count %s (%d) for alignment ID %d" % (count_type_name, count, alignment_id))
         data = {
             "alignment": "%s/flowcell_lane_alignment/%d/" % (self.api_url, alignment_id),
             "count_type": "%s/flowcell_lane_count_type/%d/" % (self.api_url, count_type['id']),
             "count": count,
         }
-        
+
         result = requests.post("%s/flowcell_lane_count/" % self.api_url, headers = self.headers, data = data)
-        
+
         if result.ok:
-            print result.json()
+            logging.debug(result.json())
         else:
-            print result
-           
+            logging.error(result)
+
     def upload_alignment_records(self, alignment_id, adapter_file=None, version_file=None, start_time = False, complete_time = False):
 
         logging.debug("Uploading alignment records")
@@ -505,7 +668,7 @@ class UploadLIMS(object):
         exists = requests.get("%s/flowcell_lane_alignment/%d/" % (self.api_url, alignment_id), headers = self.headers)
 
         if not exists.ok:
-            print exists
+            logging.debug(exists)
             logging.debug("Cannot find alignment with id %d" % alignment_id)
             return
         else:
@@ -526,54 +689,54 @@ class UploadLIMS(object):
         result = requests.put(alignment['url'], headers = self.headers, data = alignment)
 
         if result.ok:
-            print result.json()
+            logging.debug(result.json())
         else:
-            print result
+            logging.error(result)
 
     def upload_spot(self, alignment_id, spot_file, dup_file):
-        
+
         if not spot_file and dup_file:
-            print "Error, do not have both files for alignment %s" % alignment_id
+            logging.error("Error, do not have both files for alignment %s" % alignment_id)
 
         spot_stats = get_spot_score(spot_file)
         percent_dup = get_dup_score(dup_file)
-        
+
         data = {
             "alignment": "%s/flowcell_lane_alignment/%d/" % (self.api_url, alignment_id)
         }
-        
+
         if spot_stats:
             data.update(spot_stats)
-        
+
         data["percent_duplication"] = percent_dup
-        
-        print data["percent_duplication"]
-        
-        exists = requests.get("%s/flowcell_lane_spot/?alignment=%d" % (self.api_url, alignment_id), headers = self.headers)   
+
+        logging.debug(data["percent_duplication"])
+
+        exists = requests.get("%s/flowcell_lane_spot/?alignment=%d" % (self.api_url, alignment_id), headers = self.headers)
 
         if not exists.ok:
-            print exists
+            logging.error(exists)
         else:
             exists = exists.json()
-            
+
         if exists["count"] == 1:
             origspot = exists['results'][0]
             if data["spot_score"] != origspot["spot_score"] or \
               data["total_tags"] != origspot["total_tags"] or \
               data["tags_in_hotspots"] != origspot["tags_in_hotspots"] or\
               data["percent_duplication"] != origspot["percent_duplication"]:
-                print "Updating SPOT score for %d" % alignment_id
-                print exists['results'][0]['url']
-                print data
+                logging.info("Updating SPOT score for %d" % alignment_id)
+                logging.debug(exists['results'][0]['url'])
+                logging.debug(data)
                 result = requests.patch(exists['results'][0]['url'], headers = self.headers, data = data)
-                print result.json()
+                logging.debug(result.json())
         elif exists["count"] == 0:
-            print "Uploading new spot for %d" % alignment_id
+            logging.info("Uploading new spot for %d" % alignment_id)
             result = requests.post("%s/flowcell_lane_spot/" % (self.api_url), headers = self.headers, data = data)
-            print result.json()
+            logging.debug(result.json())
         else:
-            print "Could not figure out which SPOT score to upload to!"
-            print exists
+            logging.error("Could not figure out which SPOT score to upload to!")
+            logging.error(exists)
 
     def upload_fastqc(self, flowcell_lane_id, filename):
 
@@ -585,33 +748,33 @@ class UploadLIMS(object):
         m = re.search(r'(?P<samplename>[^/]+)_(?P<barcode>[AGTC-]+|NoIndex)_L00(?P<lane>[0-9])_(?P<read>R[12])', filename)
 
         if not m:
-            print "Could not figure out %s" % filename
+            logging.error("Could not figure out %s" % filename)
             return None
 
-        print m.groups()
+        logging.info(m.groups())
 
         fastqc_report = None
 
         try:
             fastqc_report = open(filename, 'r').read()
         except:
-            print "Could not read fastqc file %s" % filename
+            logging.error("Could not read fastqc file %s" % filename)
             return None
-        
+
         self.fastqc_counts[filename] = get_fastqc_counts(fastqc_report)
-        
+
         samplename = m.group('samplename')
         read = m.group('read')
-            
-        lane_info = self.get_flowcell_lane(flowcell_lane_id)   
-   
+
+        lane_info = self.get_flowcell_lane(flowcell_lane_id)
+
         if not lane_info:
             return False
- 
+
         tag = self.fastqc_tags[read]
-    
+
         upload = dict()
-    
+
         upload['tags'] = [tag['url']]
         upload['raw_data'] = fastqc_report
         upload['content_type'] = self.flowcelllane_contenttype["url"]
@@ -620,33 +783,33 @@ class UploadLIMS(object):
 
         # does this report already exist?
         exists = requests.get("%s/fastqc_report/?label=%s&object_id=%d&content_type=%d" % (self.api_url, upload['label'], upload['object_id'], self.flowcelllane_contenttype["id"]), headers = self.headers).json()
-   
-        # replace content 
+
+        # replace content
         if exists['count'] == 1:
             report = exists['results'][0]
             if report['raw_data'] != upload['raw_data']:
-                print "Updating report %s" % upload['label']
+                logging.info("Updating report %s" % upload['label'])
                 result = requests.patch(exists['results'][0]['url'], headers = self.headers, data = upload)
-                print result.json()
+                logging.debug(result.json())
         else:
-            print "Uploading new fastqc report %s" % upload['label']
+            logging.info("Uploading new fastqc report %s" % upload['label'])
             result = requests.post("%s/fastqc_report/" % self.api_url, headers = self.headers, data = upload)
-            print result
-            print result.json()
-       
+            logging.debug(result)
+            logging.debug(result.json())
+
     def upload_fastqc_counts(self, alignment_id):
 
         self.get_alignment_counts(alignment_id)
-        
+
         total = 0
         filtered = 0
-        
+
         for fastqc_file, fastqc_counts in self.fastqc_counts.items():
-            
+
             if not fastqc_counts:
-                print "Could not get counts from %s for uploading" % fastqc_file
+                logging.error("Could not get counts from %s for uploading" % fastqc_file)
                 return
-                
+
             total += fastqc_counts["total"]
             filtered += fastqc_counts["filtered"]
 
@@ -683,7 +846,7 @@ class UploadLIMS(object):
             return False
 
         if not metric_name in self.picard_metrics:
-            print "Could not find metrics type %s" % metric_name
+            logging.error("Could not find metrics type %s" % metric_name)
             return False
 
         metric = self.picard_metrics[metric_name]
@@ -717,7 +880,7 @@ class UploadLIMS(object):
         upload['object_id'] = alignment_id
         upload['label'] = label
 
-        print "Uploading new picard report %s" % upload['label']
+        logging.info("Uploading new picard report %s" % upload['label'])
         result = requests.post("%s/picard_report/" % self.api_url, headers = self.headers, data = upload)
         if not result.ok:
             log.error("Could not upload new Picard report %s" % filename)
@@ -736,8 +899,11 @@ from the command line."""
     elif poptions.debug:
         logging.basicConfig(level=logging.DEBUG, format=log_format)
     else:
-        # Set up the logging levels
+        # Set up the default logging levels
         logging.basicConfig(level=logging.INFO, format=log_format)
+        # Make this a little less noisy by default
+        requests_log = logging.getLogger("requests.packages.urllib3.connectionpool")
+        requests_log.setLevel(logging.WARN)
 
     if not poptions.base_api_url and "LIMS_API_URL" in os.environ:
         api_url = os.environ["LIMS_API_URL"]
@@ -789,6 +955,13 @@ from the command line."""
     if poptions.flowcell:
         uploader.clear_flowcell_cache(poptions.flowcell)
 
+    if poptions.attach_file:
+        uploader.upload_file_attachment(poptions.attach_file, poptions.attach_file_contenttype, poptions.attach_file_objectid,
+            file_type=poptions.attach_file_type, file_purpose=poptions.attach_file_purpose)
+
+    if poptions.attach_directory:
+        uploader.upload_directory_attachment(poptions.attach_directory, poptions.attach_file_contenttype, poptions.attach_file_objectid,
+            file_purpose=poptions.attach_file_purpose)
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
