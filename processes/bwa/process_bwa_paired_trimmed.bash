@@ -22,6 +22,10 @@ export UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 export ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 export VERSION_FILE=${SAMPLE_NAME}.versions.txt
 
+if [ -n "$REDO_ALIGNMENT" ]; then
+    bash $STAMPIPES/scripts/bwa/reset_alignment.bash
+fi
+
 bash $STAMPIPES/scripts/versions.bash &> $VERSION_FILE
 
 if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
@@ -40,6 +44,11 @@ qsub -N ".fq${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __
 
   cd $FASTQ_DIR
   make -f $STAMPIPES/makefiles/fastqc.mk
+
+  if [ "$UMI" = "True" ]; then
+      echo "Tallying up top UMI tags seen in R1"
+      zcat ${SAMPLE_NAME}_R1_???.fastq.gz | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | head -n 100 > ${SAMPLE_NAME}.topumis.txt
+  fi
 
   echo "FINISH: "
   date
