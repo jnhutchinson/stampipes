@@ -18,7 +18,7 @@ log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 log = logging.getLogger(__name__)
 
 script_options = {
-    "base_api_url": "https://lims.stamlab.org/api",
+    "base_api_url": None,
     "basedir": os.getcwd(),
     "quiet": False,
     "debug": False,
@@ -213,6 +213,7 @@ class UploadLIMS(object):
                 logging.debug("No matching items for fetch query: %s" % fetch_url)
             else:
                 result = results['results'][0]
+                logging.debug("Single result fetched from %s: %s" % (fetch_url, str(result)))
                 if field:
                     return result[field]
                 return result
@@ -277,7 +278,7 @@ class UploadLIMS(object):
 
         contenttype_url = '%s/content_type/?app_label=%s&model=%s' % (self.api_url, appname, modelname)
 
-        return self.get_single_result(contenttype_url, field="url")
+        return self.get_single_result(contenttype_url)
 
     def get_file_purpose(self, slug):
 
@@ -322,7 +323,7 @@ class UploadLIMS(object):
 
         data.update({
             'path': path,
-            'content_type': contenttype,
+            'content_type': contenttype['url'],
             'object_id': object_id,
             'purpose': purpose
         })
@@ -398,10 +399,12 @@ class UploadLIMS(object):
         logging.debug(result.json())
 
     def get_flowcelllane_contenttype(self):
-        return self.get_contenttype('SequencingData.flowcelllane')
+        self.flowcelllane_contenttype = self.get_contenttype('SequencingData.flowcelllane')
+        return self.flowcelllane_contenttype
 
     def get_alignment_contenttype(self):
-        return self.get_contenttype('SequencingData.flowcelllanealignment')
+        self.alignment_contenttype = self.get_contenttype('SequencingData.flowcelllanealignment')
+        return self.alignment_contenttype
 
     def create_count_type(self, name):
 
@@ -659,7 +662,7 @@ class UploadLIMS(object):
 
     def upload_alignment_records(self, alignment_id, adapter_file=None, version_file=None, start_time = False, complete_time = False):
 
-        logging.debug("Uploading alignment records")
+        logging.info("Uploading alignment records for %d" % alignment_id)
 
         if not (adapter_file or version_file or start_time or complete_time):
             logging.debug("No data to upload.")
@@ -799,6 +802,10 @@ class UploadLIMS(object):
 
     def upload_fastqc_counts(self, alignment_id):
 
+        if not alignment_id:
+            logging.critical("Could not upload fastqc_counts without an alignment id given")
+            return
+
         self.get_alignment_counts(alignment_id)
 
         total = 0
@@ -907,11 +914,14 @@ from the command line."""
 
     if not poptions.base_api_url and "LIMS_API_URL" in os.environ:
         api_url = os.environ["LIMS_API_URL"]
+        logging.debug("Using LIMS API endpoint: %s from environment" % api_url)
     elif poptions.base_api_url:
         api_url = poptions.base_api_url
+        logging.debug("Using LIMS API endpoint: %s from options" % api_url)
     else:
         sys.stderr.write("Could not find LIMS API URL.\n")
         sys.exit(1)
+
 
     if not poptions.token and "LIMS_API_TOKEN" in os.environ:
         token = os.environ["LIMS_API_TOKEN"]
