@@ -138,7 +138,7 @@ $(bamcount_txt) : $(marked_bam)
 
 # Read counts:
 $(readcount_txt) : $(R1_FASTQ_FILES) $(R2_FASTQ_FILES)
-	$(SCRIPT_DIR)/countReads.pl $(SAMPLE_NAME) total_reads . > $@
+	$(SCRIPT_DIR)/countReads.pl $(SAMPLE_NAME) total_reads $(FASTQ_DIR) > $@
 
 # Ribosomal counts:
 $(ribo_txt) : $(ribosomal_files)

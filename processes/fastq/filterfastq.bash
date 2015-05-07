@@ -1,5 +1,7 @@
 # USAGE: bash ~audrakj/stampy/scripts/filterfastq.bash D14_WT_IgG_K4me3_IP_TGACCA_L004_R1
 
+cd "$FASTQ_DIR"
+
 echo FILTERING $SAMPLE_NAME
 
 for fastq in $SAMPLE_NAME*.fastq.gz ; 
