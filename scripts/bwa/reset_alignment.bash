@@ -55,3 +55,4 @@ for PREFIX in "${prefixes[@]}"; do
     done
 done
 
+python $STAMPIPES/scripts/lims/upload_data.py --clear_align_stats --alignment_id ${ALIGNMENT_ID}
