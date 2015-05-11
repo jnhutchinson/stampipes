@@ -355,7 +355,11 @@ class UploadLIMS(object):
             log.info("Uploading information for directory %s" % path)
             result = requests.post("%s/directory/" % self.api_url, headers = self.headers, data = data)
 
-        log.debug(result.json())
+        if not result.ok:
+            log.error("Could not upload directory %s" % path)
+            log.debug(data)
+        else:
+            log.debug(result.json())
 
     def upload_file_attachment(self, path, contenttype_name, object_id, file_purpose=None, file_type=None):
         path = os.path.abspath(path)
@@ -400,7 +404,7 @@ class UploadLIMS(object):
 
         data.update({
             'path': path,
-            'content_type': contenttype,
+            'content_type': contenttype["url"],
             'object_id': object_id,
             'purpose': purpose,
             'filetype': ftype,
@@ -409,6 +413,8 @@ class UploadLIMS(object):
             'size_bytes': file_size,
         })
 
+        log.debug(data)
+
         if exists:
             log.info("Updating information for file %s" % path)
             result = requests.put(data['url'], headers = self.headers, data = data)
@@ -416,7 +422,11 @@ class UploadLIMS(object):
             log.info("Uploading information for file %s" % path)
             result = requests.post("%s/file/" % self.api_url, headers = self.headers, data = data)
 
-        log.debug(result.json())
+        if not result.ok:
+            log.error("Could not upload file %s" % path)
+            log.debug(data)
+        else:
+            log.debug(result.json())
 
     def get_flowcelllane_contenttype(self):
         self.flowcelllane_contenttype = self.get_contenttype('SequencingData.flowcelllane')
