@@ -9,7 +9,9 @@ import logging
 import re
 import copy
 import requests
+import StringIO
 
+global poptions
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.getLogger("requests").setLevel(logging.WARNING)
@@ -58,6 +60,8 @@ def parser_setup():
         help="The priority of this flowcell")
     parser.add_argument("-n", "--post-aggregation", dest="post_aggregation", action="store_true",
         help="Pass this option to indicate that the directory structure for this flowcell is post-aggregation")
+    parser.add_argument("--dry-run", dest="dry_run", action="store_true",
+        help="Don't make any files, just pretend")
 
     parser.set_defaults( **options )
     parser.set_defaults( quiet=False, debug=False )
@@ -276,7 +280,7 @@ class MakeBrowserload(object):
     def create_html(self, hgdb):
         self.html_files[hgdb] = os.path.join(self.outdir, hgdb, "%s.html" % self.main_label)
 
-        html = open( self.html_files[hgdb], 'w')
+        html = StringIO.StringIO()
 
         columns = ["Lane", "Index", "SampleID", "SampleRef", "CellType", "Assay", "Factors", "Extra",
             "wellmapping", "wellmapping-no-mito", "SPOT"]
@@ -297,7 +301,14 @@ class MakeBrowserload(object):
         html.write("</tbody>\n")
         html.write("</table>\n")
 
-        html.close()
+        if poptions.dry_run:
+            logging.info("Pretending to create ra file %s", self.html_files[hgdb])
+            return
+
+        html_file = open( self.html_files[hgdb], 'w')
+        html_file.write(html.getvalue())
+        html_file.close()
+
 
     def create_ras(self):
         self.ra_files = {}
@@ -308,7 +319,8 @@ class MakeBrowserload(object):
     def create_commands(self):
         makefile = os.path.join(self.outdir, "make.%s.doc" % self.main_label)
         logging.info("Makefile: %s" % makefile)
-        commands = open( makefile, 'w')
+
+        commands = StringIO.StringIO()
 
         commands.write("# %s\n" % makefile)
         commands.write("# %s\n\n" % ", ".join(self.subtrack_sets.keys()))
@@ -321,7 +333,12 @@ class MakeBrowserload(object):
 
         commands.write("\ncat %s >> %s\n" % (self.excludes_file, self.browser_excludes_file))
 
-        commands.close()
+        if poptions.dry_run:
+            logging.info("Pretending to create makefile %s", makefile)
+            return 
+        command_file = open(makefile, 'w')
+        command_file.write(commands.getvalue())
+        command_file.close()
 
     def create_subtrack_commands(self, subtrack, commandsout):
         if subtrack["hasDensities"] and not self.bigwig:
@@ -364,7 +381,7 @@ class MakeBrowserload(object):
         commandsout.write('# add line "include trackDb.%s.%s.ra" to %s/%s/%s/trackDb.%s.ra\n\n' % (self.file_label, self.main_label, self.track_basedir, organism, hgdb, self.file_label))
 
     def create_excludes(self):
-        excludes = open( self.excludes_file, 'w')
+        excludes = StringIO.StringIO()
 
         for subtrack in self.tracks:
             for suffix in ["frm", "MYD", "MYI"]:
@@ -372,7 +389,13 @@ class MakeBrowserload(object):
                 excludes.write("%s.%s\n" % (subtrack["tagtrackname"], suffix))
                 excludes.write("%s.%s\n" % (subtrack["dentrackname"], suffix))
 
-        excludes.close()
+        if poptions.dry_run:
+            logging.info("Pretending to write excludes file %s", self.excludes_file)
+            return
+
+        excludes_file = open(self.excludes_file, 'w')
+        excludes_file.write(excludes)
+        excludes_file.close()
 
     def create_ra(self, hgdb):
         logging.info("CREATING RA FOR %s" % hgdb)
@@ -381,7 +404,7 @@ class MakeBrowserload(object):
         foldercheck(os.path.join(self.outdir, hgdb))
 
         self.ra_files[hgdb] = os.path.join(self.outdir, hgdb, "trackDb.%s.%s.ra" % (self.file_label, self.main_label))
-        ra = open( self.ra_files[hgdb], 'w' )
+        ra = StringIO.StringIO()
 
         samples = set([subtrack["SampleID"] for subtrack in subtracks])
 
@@ -481,7 +504,13 @@ class MakeBrowserload(object):
             else:
                 ra.write("\t\ttype wig 1.00 10000\n\n")
 
-        ra.close()
+        if poptions.dry_run:
+            logging.info("Pretending to write RA file %s", self.ra_files[hgdb])
+            return
+
+        ra_file = open(self.ra_files[hgdb], 'w')
+        ra_file.write(ra)
+        ra_file.close()
 
     def get_sample_dir(self, lane):
         sample = lane["SampleID"]
