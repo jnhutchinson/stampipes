@@ -22,6 +22,7 @@ def parseArgs():
     parser.add_argument('--autosuffix', action="store_true", default=False, help='Automatically guess a suffix name')
     parser.add_argument('--outdir', dest='outdir', default='.', help='Output directory')
     parser.add_argument('--dry-run', dest='dry_run', default=False, action='store_true', help='Do not actually demultiplex')
+    parser.add_argument('--ignore_failed_lanes', default=False, action="store_true", help="Ignore any lanes marked as failed in processing")
     parser.add_argument('infile', nargs='+')
 
     args = parser.parse_args()
@@ -83,7 +84,7 @@ def guess_suffix(filename):
     return ""
 
 import json
-def parse_processing_file(file, mismatches, suffix, lane, outdir):
+def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_lanes=False):
     barcodes = dict()
     labels = dict()
     with open(file) as data_file:
@@ -100,7 +101,12 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir):
         lane_libraries = data['libraries']
 
     for library in lane_libraries:
+
         label = library['alignments'][0]['sample_name']
+        if ignore_failed_lanes and library["failed"]:
+            logging.info("Ignoring failed library %s" % label) 
+            continue
+
         project_dir = "Project_%s" % library['project']
         sample_dir = "Sample_%s" % library['samplesheet_name']
         library_dir = os.path.join(outdir, project_dir, sample_dir)
@@ -112,10 +118,9 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir):
             if exception.errno != errno.EEXIST:
                 raise
 
-
         barcode_indices = library['barcode_index'].split("-")
         barcode1 = barcode_indices[0]
-        barcode2 = barcode_indices[1] if len(barcode_indices) > 1 else "" 
+        barcode2 = barcode_indices[1] if len(barcode_indices) > 1 else ""
 
         lengths.add(( len(barcode1), len(barcode2) ))
 
@@ -134,7 +139,7 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir):
 
     logging.info("Mapping %d barcodes to %s libraries" % (len(barcodes), len(lane_libraries)))
     logging.debug(barcodes)
-        
+
     return barcodes, labels
 
 def split_file(filename, barcodes, labels):
@@ -215,7 +220,7 @@ def main(argv):
         args.suffix = guess_suffix(args.infile[0])
         logging.info("--autosuffix, guessing suffix as %s" % args.suffix)
 
-    barcodes, labels = parse_processing_file(args.processing_file, args.mismatches, args.suffix, args.lane, args.outdir)
+    barcodes, labels = parse_processing_file(args.processing_file, args.mismatches, args.suffix, args.lane, args.outdir, ignore_failed_lanes=args.ignore_failed_lanes)
 
     if args.dry_run:
         logging.info("Dry run, exiting")
