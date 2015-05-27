@@ -33,6 +33,7 @@ script_options = {
     "no_mask": False,
     "dry_run": False,
     "add_flowcell_scripts": False,
+    "umi_filter": None,
 }
 
 def parser_setup():
@@ -59,6 +60,12 @@ def parser_setup():
         help="Run for this particular library. Can be specified multiple times.")
     parser.add_argument("--alignment", dest="alignment_filter", type=int, action="append",
         help="Run for this particular alignment. Can be specified multiple times.")
+    parser.add_argument("--lane", dest="lanes", type=int, action="append",
+        help="Run for these given lanes.  Can be specified multiple times.")
+    parser.add_argument("--no_umi", dest="umi_filter", action="store_false",
+        help="Run and don't include any UMI lanes.")
+    parser.add_argument("--only_umi", dest="umi_filter", action="store_true",
+        help="Run and only include UMI lanes.")
 
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
@@ -82,28 +89,42 @@ def parser_setup():
 
 class ProcessSetUp(object):
 
-    def __init__(self, processing_configfile, qsub_scriptname, outfile, qsub_prefix,
-        template_script=None, no_mask=False, dry_run=False, add_flowcell_scripts=False,
-        project_filter=None, library_filter=None, sample_filter=None, alignment_filter=None, ignore_failed_lanes=False):
+    def __init__(self, args): 
 
-        self.processing_configfile = processing_configfile
-        self.qsub_scriptname = qsub_scriptname
-        self.qsub_prefix = qsub_prefix
-        self.outfile = outfile
-        self.template_script = template_script
-        self.project_filter = project_filter
-        self.library_filter = library_filter
-        self.sample_filter = sample_filter
-        self.alignment_filter = alignment_filter
-        self.no_mask = no_mask
-        self.dry_run = dry_run
-        self.add_flowcell_scripts = add_flowcell_scripts
-        self.ignore_failed_lanes = ignore_failed_lanes
+        self.processing_configfile = args.process_config
+        self.qsub_scriptname = args.sample_script_basename
+        self.qsub_prefix = args.qsub_prefix
+        self.outfile = args.outfile
+        self.template_script = args.template_script
+        self.project_filter = args.project_filter
+        self.library_filter = args.library_filter
+        self.sample_filter = args.sample_filter
+        self.alignment_filter = args.alignment_filter
+        self.no_mask = args.no_mask
+        self.dry_run = args.dry_run
+        self.add_flowcell_scripts = args.add_flowcell_scripts
+        self.ignore_failed_lanes = args.ignore_failed_lanes
+        self.umi_filter = args.umi_filter
+        self.filter_lanes = args.lanes
 
         if self.template_script:
             self.template_script_content = open(self.template_script, 'r').read()
 
     def include_lane(self, lane):
+
+        if self.umi_filter != None:
+            if lane["barcode1"] and lane["barcode1"]["umi"]:
+                umi = True
+            else:
+                umi = False
+
+            if self.umi_filter and not umi:
+                return False
+            if not self.umi_filter and umi:
+                return False
+
+        if self.filter_lanes and not lane["lane"] in self.filter_lanes:
+            return False
 
         if self.ignore_failed_lanes and lane["failed"]:
             logging.debug("Skipping %s, failed and we are ignoring failed lanes" % lane["samplesheet_name"])
@@ -295,13 +316,7 @@ from the command line."""
         # Set up the logging levels
         logging.basicConfig(level=logging.INFO, format=log_format)
 
-    process = ProcessSetUp(poptions.process_config, poptions.sample_script_basename,
-        poptions.outfile, poptions.qsub_prefix, template_script=poptions.template_script,
-        no_mask=poptions.no_mask, dry_run=poptions.dry_run,
-        add_flowcell_scripts=poptions.add_flowcell_scripts,
-        project_filter=poptions.project_filter, library_filter=poptions.library_filter,
-        sample_filter=poptions.sample_filter, alignment_filter=poptions.alignment_filter, ignore_failed_lanes=poptions.ignore_failed_lanes)
-
+    process = ProcessSetUp(poptions)
     process.create()
 
 # This is the main body of the program that only runs when running this script
