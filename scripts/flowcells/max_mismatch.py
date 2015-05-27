@@ -24,6 +24,8 @@ def parser_setup():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--processing", dest="processing",
             help="The JSON file to read barcodes from")
+    parser.add_argument("--ignore_failed_lanes", dest="ignore_failed_lanes", action="store_true", default=False,
+            help="Ignore failed lanes when calculating max mismatch.")
 
     parser.set_defaults( **script_options )
     return parser
@@ -81,10 +83,15 @@ def apply_mask(mask, barcode_string):
     barcodes = [ orig_barcodes[i][:l] for (i, l) in enumerate(mask) ]
     return barcodes
 
-def create_lane_set(libraries, mask):
+def create_lane_set(libraries, mask, ignore_failed_lanes):
     lanes = {}
     for library in libraries:
         lane = library['lane']
+
+        # don't count failed lanes in barcode checking
+        if ignore_failed_lanes and library["failed"]:
+            continue
+
         barcodes = tuple(apply_mask(mask, library['barcode_index']))
         if lane not in lanes:
             lanes[lane] = set()
@@ -118,7 +125,7 @@ def main(args = sys.argv):
         print "1"
         sys.exit(0)
 
-    lanes = create_lane_set(data['libraries'], mask)
+    lanes = create_lane_set(data['libraries'], mask, poptions.ignore_failed_lanes)
 
     mismatch_level = get_max_mismatch_level( lanes, len(mask) )
 
