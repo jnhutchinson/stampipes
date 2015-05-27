@@ -102,6 +102,7 @@ for i in "${inputfiles[@]}" ; do
       --outdir "$outdir"          \
       --mismatches "$mismatches"  \
       --lane "$lane"              \
+      --ignore_failed_lanes       \
       $dryrun                     \
       $i
 __DEMUX__
