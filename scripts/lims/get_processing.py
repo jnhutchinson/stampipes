@@ -39,27 +39,27 @@ def parser_setup():
 
     parser.add_argument("-o", "--outfile", dest="outfile",
         help="The outfile to save to.")
-    
+
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
 
     return parser
-    
+
 def get_processing_info(api_url, token, id, outfile):
-    
+
     info = requests.get("%s/flowcell_lane_alignment_group/%d/processing_information" % (api_url, id),
         headers={'Authorization': "Token %s" % token})
-        
+
     if info.ok:
         result = info.json()
         print "Writing results to %s" % outfile
         with open(outfile, 'w') as output:
             json.dump(result, output, sort_keys=True, indent=4, separators=(',', ': '))
     else:
-        sys.stderr.write("Could not find processing info for alignment group %s" % str(id))
-    
-    return 
-    
+        sys.stderr.write("Could not find processing info for alignment group %s\n" % str(id))
+
+    return
+
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
 from the command line."""
