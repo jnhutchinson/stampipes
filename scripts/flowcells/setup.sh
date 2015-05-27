@@ -77,6 +77,7 @@ echo "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,Sam
 jq -r --arg flowcell "$flowcell" ' 
 .libraries as $l
 | $l
+| map( select(.failed == false) )
 | map( .lane as $num
    | .barcode_index =
        if (  $l | map(select( $num  == .lane )) | length == 1 ) then
@@ -116,7 +117,7 @@ SampleID,SampleName,index,index2
 __SHEET__
 
 # This bit of cryptic magic generates the samplesheet part.
-jq -r '.libraries[] | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
+jq -r '.libraries[] | map(select(.failed == false)) | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
   | sed 's/\([ACTG]\+\)-\([ACTG]\+\),$/\1,\2/'  # Changes dual-index barcodes to proper format
 
 }
@@ -137,7 +138,7 @@ analysis_dir=$( jq -r '.alignment_group.directory'  "$json" )
 mask=$(         jq -r '.alignment_group.bases_mask' "$json" )
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 
-mismatches=$( "$STAMPIPES/scripts/flowcells/max_mismatch.py" )
+mismatches=$( "$STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes" )
 
 if [ -n "$demux" ] ; then
   echo -e "\n----WARNING!-----"
@@ -274,7 +275,7 @@ python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell"
 
 $link_command
 
-python "$STAMPIPES/scripts/create_processing.py" --add_flowcell_scripts
+python "$STAMPIPES/scripts/create_processing.py" --add_flowcell_scripts --ignore_failed_lanes
 
 bash run.bash
 __COPY__

@@ -71,6 +71,9 @@ def parser_setup():
     parser.add_argument("--add_flowcell_scripts", dest="add_flowcell_scripts", action="store_true",
         help="If this is set to true, add on flowcell level scripts to the end of the run collection.")
 
+    parser.add_argument("-i", "--ignore_failed_lanes", dest="ignore_failed_lanes", action="store_true",
+        help="Ignore failed lanes")
+
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
 
@@ -81,7 +84,7 @@ class ProcessSetUp(object):
 
     def __init__(self, processing_configfile, qsub_scriptname, outfile, qsub_prefix,
         template_script=None, no_mask=False, dry_run=False, add_flowcell_scripts=False,
-        project_filter=None, library_filter=None, sample_filter=None, alignment_filter=None,):
+        project_filter=None, library_filter=None, sample_filter=None, alignment_filter=None, ignore_failed_lanes=False):
 
         self.processing_configfile = processing_configfile
         self.qsub_scriptname = qsub_scriptname
@@ -95,11 +98,16 @@ class ProcessSetUp(object):
         self.no_mask = no_mask
         self.dry_run = dry_run
         self.add_flowcell_scripts = add_flowcell_scripts
+        self.ignore_failed_lanes = ignore_failed_lanes
 
         if self.template_script:
             self.template_script_content = open(self.template_script, 'r').read()
 
     def include_lane(self, lane):
+
+        if self.ignore_failed_lanes and lane["failed"]:
+            logging.debug("Skipping %s, failed and we are ignoring failed lanes" % lane["samplesheet_name"])
+            return False
 
         if self.project_filter and not (lane["project"] in self.project_filter):
             logging.debug("Skipping %s, not in project filter" % lane["samplesheet_name"])
@@ -292,7 +300,7 @@ from the command line."""
         no_mask=poptions.no_mask, dry_run=poptions.dry_run,
         add_flowcell_scripts=poptions.add_flowcell_scripts,
         project_filter=poptions.project_filter, library_filter=poptions.library_filter,
-        sample_filter=poptions.sample_filter, alignment_filter=poptions.alignment_filter)
+        sample_filter=poptions.sample_filter, alignment_filter=poptions.alignment_filter, ignore_failed_lanes=poptions.ignore_failed_lanes)
 
     process.create()
 
