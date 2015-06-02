@@ -667,7 +667,11 @@ class UploadLIMS(object):
                 log.info("Updating count %s (%d) for alignment %d" % (count_type_name, count, alignment_id))
                 exists['count'] = count
                 result = requests.put(exists['url'], headers = self.headers, data = exists)
-                log.debug(result.json())
+
+                if result.ok:
+                    log.debug(result.json())
+                else:
+                    log.error("Could not update count at %s" % exists['url'])
             return
 
         count_type = self.get_count_type(count_type_name)
@@ -829,12 +833,20 @@ class UploadLIMS(object):
             if report['raw_data'] != upload['raw_data']:
                 log.info("Updating report %s" % upload['label'])
                 result = requests.patch(exists['results'][0]['url'], headers = self.headers, data = upload)
-                log.debug(result.json())
+
+                if result.ok:
+                    log.debug(result.json())
+                else:
+                    log.error("Could not update FastQC report %s" % exists['results'][0]['url'])
         else:
             log.info("Uploading new fastqc report %s" % upload['label'])
             result = requests.post("%s/fastqc_report/" % self.api_url, headers = self.headers, data = upload)
-            log.debug(result)
-            log.debug(result.json())
+
+            if result.ok:
+                log.debug(result.json())
+            else:
+                log.error("Could not upload new FastQC report")
+                log.error(result)
 
     def upload_fastqc_counts(self, alignment_id):
 
