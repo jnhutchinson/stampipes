@@ -311,7 +311,7 @@ __SCRIPT__
 
 fi
 
-if [ -n ${PROCESSING} ]; then
+if [ -n "$PROCESSING" ]; then
 
 qsub -hold_jid ${PROCESSING} -N ".com${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
