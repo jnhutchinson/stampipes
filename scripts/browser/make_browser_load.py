@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
 
 import json
 import os
@@ -9,7 +8,6 @@ import logging
 import re
 import copy
 import requests
-
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.getLogger("requests").setLevel(logging.WARNING)

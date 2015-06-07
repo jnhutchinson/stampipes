@@ -36,4 +36,4 @@ TRIMMED=`find . -maxdepth 1 -name "$SAMPLE_NAME*trimstats.txt" | xargs awk 'BEGI
 echo -e "adapter-trimmed\t$TRIMMED" >> $OUTPUT
 
 echo "Creating bam counts"
-python $STAMPIPES/scripts/bwa/bamcounts.py $INBAM $OUTPUT
+python3 $STAMPIPES/scripts/bwa/bamcounts.py $INBAM $OUTPUT

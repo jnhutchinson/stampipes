@@ -18,10 +18,12 @@
 # module load java
 # module load bwa/0.7.0
 # module load samtools
-# module load python
+###################
+# LOAD PYTHON 3 VIRTUAL ENV WITH ALL REQUIRED PYTHON PACKAGES
 ###################
 
 SHELL = bash
+PYTHON = python3
 
 # NSLOTS is the default sge environment variable letting the process know
 # how many threads it has reserved
@@ -103,12 +105,11 @@ $(TMPDIR)/align.sorted.bam : $(TMPDIR)/align.filtered.bam
 
 # Create unsorted filtered BAM files
 $(TMPDIR)/align.filtered.bam : $(TMPDIR)/align.unsorted.bam
-	time $(STAMPIPES)/scripts/bwa/filter_reads.py $^ $@
+	time $(PYTHON) $(STAMPIPES)/scripts/bwa/filter_reads.py $^ $@
 
 # Create unsorted raw BAM files
 $(TMPDIR)/align.unsorted.bam : $(TMPDIR)/align.sam
-	time $(SAMTOOLS) view -bS -t $(FAI) $^ \
-		| python $(STAMPIPES)/scripts/bwa/fix_bam_pairing.py - $@ \
+	time $(SAMTOOLS) view -bS -t $(FAI) $^ > $@ \
 		&& echo made $@ >&2
 
 # Create the SAM files from each pair of SAI and FASTQ files

@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/bin/env python3
 
 import sys
 import gzip
@@ -19,8 +19,8 @@ def transform_line(line):
 
 def transform_file(infilename, outfilename):
 
-    outfile = gzip.open(outfilename, 'wb')
-    infile = gzip.open(infilename)
+    outfile = gzip.open(outfilename, 'wt')
+    infile = gzip.open(infilename, 'rt')
 
     for line in infile:
         outfile.write( transform_line(line) )

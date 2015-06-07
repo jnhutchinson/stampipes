@@ -2,8 +2,7 @@
 set -e
 
 source $MODULELOAD
-module unload anaconda
-module load python
+source $PYTHON3_ACTIVATE
 
 usage(){
 cat << EOF
@@ -96,7 +95,7 @@ for i in "${inputfiles[@]}" ; do
   fi
 
   cat <<__DEMUX__ | $submitjob
-    python "$demux_script"        \
+    python3 "$demux_script"        \
       --autosuffix                \
       --processing "$processing"  \
       --outdir "$outdir"          \
