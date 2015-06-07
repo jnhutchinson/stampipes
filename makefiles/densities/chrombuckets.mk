@@ -16,7 +16,7 @@ FAI ?= $(BWAINDEX).fai
 WIN ?= 75
 # BIN INTERVAL
 BINI ?= 20
-BUCKETS_DIR ?= $(STAMPIPES)/data/densities
+BUCKETS_DIR ?= $(STAMPIPES_DATA)/densities
 BUCKETS_FILE ?= $(BUCKETS_DIR)/chrom-buckets.$(GENOME).$(WIN)_$(BINI).bed.starch
 
 TMPDIR ?= $(shell pwd)

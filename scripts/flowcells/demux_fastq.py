@@ -135,7 +135,7 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_
 
         labels[label] = { "filtered": 0, "unfiltered": 0, "total": 0 }
         # TODO: Warning! this will overwrite files!
-        labels[label]["outfile"] = gzip.open(outfile_name, 'wb')
+        labels[label]["outfile"] = gzip.open(outfile_name, 'wt')
 
     logging.info("Mapping %d barcodes to %s libraries" % (len(barcodes), len(lane_libraries)))
     logging.debug(barcodes)
@@ -158,7 +158,7 @@ def split_file(filename, barcodes, labels):
     logging.info("Demultiplexing file: %s" % filename)
 
     if filename.endswith('.gz'):
-        parsein = gzip.open(filename)
+        parsein = gzip.open(filename, 'rt')
     else:
         parsein = open(filename, 'rU')
 
@@ -232,10 +232,10 @@ def main(argv):
 
     print("Barcode matching tallies:")
 
-    for label, info in labels.iteritems():
-        print "%s\t%s" % (label, str(info))
+    for label, info in labels.items():
+        print("%s\t%s" % (label, str(info)))
 
-    for label, info in labels.iteritems():
+    for label, info in labels.items():
         info['outfile'].close()
 
 if __name__ == "__main__":

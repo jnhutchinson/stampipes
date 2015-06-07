@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# modules required: samtools, bedops, bedtools, python
+# modules required: samtools, bedops, bedtools, python3
 # density_custom.mk must be in the directory this script is run from.
 # splits hybrid_bam into two bam files with reads from the genomes
 # specified by fa_one and fa_two. Makes bw files for each.

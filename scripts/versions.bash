@@ -68,6 +68,12 @@ python $STAMPIPES/scripts/versions.py
 echo "---"
 fi
 
+if [[ `command -v python3` ]]; then
+echo "PYTHON3:"
+python3 -V 2>&1
+python3 $STAMPIPES/scripts/versions.py
+fi
+
 if [[ `command -v java` ]]; then
 echo "JAVA:"
 java -version 2>&1

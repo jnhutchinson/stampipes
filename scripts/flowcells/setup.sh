@@ -5,7 +5,7 @@ set -o pipefail
 
 # Dependencies
 source $MODULELOAD
-module load python/2.7.3
+source $PYTHON3_ACTIVATE
 
 #########
 # Options
@@ -117,7 +117,7 @@ SampleID,SampleName,index,index2
 __SHEET__
 
 # This bit of cryptic magic generates the samplesheet part.
-jq -r '.libraries[] | map(select(.failed == false)) | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
+jq -r '.libraries[] | select(.failed == false) | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
   | sed 's/\([ACTG]\+\)-\([ACTG]\+\),$/\1,\2/'  # Changes dual-index barcodes to proper format
 
 }
@@ -132,13 +132,13 @@ illumina_dir=$(pwd)
 link_command="#no linking to do"
 
 # Get and read the processing script
-python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
+python3 "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 analysis_dir=$( jq -r '.alignment_group.directory'  "$json" )
 mask=$(         jq -r '.alignment_group.bases_mask' "$json" )
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 
-mismatches=$( "$STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes" )
+mismatches=`python3 $STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes`
 
 if [ -n "$demux" ] ; then
   echo -e "\n----WARNING!-----"
@@ -150,7 +150,7 @@ case $run_type in
 "NextSeq 500")
     echo "Regular NextSeq 500 run detected"
     parallel_env="-pe threads 4-8"
-    link_command="python $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
@@ -233,14 +233,13 @@ cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 source $MODULELOAD
 module load bcl2fastq/1.8.4
 module load bcl2fastq2/2.15.0.4
-module load python/2.7.3
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
 qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
   GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=$mask $bc_flag > barcodes.json
 
-  python $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
+  python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
 __BARCODES__
 
 qsub -cwd -N "u-$flowcell" $parallel_env  -V -S /bin/bash  <<'__FASTQ__'
@@ -271,11 +270,11 @@ rsync -avP "$samplesheet" "$analysis_dir"
 
 cd "$analysis_dir"
 
-python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell"
+python3 "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell"
 
 $link_command
 
-python "$STAMPIPES/scripts/create_processing.py" --add_flowcell_scripts --ignore_failed_lanes
+python3 "$STAMPIPES/scripts/create_processing.py" --add_flowcell_scripts --ignore_failed_lanes
 
 bash run.bash
 __COPY__

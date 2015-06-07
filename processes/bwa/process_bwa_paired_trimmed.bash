@@ -1,26 +1,38 @@
+
 # Dependencies
 source $MODULELOAD
 module load bedops/2.4.2
 module load bedtools/2.16.2
-module load bwa/0.7.0
+module load bwa/0.7.12
 module load java/jdk1.7.0_05
 module load picard/1.118
-module load anaconda/2.1.0-2.7
 module load samtools/1.2
 module load gcc/4.7.2
 module load R/3.1.0
 module load git/2.3.3
 module load coreutils/8.9
+module load FastQC/0.11.3
+
+# Load in this order specifically, currently the python3 activation
+# overwrites the default "python" call, against advice
+source $PYTHON3_ACTIVATE
+module load python/2.7.3
 
 MAX_MISMATCHES=2
 MIN_MAPPING_QUALITY=10
 MAX_INSERT_SIZE=750
+
+JOB_BASENAME=${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}
 
 export FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 export UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 
 export ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 export VERSION_FILE=${SAMPLE_NAME}.versions.txt
+
+export FASTQ_TMP=$ALIGN_DIR/fastq
+
+cd $ALIGN_DIR
 
 if [ -n "$REDO_ALIGNMENT" ]; then
     bash $STAMPIPES/scripts/bwa/reset_alignment.bash
@@ -32,39 +44,10 @@ if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
   echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > $ADAPTER_FILE
 fi
 
-if [ ! -e $FASTQ_DIR/${SAMPLE_NAME}_R1_fastqc -o ! -e $FASTQ_DIR/${SAMPLE_NAME}_R2_fastqc -o -n "$FORCE_FASTQ" ]; then
-qsub -N ".fq${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-  set -x -e -o pipefail
-
-  echo "Hostname: "
-  hostname
-
-  echo "START: "
-  date
-
-  cd $FASTQ_DIR
-  make -f $STAMPIPES/makefiles/fastqc.mk
-
-  if [ "$UMI" = "True" ]; then
-      echo "Tallying up top UMI tags seen in R1"
-      zcat ${SAMPLE_NAME}_R1_???.fastq.gz | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | head -n 100 > ${SAMPLE_NAME}.topumis.txt
-  fi
-
-  bash $STAMPIPES/scripts/fastq/attachfiles.bash
-
-  echo "FINISH: "
-  date
-__SCRIPT__
-fi
-
-NUMBER_FASTQ_FILES=`find $FASTQ_DIR -maxdepth 1 -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l`
-FASTQ_PAIR_HOLDS=""
-FASTQ_PAIR_BAMS=""
-
 # Indicate we have started this alignment and upload pertinent information
 if [ ! -e ${FINAL_BAM} ]; then
 
-python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
   -t ${LIMS_API_TOKEN} \
   --alignment_id ${ALIGNMENT_ID} \
   --start_alignment_progress \
@@ -73,14 +56,21 @@ python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
 
 fi
 
-for filenum in $(seq -f "%03g" 1 $NUMBER_FASTQ_FILES)
+
+bash $STAMPIPES/scripts/fastq/splitfastq.bash
+
+NUMBER_FASTQ_FILES=`find $FASTQ_TMP -maxdepth 1 -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l`
+FASTQ_PAIR_HOLDS=""
+FASTQ_PAIR_BAMS=""
+
+for filenum in $(seq -f "%03g" 0 `expr $NUMBER_FASTQ_FILES - 1`)
 do
-  NAME=".aln${SAMPLE_NAME}_${filenum}_${FLOWCELL}"
+  NAME=".aln${JOB_BASENAME}_${filenum}"
   BAMFILE="${SAMPLE_NAME}_${filenum}.sorted.bam"
     
 if [ ! -e $BAMFILE -a ! -e ${FINAL_BAM} ]; then
 
-qsub -l h_data=5650M -pe threads 1-2 -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -l h_data=5650M -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -92,16 +82,16 @@ qsub -l h_data=5650M -pe threads 1-2 -N ${NAME} -V -cwd -S /bin/bash > /dev/stde
   if [ "$UMI" = "True" ]; then
 
   make -f $STAMPIPES/makefiles/bwa/bwa_paired_trimmed_umi.mk \
-    FASTQ1_FILE=${FASTQ_DIR}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
-    FASTQ2_FILE=${FASTQ_DIR}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
+    FASTQ1_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
+    FASTQ2_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
     OUTBAM=${BAMFILE} \
     TRIMSTATS=${SAMPLE_NAME}_${filenum}.trimstats.txt
 
   else
 
   make -f $STAMPIPES/makefiles/bwa/bwa_paired_trimmed.mk \
-    FASTQ1_FILE=${FASTQ_DIR}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
-    FASTQ2_FILE=${FASTQ_DIR}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
+    FASTQ1_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
+    FASTQ2_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
     OUTBAM=${BAMFILE} \
     TRIMSTATS=${SAMPLE_NAME}_${filenum}.trimstats.txt
 
@@ -134,9 +124,9 @@ if [ ! -e ${FINAL_BAM} -o ! -e ${UNIQUES_BAM} ]; then
 export FORCE_COUNTS=1
 export REPROCESS=1
 
-PROCESS_HOLD="-hold_jid .pb${SAMPLE_NAME}_${FLOWCELL}"
+PROCESS_HOLD="-hold_jid .pb${JOB_BASENAME}"
 
-JOBNAME=".pb${SAMPLE_NAME}_${FLOWCELL}"
+JOBNAME=".pb${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME"
 
 # If we are processing UMI, we will need a lot of power for sorting!
@@ -162,7 +152,7 @@ qsub ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd -S /bin/bash << _
     date
   
     if [ "$NUMBER_FASTQ_FILES" -eq "1" ]; then
-      mv ${SAMPLE_NAME}_001.sorted.bam ${FINAL_BAM}
+      mv ${SAMPLE_NAME}_000.sorted.bam ${FINAL_BAM}
     else
       samtools merge ${FINAL_BAM} ${FASTQ_PAIR_BAMS}
     fi
@@ -205,7 +195,7 @@ qsub ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd -S /bin/bash << _
 
   echo "FINISH PICARD DUP: " date
 
-  python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
     -t ${LIMS_API_TOKEN} \
     -f ${FLOWCELL} \
     --alignment_id ${ALIGNMENT_ID} \
@@ -228,7 +218,7 @@ fi
 
 if [ ! -e ${SAMPLE_NAME}.tagcounts.txt -o -n "$FORCE_COUNTS" ]; then
 
-JOBNAME=".ct${SAMPLE_NAME}_${FLOWCELL}"
+JOBNAME=".ct${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME"
    
 qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
@@ -241,7 +231,7 @@ qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT_
 
   time bash $STAMPIPES/scripts/bwa/tagcounts.bash $SAMPLE_NAME $SAMPLE_NAME.sorted.bam $SAMPLE_NAME.tagcounts.txt $FASTQ_DIR
   # upload all data to the LIMS
-  python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
       -f ${FLOWCELL} \
       --alignment_id ${ALIGNMENT_ID} \
@@ -257,7 +247,7 @@ fi
 
 if [ ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out -o ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt ]; then
 
-JOBNAME=".sp${SAMPLE_NAME}_${FLOWCELL}"
+JOBNAME=".sp${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME" 
     
 qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
@@ -272,7 +262,7 @@ qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT_
   make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
     READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
   # upload all data to the LIMS
-  python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
       -f ${FLOWCELL} \
       --alignment_id ${ALIGNMENT_ID} \
@@ -289,7 +279,7 @@ fi
 
 if [ ! -e ${SAMPLE_NAME}.75_20.${GENOME}.bw ]; then
 
-JOBNAME=".den${SAMPLE_NAME}_${FLOWCELL}"
+JOBNAME=".den${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME" 
 
 qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
@@ -313,7 +303,7 @@ fi
 
 if [ -n ${PROCESSING} ]; then
 
-qsub -hold_jid ${PROCESSING} -N ".com${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: "
   hostname
@@ -323,13 +313,15 @@ qsub -hold_jid ${PROCESSING} -N ".com${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin
 
   bash $STAMPIPES/scripts/bwa/checkcomplete.bash
 
-  python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
     -t ${LIMS_API_TOKEN} \
     -f ${FLOWCELL} \
     --alignment_id ${ALIGNMENT_ID} \
     --finish_alignment
 
   bash $STAMPIPES/scripts/bwa/attachfiles.bash
+
+  rm -r $ALIGN_DIR/fastq
 
   echo "FINISH: "
   date

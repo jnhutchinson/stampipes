@@ -2,13 +2,15 @@
 source $MODULELOAD
 module load bedops/2.4.2
 module load bedtools/2.16.2
-module load bwa/0.7.0
+module load bwa/0.7.12
 module load java/jdk1.7.0_05
 module load picard/1.118
-module load python/2.7.3
 module load samtools/0.1.19
 module load gcc/4.7.2
 module load R/3.1.0
+
+# Activate Python3 virtualenv
+source $PYTHON3_ACTIVATE
 
 FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
@@ -43,7 +45,7 @@ qsub -l h_data=5650M -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
     FASTQ1_FILE=${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
     FASTQ2_FILE=${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
     OUTBAM=${BAMFILE} \
-    ADAPTERFILE=$STAMPIPES/data/adapters/default.adapters
+    ADAPTERFILE=$STAMPIPES_DATA/adapters/default.adapters
 __SCRIPT__
 
   # Only hold on alignments that are being run
@@ -80,7 +82,7 @@ qsub ${HOLD} -N ".pb${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stde
   make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk
   make -f $STAMPIPES/makefiles/picard/dups.mk
 
-  python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
     -t ${LIMS_API_TOKEN} \
     -f ${FLOWCELL} \
     --alignment_id ${ALIGNMENT_ID} \
@@ -104,7 +106,7 @@ qsub $PROCESS_HOLD -N ".ct${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /de
 
   bash $STAMPIPES/scripts/bwa/tagcounts.bash $SAMPLE_NAME $SAMPLE_NAME.sorted.bam $SAMPLE_NAME.tagcounts.txt
   # upload all data to the LIMS
-  python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
       -f ${FLOWCELL} \
       --alignment_id ${ALIGNMENT_ID} \
@@ -121,10 +123,14 @@ qsub $PROCESS_HOLD -N ".sp${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /de
   set -x -e -o pipefail
   echo "Hostname: " `hostname`
 
+  # SPOT process requires python 2
+  source $MODULELOAD
+  module load python/2.7.3
+
   make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
     READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
   # upload all data to the LIMS
-  python $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
       -f ${FLOWCELL} \
       --alignment_id ${ALIGNMENT_ID} \
