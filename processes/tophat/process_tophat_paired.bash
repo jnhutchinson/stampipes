@@ -64,11 +64,24 @@ qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads $SLOTS -S /bin/bas
     echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > "$ADAPTER_FILE"
   fi
 
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a "$LIMS_API_URL" \
+    -t "$LIMS_API_TOKEN" \
+    --alignment_id "$ALIGNMENT_ID" \
+    --start_alignment_progress \
+    --adapter_file "$ADAPTER_FILE" \
+    --version_file "$VERSION_FILE"
+
   make --keep-going -f \$STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$JOBS"
 
   bash $STAMPIPES/scripts/tophat/checkcomplete.bash
 
   bash $STAMPIPES/scripts/tophat/attachfiles.bash
+
+  python3 $STAMPIPES/scripts/lims/upload_data.py -a "$LIMS_API_URL" \
+    -t "$LIMS_API_TOKEN" \
+    -f "$FLOWCELL" \
+    --alignment_id "$ALIGNMENT_ID" \
+    --finish_alignment
 
   echo "FINISH: "
   date
