@@ -8,7 +8,8 @@ module load cufflinks/2.2.1
 module load samtools/0.1.19
 module load bedtools/2.16.2
 module load gcc/4.7.2
-module load anaconda/2.1.0-2.7
+
+source $PICARD3_ACTIVATE
 
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR=$(dirname "$BWAINDEX")
