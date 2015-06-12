@@ -13,6 +13,7 @@ source $PICARD3_ACTIVATE
 
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR=$(dirname "$BWAINDEX")
+export ADAPTER_FILE="$SAMPLE_NAME.adapters.txt"
 
 filesize=$( du --total "$FASTQ_DIR"/*fastq.gz | tail -n1 | cut -f1)
 
@@ -56,8 +57,8 @@ qsub -cwd -V -q all.q -N .th-$SAMPLE_NAME -now no -pe threads $SLOTS -S /bin/bas
   echo "START: "
   date
 
-  if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
-    echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > ${SAMPLE_NAME}.adapters.txt
+  if [[ ( -n "$ADAPTER_P7" ) && ( -n "$ADAPTER_P5" ) ]] ; then
+    echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > "$ADAPTER_FILE"
   fi
 
   make --keep-going -f \$STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$JOBS"
