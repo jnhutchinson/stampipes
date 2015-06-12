@@ -14,6 +14,7 @@ source $PICARD3_ACTIVATE
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR=$(dirname "$BWAINDEX")
 export ADAPTER_FILE="$SAMPLE_NAME.adapters.txt"
+export VERSION_FILE="$SAMPLE_NAME.versions.txt"
 
 filesize=$( du --total "$FASTQ_DIR"/*fastq.gz | tail -n1 | cut -f1)
 
@@ -28,6 +29,8 @@ else
     SLOTS=1
     JOBS=2
 fi
+
+bash $STAMPIPES/scripts/versions.bash &> $VERSION_FILE
 
 if [ ! -e ${SAMPLE_NAME}_R1_fastqc -o ! -e ${SAMPLE_NAME}_R2_fastqc ]; then
 qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__

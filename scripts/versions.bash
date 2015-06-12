@@ -16,6 +16,18 @@ bwa  2>&1 | grep "Version"
 echo "---"
 fi
 
+if [[ `command -v tophat` ]]; then
+echo "Tophat:"
+tophat --version
+echo "---"
+fi
+
+if [[ `command -v cufflinks` ]]; then
+echo "Cufflinks:"
+cufflinks 2>&1 | head -n 2
+echo "---"
+fi
+
 if [[ `command -v samtools` ]]; then
 echo "SAMTOOLS:"
 samtools  2>&1 | grep "Version"
