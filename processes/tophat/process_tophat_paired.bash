@@ -1,13 +1,13 @@
 source $MODULELOAD
-module load bowtie/1.0.0
-module load java/jdk1.7.0_05
 module load bedops/2.4.14
-module load tophat/2.0.13
-module load picard/1.118
+module load bowtie/1.0.0
 module load cufflinks/2.2.1
-module load samtools/0.1.19
-module load bedtools/2.16.2
+module load FastQC/0.11.3
 module load gcc/4.7.2
+module load java/jdk1.7.0_05
+module load picard/1.118
+module load samtools/1.2
+module load tophat/2.0.13
 
 source $PICARD3_ACTIVATE
 
