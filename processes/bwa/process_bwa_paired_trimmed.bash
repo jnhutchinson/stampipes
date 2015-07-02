@@ -54,10 +54,8 @@ python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
   --adapter_file $ADAPTER_FILE \
   --version_file $VERSION_FILE
 
-fi
-
-
 bash $STAMPIPES/scripts/fastq/splitfastq.bash
+fi
 
 NUMBER_FASTQ_FILES=`find $FASTQ_TMP -maxdepth 1 -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l`
 FASTQ_PAIR_HOLDS=""
