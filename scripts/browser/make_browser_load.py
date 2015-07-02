@@ -30,7 +30,7 @@ def foldercheck(*args):
             try:
                 os.mkdir(folder)
                 util_log.info("Created folder: %s" % folder)
-            except OSError, x:
+            except OSError as x:
                 util_log.error("ERROR: Could not create directory: %s" % folder)
                 util_log.warn("Please make sure all nonexistant parent directories have been created.")
                 sys.exit(0)
@@ -113,8 +113,8 @@ class MakeBrowserload(object):
         self.load_config(browserconfig)
 
     def load_config(self, browserconfig):
-       import ConfigParser
-       Config = ConfigParser.ConfigParser()
+       import configparser
+       Config = configparser.ConfigParser()
        Config.read(browserconfig)
        self.server = Config.get("browser", "server")
        self.browser_url = Config.get("browser", "browser_url")
@@ -398,7 +398,7 @@ class MakeBrowserload(object):
         ra.write("group %s\n" % self.group)
         ra.write("priority %s\n" % self.priority)
         ra.write("subGroup1 view Views TAG=Tags DEN=Density\n")
-        ra.write("subGroup2 sample Sample %s\n" % " ".join(sorted(['%s=%s' % (id, display) for id, display in samples.iteritems()])))
+        ra.write("subGroup2 sample Sample %s\n" % " ".join(sorted(['%s=%s' % (id, display) for id, display in samples.items()])))
         ra.write("dimensions dimensionX=view dimensionY=sample\n")
         ra.write("sortOrder view=+ sample=+\n")
         ra.write("dragAndDrop subTracks\n")
@@ -511,7 +511,7 @@ class LimsQuery(object):
     def get_counts_for_alignment(self, alignment):
         counts = dict()
         page = 1
-        while len(counts.keys()) < len(self.count_types):
+        while len(counts) < len(self.count_types):
             result = self.get("flowcell_lane_count/?alignment=%s&page=%s" % (alignment, page ))
             if not 'results' in result:
                 break
