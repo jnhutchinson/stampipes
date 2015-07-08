@@ -54,8 +54,8 @@ def parser_setup():
         help="The process config to work off of.")
     parser.add_argument("-p", "--priority", dest="priority", required=True,
         help="The priority of this flowcell")
-    parser.add_argument("-n", "--post-aggregation", dest="post_aggregation", action="store_true",
-        help="Pass this option to indicate that the directory structure for this flowcell is post-aggregation")
+    parser.add_argument("--pre-align-dir", dest="pre_align_dir", action="store_true",
+        help="This flowcell was made before per-alignment directories")
 
     parser.set_defaults( **options )
     parser.set_defaults( quiet=False, debug=False )
@@ -212,12 +212,12 @@ class MakeBrowserload(object):
             if self.link_dir:
                 track["sampleDir"] = os.path.join("Project_%s" % project,
                                                   "Sample_%s" % track["SampleID"],
-                                                  track["AlignDir"] if poptions.post_aggregation else "")
+                                                  track["AlignDir"] if not poptions.pre_align_dir else "")
                 track["pathPrefix"] = "%s/%s" % (self.link_dir, track["sampleDir"])
             else:
                 track["sampleDir"] = os.path.join(self.basedir, self.project_dir[project],
                                                   "Sample_%s" % track["SampleID"],
-                                                  track["AlignDir"] if poptions.post_aggregation else "")
+                                                  track["AlignDir"] if not poptions.pre_align_dir else "")
                 track["pathPrefix"] = track["sampleDir"]
 
             if track["aligner"] == "bwa":
