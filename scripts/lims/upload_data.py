@@ -5,7 +5,7 @@ import fileinput
 import argparse
 import datetime
 import hashlib
-import os
+from zipfile import ZipFile
 
 token = None
 headers = None
@@ -22,6 +22,10 @@ script_options = {
     "basedir": os.getcwd(),
     "quiet": False,
     "debug": False,
+
+    "aggregation_id": None,
+    "complete_aggregation": False,
+    "clear_aggregation_stats": False,
 
     "alignment_id": None,
     "flowcell": None,
@@ -70,6 +74,12 @@ def parser_setup():
     parser.add_argument("-f", "--flowcell", dest="flowcell",
         help="The flowcell we're working on.  Enter it to clear cache after uploading.")
 
+    parser.add_argument("--aggregation_id", dest="aggregation_id", type=int)
+    parser.add_argument("--clear_aggregation_stats", dest="clear_aggregation_stats", action="store_true",
+        help="Clear the statistics/files for a given aggregation.")
+    parser.add_argument("--complete_aggregation", dest="complete_aggregation", action="store_true",
+        help="Set the aggregation to completed.")
+
     parser.add_argument("--clear_align_stats", dest="clear_align_stats", action="store_true",
         help="Clear the statistics/files for a given alignment.")
 
@@ -100,7 +110,7 @@ def parser_setup():
     parser.add_argument("--flowcell_lane_id", dest="flowcell_lane_id", type=int,
         help="The ID of the flowcell lane we're working on.")
     parser.add_argument("--fastqcfile", dest="fastqc_files", action="append",
-        help="A FastQC file to upload.")
+        help="A FastQC ZIP file to upload.")
     parser.add_argument("--insertsfile", dest="inserts_file",
         help="A Picard CollectInsertSizeMetrics text file for an alignment.")
     parser.add_argument("--dupsfile", dest="dups_file",
@@ -118,7 +128,7 @@ def parser_setup():
         help="The full path to a directory to attach to a LIMS object.")
     parser.add_argument("--attach_file_contenttype", dest="attach_file_contenttype",
         help="The content type to attach to, aka SequencingData.flowcelllanealignment")
-    parser.add_argument("--attach_file_objectid", dest="attach_file_objectid",
+    parser.add_argument("--attach_file_objectid", dest="attach_file_objectid", type=int,
         help="The object ID to attach to.")
     parser.add_argument("--attach_file_purpose", dest="attach_file_purpose",
         help="The file's purpose slug.")
@@ -154,7 +164,7 @@ def get_dup_score(spotdup_file):
     try:
         for line in infile:
             if line.startswith("LIBRARY"):
-                percent_duplication = float(infile.next().strip().split("\t")[7])
+                percent_duplication = float(next(infile).strip().split("\t")[7])
 
         return percent_duplication
     except UnboundLocalError as e:
@@ -188,7 +198,7 @@ def md5sum_file(path):
     md5sum = hashlib.md5()
 
     with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(1024*1024), ''):
+        for chunk in iter(lambda: f.read(1024*1024), b''):
             md5sum.update(chunk)
 
     return md5sum.hexdigest()
@@ -254,6 +264,139 @@ class UploadLIMS(object):
            log.info(results.json())
         else:
            log.error(results)
+
+    def clear_aggregation_stats(self, aggregation_id):
+        url = "aggregation/%d/clear_stats/" % aggregation_id
+        log.debug("Clearing stats: %s" % url)
+        results = requests.post("%s/%s" % (self.api_url, url), headers = self.headers)
+
+        if results.ok:
+           log.info(results.json())
+        else:
+           log.error(results)
+
+    def complete_aggregation(self, aggregation_id):
+        url = "aggregation/%d/" % aggregation_id
+
+        data = {
+            "processing_completed": datetime.datetime.now(),
+            "needs_reprocessing": False, 
+        }
+
+        results = requests.patch("%s/%s" % (self.api_url, url), headers = self.headers, data = data)
+
+        if results.ok:
+            log.info(results.json())
+        else:
+            log.error(results)
+
+    def get_fastqc_tags(self):
+
+       if not self.fastqc_tags:
+           tags_url = '%s/fastqc_tag/' % self.api_url
+           tags = list()
+
+           tags_results = requests.get(tags_url, headers = self.headers).json()
+           tags.extend(tags_results['results'])
+
+           while tags_results['next']:
+               tags_results = requests.get(tags_results['next'], headers = self.headers).json()
+               tags.extend(tags_results['results'])
+
+           self.fastqc_tags = dict([(tag['slug'], tag) for tag in tags])
+
+       return self.fastqc_tags
+
+    def get_picard_metrics(self):
+
+       if not self.picard_metrics:
+           metrics_url = '%s/picard_metric/' % self.api_url
+           picard_metrics = list()
+
+           metrics_results = requests.get(metrics_url, headers = self.headers).json()
+           picard_metrics.extend(metrics_results['results'])
+
+           while metrics_results['next']:
+               metrics_results = requests.get(metrics_results['next'], headers = self.headers).json()
+               picard_metrics.extend(metrics_results['results'])
+
+           self.picard_metrics = dict([(metric['name'], metric) for metric in picard_metrics])
+
+       return self.picard_metrics
+
+    def get_contenttype(self, contenttype_name):
+        """
+        Appname uses capitalization, modelname does not.
+        """
+
+        (appname, modelname) = contenttype_name.split(".")
+
+        contenttype_url = '%s/content_type/?app_label=%s&model=%s' % (self.api_url, appname, modelname)
+
+        return self.get_single_result(contenttype_url)
+
+    def get_file_purpose(self, slug):
+
+        filepurpose_url = '%s/file_purpose/?slug=%s' % (self.api_url, slug)
+
+        return self.get_single_result(filepurpose_url, field="url")
+
+    def get_file_type(self, slug):
+
+        filetype_url = '%s/file_type/?slug=%s' % (self.api_url, slug)
+
+        return self.get_single_result(filetype_url, field="url")
+
+    def upload_directory_attachment(self, path, contenttype_name, object_id, file_purpose=None):
+        path = os.path.abspath(path)
+
+        if not (contenttype_name and object_id):
+            log.error("Cannot attach file %s without both content type and object_id" % path)
+            return False
+
+        contenttype = self.get_contenttype(contenttype_name)
+
+        if not contenttype:
+            log.error("Cannot attach file %s without contenttype result" % path)
+            return False
+
+        purpose = self.get_file_purpose(file_purpose)
+
+        if file_purpose and not purpose:
+            log.error("Could not find file purpose %s for uploading directory %s" % (file_purpose, path))
+            return False
+        elif purpose:
+            log.debug("File purpose: %s" % purpose)
+
+        check_exist_url = "%s/directory/?path=%s" % (self.api_url, path)
+        exists = self.get_single_result(check_exist_url)
+
+        if exists:
+            data = exists
+        else:
+            data = {}
+
+        data.update({
+            'path': path,
+            'content_type': contenttype['url'],
+            'object_id': object_id,
+            'purpose': purpose,
+        })
+
+        if exists:
+            log.info("Updating information for directory %s" % path)
+            result = requests.put(data['url'], headers = self.headers, data = data)
+        else:
+            log.info("Uploading information for directory %s" % path)
+            result = requests.post("%s/directory/" % self.api_url, headers = self.headers, data = data)
+
+        log.debug(data)
+
+        if not result.ok:
+            log.error("Could not upload directory %s" % path)
+            log.debug(data)
+        else:
+            log.debug(result.json())
 
     def get_fastqc_tags(self):
 
@@ -364,6 +507,8 @@ class UploadLIMS(object):
     def upload_file_attachment(self, path, contenttype_name, object_id, file_purpose=None, file_type=None):
         path = os.path.abspath(path)
 
+        log.info("Attaching file %s to object %d (contenttype %s)" % (path, object_id, contenttype_name))
+
         if not (contenttype_name and object_id):
             log.error("Cannot attach file %s without both content type and object_id" % path)
             return False
@@ -393,14 +538,11 @@ class UploadLIMS(object):
         check_exist_url = "%s/file/?path=%s" % (self.api_url, path)
         exists = self.get_single_result(check_exist_url)
 
-        if exists:
-            data = exists
-        else:
-            data = {}
-
         md5sum = md5sum_file(path)
         file_size = os.path.getsize(path)
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+
+        log.info("MD5sum: %s\tFile size: %d\tLast modified: %s" % (md5sum, file_size, str(last_modified)))
 
         data.update({
             'path': path,
@@ -622,7 +764,7 @@ class UploadLIMS(object):
         datastring = open(barcode_file, 'r').read()
         try:
             jsondata = json.loads(datastring)
-        except ValueError, e:
+        except ValueError as e:
             log.error("Barcode report %s is not valid JSON" % barcode_file)
             return
 
@@ -774,12 +916,21 @@ class UploadLIMS(object):
 
             if not result.ok:
                 log.error("Could not upload SPOT")
-                print result
+                log.error(result)
             else:
                 log.debug(result.json())
         else:
             log.error("Could not figure out which SPOT score to upload to!")
             log.error(exists)
+
+    def get_fastqc_contents(self, filename):
+
+        file_in_zip = "%s/fastqc_data.txt" % os.path.splitext(os.path.basename(filename))[0]
+        with ZipFile(filename) as fastqc_zip:
+            with fastqc_zip.open(file_in_zip) as fastqc_report:
+               return fastqc_report.read()
+
+        return None
 
     def upload_fastqc(self, flowcell_lane_id, filename):
 
@@ -791,20 +942,16 @@ class UploadLIMS(object):
         m = re.search(r'(?P<samplename>[^/]+)_(?P<barcode>[AGTC-]+|NoIndex)_L00(?P<lane>[0-9])_(?P<read>R[12])', filename)
 
         if not m:
-            log.error("Could not figure out %s" % filename)
-            return None
+            log.error("Could not figure out information for %s" % filename)
+            return False
 
         log.info(m.groups())
 
-        fastqc_report = None
+        fastqc_report = self.get_fastqc_contents(filename)
 
-        try:
-            fastqc_report = open(filename, 'r').read()
-        except:
-            log.error("Could not read fastqc file %s" % filename)
-            return None
-
-        self.fastqc_counts[filename] = get_fastqc_counts(fastqc_report)
+        if not fastqc_report:
+           log.error("Could not read fastqc report %s" % filename)
+           return False
 
         samplename = m.group('samplename')
         read = m.group('read')
@@ -1014,6 +1161,12 @@ from the command line."""
         uploader.upload_alignment_records(poptions.alignment_id,
             version_file=poptions.version_file, adapter_file=poptions.adapter_file,
             start_time=poptions.align_start_time, complete_time=poptions.align_complete_time)
+
+    if poptions.aggregation_id and poptions.clear_aggregation_stats:
+        uploader.clear_aggregation_stats(poptions.aggregation_id)
+
+    if poptions.aggregation_id and poptions.complete_aggregation:
+        uploader.complete_aggregation(poptions.aggregation_id)
 
     if poptions.flowcell:
         uploader.clear_flowcell_cache(poptions.flowcell)

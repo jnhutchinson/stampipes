@@ -1,26 +1,13 @@
-#!/bin/env python
+#!/bin/env python3
 
-#filter_reads.py - Set SAM flag 0x200 (QC-fail) for reads failing various criteria.
-#
-#Criteria:
-#* Read must be end-to-end mapped without soft clipping or indels and meet cutoffs for MAPQ and NM
-#* PE reads must have both reads present and meeting all above criteria. Additionally, they must face each other on the same reference and have an insert length wit
-#
-#Requirements:
-#pySAM 0.6.0 
-#
-#Input: assumed to be BAM for now
-#
-#Usage:
-#Must be sorted by read name
-#
-#filter_reads.py in.bam out.bam
-#
-#or
-#
-#samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sortbyname -l 1 -n - |
-#filter_reads.py - - |
-#samtools sort -@ $NSLOTS -O bam -T $TMPDIR/${sample}.sort -l 1 - > $sample.bam
+"""
+filter_reads.py - Set SAM flag 0x200 (QC-fail) for reads failing various criteria.
+
+Criteria:
+ * Read must be end-to-end mapped without soft clipping or indels and meet cutoffs for MAPQ and NM
+ * PE reads must have both reads present and meeting all above criteria. Additionally, they must
+   face each other on the same reference and have an insert length wit
+"""
 
 import sys
 import logging
@@ -32,21 +19,21 @@ import re
 '''
 Exception when a bad read is found
 '''
-class ReadException(Exception):
+class read_exception(Exception):
     pass
 
 '''
 Looks for the UMI embeded in the read name, places it in a tag and trims the read name
 '''
-def parse_umi(read, read_tags):
-        
+def parse_umi(read):
+
     try:
-            umi_loc = read.qname.index('#')
+        umi_loc = read.query_name.index('#')
     except:
-            pass
+        pass
     else:
-        read_tags["XD"] = read.qname[umi_loc+1:]
-        read.qname = read.qname[:umi_loc]
+        read.set_tag("XD", read.query_name[umi_loc+1:])
+        read.query_name = read.query_name[:umi_loc]
 
     return read
 
@@ -54,11 +41,11 @@ def parse_umi(read, read_tags):
 General function to set the flag field
 '''
 def set_read_flag(read, flag, mark):
-        
+
     if mark:
-            read.flag |= (1<<flag)
+        read.flag |= (1<<flag)
     else:
-            read.flag &= ~(1<<flag)
+        read.flag &= ~(1<<flag)
 
     return read
 
@@ -74,11 +61,11 @@ def set_qc_fail(read, mark = True):
 General function to check whether a individual read passes QC
 Throws a read exception if fails QC check
 '''
-def validate_read(read, read_tags, min_mapq = 1, max_mismatches = 2):
+def validate_read(read, min_mapq = 1, max_mismatches = 2):
 
-    if read.mapq < min_mapq: raise ReadException("Read MAPQ < %d" % min_mapq)
-    if read.is_unmapped: raise ReadException("Read not mapped")
-    if read_tags["NM"] > max_mismatches: raise ReadException("Read mismatches > %d" % max_mismatches)
+    if read.mapping_quality < min_mapq: raise read_exception("Read MAPQ < %d" % min_mapq)
+    if read.is_unmapped: raise read_exception("Read not mapped")
+    if read.get_tag("NM") > max_mismatches: raise read_exception("Read mismatches > %d" % max_mismatches)
 
     return read
 
@@ -95,8 +82,8 @@ args = parser.parse_args()
 
 logging.basicConfig(stream = sys.stdout, level = args.verbosity)
 
-raw_alignment = pysam.Samfile(args.raw_alignment, "rb")
-filtered_alignment = pysam.Samfile(args.filtered_alignment, "wbu", template = raw_alignment)
+raw_alignment = pysam.AlignmentFile(args.raw_alignment, "rb")
+filtered_alignment = pysam.AlignmentFile(args.filtered_alignment, "wbu", template = raw_alignment)
 
 raw_reads = raw_alignment.fetch(until_eof = True)
 
@@ -110,82 +97,74 @@ while(1):
 
     try:
         if not read1:
-            read1 = raw_reads.next()
-            read1_tags = dict(read1.tags)
-            read1 = parse_umi(read1, read1_tags)                        
+            read1 = parse_umi(next(raw_reads))
     except:
-        logging.debug("Cannot get read 1")
         break
 
     try:
-            
-        read2 = raw_reads.next()
-        read2_tags = dict(read2.tags)
-        read2 = parse_umi(read2, read2_tags)    
-
+        read2 = parse_umi(next(raw_reads))
     except:
-        logging.debug("Cannot get read 2")
         read2 = None
 
     # Continue in pair-end mode if their is two reads that are paired and that they have the same name
 
-    if (read1 and read2) and (read1.is_paired and read2.is_paired) and (read1.qname == read2.qname):
+    if (read1 and read2) and (read1.is_paired and read2.is_paired) and (read1.query_name == read2.query_name):
 
-        (read1, read2) = (read1, read2) if read1.is_read1 else (read2, read1)           
-        
-        try:    
+        (read1, read2) = (read1, read2) if read1.is_read1 else (read2, read1)
+
+        try:
             # Check if the individual reads pass QC; throws exception if not
 
-            validate_read(read1, read1_tags, args.min_mapq, args.max_mismatches)
-            validate_read(read2, read2_tags, args.min_mapq, args.max_mismatches)
+            validate_read(read1, args.min_mapq, args.max_mismatches)
+            validate_read(read2, args.min_mapq, args.max_mismatches)
 
             # Read pair must be in F-R configuration
 
             if read1.is_reverse == read2.is_reverse:
-                    raise ReadException("Mates cannot align to same strand!")
-            
-            # Both reads must map to same contig            
-    
-            if read1.tid != read2.tid:
-                    raise ReadException("Mates must align to the same reference contig!")
+                raise read_exception("Mates cannot align to same strand!")
+
+            # Both reads must map to same contig
+
+            if read1.reference_id != read2.reference_id:
+                raise read_exception("Mates must align to the same reference contig!")
 
             # Insert size must be greater than 0
 
-            if read1.tlen == 0 or read2.tlen == 0:
-                    raise ReadException("Insert size cannot be 0!")
+            if read1.template_length == 0 or read2.template_length == 0:
+                raise read_exception("Insert size cannot be 0!")
 
             # Insert sizes must add up to zero (one must be positive and the other negative)
 
-            if read1.tlen + read2.tlen != 0:
-                    raise ReadException("Insert sizes must be equal!")
+            if read1.template_length + read2.template_length != 0:
+                raise read_exception("Insert sizes must be equal!")
 
-            # Insert sizes must less than the maximum                               
+            # Insert sizes must less than the maximum
 
-            if abs(read1.tlen) > args.max_insert_size or read2.tlen > args.max_insert_size:
-                    raise ReadException("Insert size > %d!" % args.max_insert_size)
+            if abs(read1.template_length) > args.max_insert_size or read2.template_length > args.max_insert_size:
+                raise read_exception("Insert size > %d!" % args.max_insert_size)
 
-        except ReadException, e:
-        
+        except read_exception as e:
+
             # If we get a read exception, then set
             # QC fail flag, and unset proper pair flag
 
             qc_fail = True
-            proper_pair = False             
-    
+            proper_pair = False
+
             logging.debug(e)
             logging.debug(read1)
             logging.debug(read2)
 
         else:
-                
+
             # No exception, then unset
-            # QC fail flag, and unset proper pair flag                      
+            # QC fail flag, and unset proper pair flag
 
             qc_fail = False
             proper_pair = True
 
         finally:
-        
+
             # Set the flags
 
             set_qc_fail(read1, qc_fail)
@@ -194,16 +173,13 @@ while(1):
             set_qc_fail(read2, qc_fail)
             set_proper_pair(read2, proper_pair)
 
-            read1.tags = read1_tags.items()
-            read2.tags = read2_tags.items()
-
             # Write file
 
             filtered_alignment.write(read1)
             filtered_alignment.write(read2)
-            
+
             (read1, read2) = (None, None)
-    
+
     #Failed pair-end test -- could be single-end
 
     else:
@@ -216,13 +192,13 @@ while(1):
 
                 if not read.mate_is_unmapped:
 
-                    raise ReadException("No mate found (incongruant flag)!")
+                    raise read_exception("No mate found (incongruant flag)!")
 
                 else:
 
-                    raise ReadException("No mate found!")
+                    raise read_exception("No mate found!")
 
-        except ReadException, e:
+        except read_exception as e:
 
             qc_fail = True
 
@@ -237,11 +213,13 @@ while(1):
 
             set_qc_fail(read1, qc_fail)
             set_proper_pair(read1, False)
-    
+
             filtered_alignment.write(read1)
 
             (read1, read2) = (read2, None)
-                            
+
 # clean-up and close files
 raw_alignment.close()
 filtered_alignment.close()
+
+

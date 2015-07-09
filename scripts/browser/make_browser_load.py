@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
 
 import json
 import os
@@ -9,7 +8,6 @@ import logging
 import re
 import copy
 import requests
-
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.getLogger("requests").setLevel(logging.WARNING)
@@ -32,7 +30,7 @@ def foldercheck(*args):
             try:
                 os.mkdir(folder)
                 util_log.info("Created folder: %s" % folder)
-            except OSError, x:
+            except OSError as x:
                 util_log.error("ERROR: Could not create directory: %s" % folder)
                 util_log.warn("Please make sure all nonexistant parent directories have been created.")
                 sys.exit(0)
@@ -56,8 +54,8 @@ def parser_setup():
         help="The process config to work off of.")
     parser.add_argument("-p", "--priority", dest="priority", required=True,
         help="The priority of this flowcell")
-    parser.add_argument("-n", "--post-aggregation", dest="post_aggregation", action="store_true",
-        help="Pass this option to indicate that the directory structure for this flowcell is post-aggregation")
+    parser.add_argument("--pre-align-dir", dest="pre_align_dir", action="store_true",
+        help="This flowcell was made before per-alignment directories")
 
     parser.set_defaults( **options )
     parser.set_defaults( quiet=False, debug=False )
@@ -115,8 +113,8 @@ class MakeBrowserload(object):
         self.load_config(browserconfig)
 
     def load_config(self, browserconfig):
-       import ConfigParser
-       Config = ConfigParser.ConfigParser()
+       import configparser
+       Config = configparser.ConfigParser()
        Config.read(browserconfig)
        self.server = Config.get("browser", "server")
        self.browser_url = Config.get("browser", "browser_url")
@@ -214,12 +212,12 @@ class MakeBrowserload(object):
             if self.link_dir:
                 track["sampleDir"] = os.path.join("Project_%s" % project,
                                                   "Sample_%s" % track["SampleID"],
-                                                  track["AlignDir"] if poptions.post_aggregation else "")
+                                                  track["AlignDir"] if not poptions.pre_align_dir else "")
                 track["pathPrefix"] = "%s/%s" % (self.link_dir, track["sampleDir"])
             else:
                 track["sampleDir"] = os.path.join(self.basedir, self.project_dir[project],
                                                   "Sample_%s" % track["SampleID"],
-                                                  track["AlignDir"] if poptions.post_aggregation else "")
+                                                  track["AlignDir"] if not poptions.pre_align_dir else "")
                 track["pathPrefix"] = track["sampleDir"]
 
             if track["aligner"] == "bwa":
@@ -400,7 +398,7 @@ class MakeBrowserload(object):
         ra.write("group %s\n" % self.group)
         ra.write("priority %s\n" % self.priority)
         ra.write("subGroup1 view Views TAG=Tags DEN=Density\n")
-        ra.write("subGroup2 sample Sample %s\n" % " ".join(sorted(['%s=%s' % (id, display) for id, display in samples.iteritems()])))
+        ra.write("subGroup2 sample Sample %s\n" % " ".join(sorted(['%s=%s' % (id, display) for id, display in samples.items()])))
         ra.write("dimensions dimensionX=view dimensionY=sample\n")
         ra.write("sortOrder view=+ sample=+\n")
         ra.write("dragAndDrop subTracks\n")
@@ -513,7 +511,7 @@ class LimsQuery(object):
     def get_counts_for_alignment(self, alignment):
         counts = dict()
         page = 1
-        while len(counts.keys()) < len(self.count_types):
+        while len(counts) < len(self.count_types):
             result = self.get("flowcell_lane_count/?alignment=%s&page=%s" % (alignment, page ))
             if not 'results' in result:
                 break

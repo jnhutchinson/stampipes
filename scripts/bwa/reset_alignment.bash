@@ -29,6 +29,10 @@ for FILE in "${files[@]}"; do
     fi
 done
 
+if [ -e "fastq" ]; then
+    rm -r fastq
+fi
+
 # Remove all trim stat files
 
 for FILE in `find . -name "${SAMPLE_NAME}.trimstats.txt"`; do
@@ -55,4 +59,4 @@ for PREFIX in "${prefixes[@]}"; do
     done
 done
 
-python $STAMPIPES/scripts/lims/upload_data.py --clear_align_stats --alignment_id ${ALIGNMENT_ID}
+python3 $STAMPIPES/scripts/lims/upload_data.py --clear_align_stats --alignment_id ${ALIGNMENT_ID}

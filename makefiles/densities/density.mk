@@ -33,7 +33,7 @@ WIN=75
 BINI=20
 TAGEXP=$(FLOWCELL)-$(SAMPLE_NAME)-$(FORG)
 
-BUCKETS_DIR ?= $(STAMPIPES)/data/densities/
+BUCKETS_DIR ?= $(STAMPIPES_DATA)/densities/
 
 CHROM_BUCKET ?= $(BUCKETS_DIR)/chrom-buckets.$(GENOME).$(WIN)_$(BINI).bed.starch
 

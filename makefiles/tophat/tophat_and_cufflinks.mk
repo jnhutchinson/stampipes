@@ -33,7 +33,7 @@ R2_FASTQ_FILES ?= $(wildcard $(FASTQ_DIR)/$(SAMPLE_NAME)_R2_*.fastq.gz)
 r1_fastq_names = $(notdir $(R1_FASTQ_FILES))
 r2_fastq_names = $(notdir $(R2_FASTQ_FILES))
 
-ADAPTERFILE ?= $(SAMPLE_NAME).adapters.txt
+ADAPTER_FILE ?= $(SAMPLE_NAME).adapters.txt
 
 TRIM_DIR ?= $(TMPDIR)/trimmed
 R1_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(r1_fastq_names)))
@@ -182,7 +182,7 @@ $(TMPDIR)/spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_N
 $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(FASTQ_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(FASTQ_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
 	mkdir $(TRIM_DIR) -p ; \
 	trim-adapters-illumina \
-		-f $(ADAPTERFILE) \
+		-f $(ADAPTER_FILE) \
 		-1 P5 -2 P7 \
 		$+ \
 		$(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz

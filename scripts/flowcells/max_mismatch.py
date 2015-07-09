@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Usage: $0
 # Primarily intended for use in other scripts, primarly flowcells/setup.sh
@@ -117,12 +117,12 @@ def main(args = sys.argv):
     process_json.close()
 
     mask_string = data['alignment_group']['bases_mask']
-    mask = parse_bases_mask(mask_string)
+    mask = list(parse_bases_mask(mask_string))
 
     # If the flowcell has no index, exit.
     if len(mask) == 0:
         sys.stderr.write("No index reads found, setting mismatches = 1\n")
-        print "1"
+        print("1")
         sys.exit(0)
 
     lanes = create_lane_set(data['libraries'], mask, poptions.ignore_failed_lanes)
@@ -133,7 +133,7 @@ def main(args = sys.argv):
         sys.stderr.write("No allowable mismatch levels found, barcode collision?\n")
         sys.exit(1)
 
-    print ",".join(map(str, mismatch_level))
+    print(",".join(map(str, mismatch_level)))
 
 if __name__ == "__main__":
     main()
