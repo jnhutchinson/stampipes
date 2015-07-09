@@ -22,6 +22,7 @@
 ###################
 
 SHELL = bash
+PYTHON = python3
 
 # NSLOTS is the default sge environment variable letting the process know
 # how many threads it has reserved
@@ -102,12 +103,11 @@ $(TMPDIR)/align.sorted.bam : $(TMPDIR)/align.filtered.bam
 
 # Create unsorted filtered BAM files
 $(TMPDIR)/align.filtered.bam : $(TMPDIR)/align.unsorted.bam
-	time $(STAMPIPES)/scripts/bwa/filter_reads.py $^ $@
+	time $(PYTHON) $(STAMPIPES)/scripts/bwa/filter_reads.py $^ $@
 
 # Create unsorted raw BAM files
 $(TMPDIR)/align.unsorted.bam : $(TMPDIR)/align.sam
-	time $(SAMTOOLS) view -bS -t $(FAI) $^ \
-		| python $(STAMPIPES)/scripts/bwa/fix_bam_pairing.py - $@ \
+	time $(SAMTOOLS) view -bS -t $(FAI) $^ > $@ \
 		&& echo made $@ >&2
 
 # Create the SAM files from each pair of SAI and FASTQ files
@@ -130,7 +130,7 @@ $(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz : $(TMPDIR)/umi.R1.f
 		&& echo trimmed $(SAMPLE_NAME) >&2
 
 $(TMPDIR)/umi.R1.fastq.gz : $(FASTQ1_FILE)
-	time python $(STAMPIPES)/scripts/umi/fastq_umi_add.py $^ $@
+	time $(PYTHON) $(STAMPIPES)/scripts/umi/fastq_umi_add.py $^ $@
 
 $(TMPDIR)/umi.R2.fastq.gz : $(FASTQ2_FILE)
-	time python $(STAMPIPES)/scripts/umi/fastq_umi_add.py $^ $@
+	time $(PYTHON) $(STAMPIPES)/scripts/umi/fastq_umi_add.py $^ $@

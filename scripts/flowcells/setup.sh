@@ -5,7 +5,7 @@ set -o pipefail
 
 # Dependencies
 source $MODULELOAD
-module load python/2.7.3
+source $PYTHON3_ACTIVATE
 
 #########
 # Options
@@ -74,7 +74,7 @@ echo "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,Sam
 
 # ( X | tostring) syntax is for non-string fields
 # Default values (if field is false or null) come after //
-jq -r --arg flowcell "$flowcell" ' 
+jq -r --arg flowcell "$flowcell" '
 .libraries as $l
 | $l
 | map( select(.failed == false) )
@@ -117,7 +117,7 @@ SampleID,SampleName,index,index2
 __SHEET__
 
 # This bit of cryptic magic generates the samplesheet part.
-jq -r '.libraries[] | map(select(.failed == false)) | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
+jq -r '.libraries[] | select(.failed == false) | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
   | sed 's/\([ACTG]\+\)-\([ACTG]\+\),$/\1,\2/'  # Changes dual-index barcodes to proper format
 
 }
@@ -132,13 +132,13 @@ illumina_dir=$(pwd)
 link_command="#no linking to do"
 
 # Get and read the processing script
-python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
+python3 "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 analysis_dir=$( jq -r '.alignment_group.directory'  "$json" )
 mask=$(         jq -r '.alignment_group.bases_mask' "$json" )
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 
-mismatches=$( "$STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes" )
+mismatches=`python3 $STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes`
 
 if [ -n "$demux" ] ; then
   echo -e "\n----WARNING!-----"
@@ -150,7 +150,7 @@ case $run_type in
 "NextSeq 500")
     echo "Regular NextSeq 500 run detected"
     parallel_env="-pe threads 4-8"
-    link_command="python $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
@@ -226,6 +226,14 @@ if [ -n "$demux" ] ; then
 fi
 
 
+flowcell_id=$( curl \
+  "$LIMS_API_URL"/flowcell_run/?label=$flowcell \
+  -H "Authorization: Token $LIMS_API_TOKEN" \
+  -k \
+  2>/dev/null \
+  | jq '.results[] | .id'
+)
+
 # The final script is below:
 cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 #!/bin/bash
@@ -233,14 +241,23 @@ cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 source $MODULELOAD
 module load bcl2fastq/1.8.4
 module load bcl2fastq2/2.15.0.4
-module load python/2.7.3
+source $PYTHON3_ACTIVATE
+
+
+# Register the file directory
+python /home/audrakj/stampipes/scripts/lims/upload_data.py \
+  --attach_directory "$analysis_dir" \
+  --attach_file_contenttype sequencingdata.flowcellrun \
+  --attach_file_purpose flowcell-directory \
+  --attach_file_objectid $flowcell_id
+
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
 qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
   GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=$mask $bc_flag > barcodes.json
 
-  python $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
+  python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
 __BARCODES__
 
 qsub -cwd -N "u-$flowcell" $parallel_env  -V -S /bin/bash  <<'__FASTQ__'
@@ -271,13 +288,35 @@ rsync -avP "$samplesheet" "$analysis_dir"
 
 cd "$analysis_dir"
 
-python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell"
-
 $link_command
 
-python "$STAMPIPES/scripts/create_processing.py" --add_flowcell_scripts --ignore_failed_lanes
 
-bash run.bash
+# Create fastqc scripts
+python /home/audrakj/stampipes/scripts/laneprocess.py \
+  --script_template "$STAMPIPES/processes/fastq/fastqc.bash" \
+  --qsub-prefix .fq \
+  --sample-script-basename fastqc.bash \
+  --flowcell_label "$flowcell" \
+  --outfile fastqc.bash
+
+# Create collation scripts
+python /home/audrakj/stampipes/scripts/laneprocess.py \
+  --script_template "$STAMPIPES/processes/fastq/collate_fastq.bash" \
+  --qsub-prefix .cl \
+  --sample-script-basename "collate.bash" \
+  --flowcell_label "$flowcell" \
+  --outfile collate.bash
+
+# Create alignment scripts
+python $STAMPIPES/scripts/alignprocess.py \
+  --flowcell $flowcell \
+  --outfile run.bash
+
+bash collate.bash
+bash fastqc.bash
+
+qsub -hold_jid '.cl*' -cwd -V -q all.q -S /bin/bash run.bash
+
 __COPY__
 
 __BCL2FASTQ__

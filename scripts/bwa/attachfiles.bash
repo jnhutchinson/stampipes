@@ -9,7 +9,7 @@
 
 UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
 
-ATTACH_ALIGNMENT="python $UPLOAD_SCRIPT --attach_file_contenttype SequencingData.flowcelllanealignment --attach_file_objectid ${ALIGNMENT_ID}"
+ATTACH_ALIGNMENT="python3 $UPLOAD_SCRIPT --attach_file_contenttype SequencingData.flowcelllanealignment --attach_file_objectid ${ALIGNMENT_ID}"
 
 $ATTACH_ALIGNMENT --attach_directory ${ALIGN_DIR} --attach_file_purpose alignment-directory 
 $ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.sorted.bam --attach_file_purpose all-alignments-bam --attach_file_type bam

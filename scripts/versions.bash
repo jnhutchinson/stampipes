@@ -16,6 +16,18 @@ bwa  2>&1 | grep "Version"
 echo "---"
 fi
 
+if [[ `command -v tophat` ]]; then
+echo "Tophat:"
+tophat --version
+echo "---"
+fi
+
+if [[ `command -v cufflinks` ]]; then
+echo "Cufflinks:"
+cufflinks 2>&1 | head -n 2
+echo "---"
+fi
+
 if [[ `command -v samtools` ]]; then
 echo "SAMTOOLS:"
 samtools  2>&1 | grep "Version"
@@ -66,6 +78,12 @@ echo "PYTHON:"
 python -V 2>&1
 python $STAMPIPES/scripts/versions.py
 echo "---"
+fi
+
+if [[ `command -v python3` ]]; then
+echo "PYTHON3:"
+python3 -V 2>&1
+python3 $STAMPIPES/scripts/versions.py
 fi
 
 if [[ `command -v java` ]]; then
