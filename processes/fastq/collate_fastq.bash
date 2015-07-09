@@ -7,13 +7,13 @@ R1_NUM_FILES=$(ls ${SAMPLE_NAME}_R1_???.fastq.gz | wc -l)
 
 if [[ "$PAIRED" == "True" ]]; then
 
-R2_NUM_FILES=$(ls ${SAMPLE_NAME}_R2_???.fastq.gz | wc -l)
+  R2_NUM_FILES=$(ls ${SAMPLE_NAME}_R2_???.fastq.gz | wc -l)
 
-if [[ "$R1_NUM_FILES" -ne "$R2_NUM_FILES" ]]; then
+  if [[ "$R1_NUM_FILES" -ne "$R2_NUM_FILES" ]]; then
 
-  echo "UNEQUAL NUMBER OF FILES FOR $SAMPLE_NAME IN $FASTQ_DIR"
-  exit 1
-fi
+    echo "UNEQUAL NUMBER OF FILES FOR $SAMPLE_NAME IN $FASTQ_DIR"
+    exit 1
+  fi
 fi
 
 UPLOAD_SCRIPT="python3 $STAMPIPES/scripts/lims/upload_data.py --attach_file_contenttype SequencingData.flowcelllane --attach_file_objectid ${FLOWCELL_LANE_ID} --attach_file_type=gzipped-fastq"
@@ -21,12 +21,15 @@ UPLOAD_SCRIPT="python3 $STAMPIPES/scripts/lims/upload_data.py --attach_file_cont
 R1_FILE=${FASTQ_NAME}_R1.fastq.gz
 R2_FILE=${FASTQ_NAME}_R2.fastq.gz
 
-if [ -e $R1_FILE ]; then
-  rm $R1_FILE
+R1_TMP_FILE=$(mktemp)
+R2_TMP_FILE=$(mktemp)
+
+if [ -e "$R1_FILE" ]; then
+  rm "$R1_FILE"
 fi
 
-if [ -e $R2_FILE ]; then
-  rm $R2_FILE
+if [ -e "$R2_FILE" ]; then
+  rm "$R2_FILE"
 fi
 
 echo "R1: $R1_FILE"
@@ -35,16 +38,21 @@ echo "R2: $R2_FILE"
 for filenum in $(seq -f "%03g" 1 $R1_NUM_FILES)
 do
 
-echo "Adding ${filename} to collated files"
+  echo "Adding ${filenum} to collated files"
 
-cat ${SAMPLE_NAME}_R1_${filenum}.fastq.gz >> $R1_FILE
+  cat ${SAMPLE_NAME}_R1_${filenum}.fastq.gz >> $R1_TMP_FILE
 
-if [[ "$PAIRED" == "True" ]]; then
-  R2_FILE=${FASTQ_NAME}_R2.fastq.gz
-  cat ${SAMPLE_NAME}_R2_${filenum}.fastq.gz  >> $R2_FILE
-fi
+  if [[ "$PAIRED" == "True" ]]; then
+    R2_FILE=${FASTQ_NAME}_R2.fastq.gz
+    cat ${SAMPLE_NAME}_R2_${filenum}.fastq.gz  >> $R2_TMP_FILE
+  fi
 
 done
+
+mv "$R1_TMP_FILE" "$R1_FILE"
+if [[ "$PAIRED" == "True" ]] ; then
+  mv "$R2_TMP_FILE" "$R2_FILE"
+fi
 
 gzip -t $R1_FILE
 $UPLOAD_SCRIPT --attach_file_purpose r1-fastq --attach_file ${R1_FILE}
