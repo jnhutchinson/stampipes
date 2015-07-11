@@ -70,39 +70,46 @@ fi
 #######################
 
 make_hiseq_samplesheet(){
-echo "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject"
+  echo "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject"
 
-# ( X | tostring) syntax is for non-string fields
-# Default values (if field is false or null) come after //
-jq -r --arg flowcell "$flowcell" '
-.libraries as $l
-| $l
-| map( select(.failed == false) )
-| map( .lane as $num
-   | .barcode_index =
-       if (  $l | map(select( $num  == .lane )) | length == 1 ) then
-           "NoIndex"
-       else
-           .barcode_index
-       end )
-| .[] | [
- "FC" + $flowcell,
- (.lane | tostring),
- .samplesheet_name,
- .alignments[0].genome_index // "contam",
- .barcode_index              // "NoIndex",
- .cell_type                  // "None"  ,
- "N",
- .assay                      // "N/A"   ,
- "orders",
- .project
- ] | join(",") ' "$json"
-}
+  if [ -z "$demux" ] ; then
+    # ( X | tostring) syntax is for non-string fields
+    # Default values (if field is false or null) come after //
+    jq -r --arg flowcell "$flowcell" '
+    .libraries as $l
+    | $l
+    | map( select(.failed == false) )
+    | map( .lane as $num
+    | .barcode_index =
+    if (  $l | map(select( $num  == .lane )) | length == 1 ) then
+      "NoIndex"
+    else
+      .barcode_index
+      end )
+      | .[] | [
+      "FC" + $flowcell,
+      (.lane | tostring),
+      .samplesheet_name,
+      .alignments[0].genome_index // "contam",
+      .barcode_index              // "NoIndex",
+      .cell_type                  // "None"  ,
+      "N",
+      .assay                      // "N/A"   ,
+      "orders",
+      .project
+      ] | join(",") ' "$json"
+    else
+      for i in $(seq 8) ; do
+        echo "FC$flowcell,$i,none,none,GGGGGGGG-GGGGGGGG,none,N,none,none,none"
+      done
+    fi
+
+  }
 
 make_nextseq_samplesheet(){
-    name=Stamlab
-    date=$(date '+%m/%d/%Y')
-cat <<__SHEET__
+  name=Stamlab
+  date=$(date '+%m/%d/%Y')
+  cat <<__SHEET__
 [Header]
 Investigator Name,$name
 Project Name,$name
@@ -116,9 +123,11 @@ Workflow,GenerateFASTQ
 SampleID,SampleName,index,index2
 __SHEET__
 
-# This bit of cryptic magic generates the samplesheet part.
-jq -r '.libraries[] | select(.failed == false) | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
-  | sed 's/\([ACTG]\+\)-\([ACTG]\+\),$/\1,\2/'  # Changes dual-index barcodes to proper format
+if [ -z "$demux" ] ; then
+  # This bit of cryptic magic generates the samplesheet part.
+  jq -r '.libraries[] | select(.failed == false) | [.samplesheet_name,.samplesheet_name,.barcode_index,""] | join(",") ' "$json" \
+    | sed 's/\([ACTG]\+\)-\([ACTG]\+\),$/\1,\2/'  # Changes dual-index barcodes to proper format
+fi
 
 }
 
@@ -137,13 +146,21 @@ run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 analysis_dir=$( jq -r '.alignment_group.directory'  "$json" )
 mask=$(         jq -r '.alignment_group.bases_mask' "$json" )
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
+has_umi=$(      jq -r '.libraries | map(.barcode1.umi) | any' "$json")
 
-mismatches=`python3 $STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes`
+if [ -z "$demux" ] ; then
+  bcl_mask=mask
+  mismatches=$(python3 $STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes)
+  if [ "$has_umi" == "true" ] ; then
+    echo "---WARNING---"
+    echo "Flowcell contains UMI samples, but -d param was not specified"
+    echo "You probably want to re-run with -d"
+    echo "-------------"
+  fi
 
-if [ -n "$demux" ] ; then
-  echo -e "\n----WARNING!-----"
-  echo "Demuxing is not yet automatic. Before running this script, you must edit the SampleSheet.csv!"
-  echo -e "-----------------\n"
+else # Set some options for manual demultiplexing
+  bcl_mask=$(tr Nn Ii <<< $mask)
+  mismatches="0,0"
 fi
 
 case $run_type in
@@ -173,7 +190,7 @@ case $run_type in
     read -d '' unaligned_command  << _U_
     bcl2fastq \\\\
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
-      --use-bases-mask "$mask" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
       --output-dir "$fastq_dir" \\\\
       --with-failed-reads \\\\
       --barcode-mismatches "$mismatches" \\\\
@@ -203,7 +220,7 @@ _U_
               --output-dir "$fastq_dir" \\\\
               --fastq-cluster-count 16000000 \\\\
               --with-failed-reads --sample-sheet $samplesheet \\\\
-              --use-bases-mask "$mask"  \\\\
+              --use-bases-mask "$bcl_mask"  \\\\
               --input-dir "$illumina_dir/Data/Intensities/BaseCalls"
     fi
 
