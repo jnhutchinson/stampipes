@@ -30,14 +30,12 @@ CHROM_FILES = $(addprefix $(TMPDIR)/,$(addsuffix .marked.bam,$(CHROMS)))
 
 INDEX ?= $(INPUT_BAM_FILE).bai
 
-$(warning "Chrom files:" $(CHROM_FILES))
-
 all: markdups
 
 markdups: $(OUTPUT_BAM_FILE)
 
 $(OUTPUT_BAM_FILE): $(CHROM_FILES) $(TMPDIR)/unmapped.marked.bam
-	samtools merge $@ $^
+	samtools merge -@ $(THREADS) $@ $^
 
 $(TMPDIR)/%.marked.bam: $(TMPDIR)/%.reads.bam $(TMPDIR)/%.reads.dups
 	( \
@@ -53,8 +51,7 @@ $(TMPDIR)/%.marked.bam: $(TMPDIR)/%.reads.bam $(TMPDIR)/%.reads.dups
 			| tr " " "\t" \
 			| awk -v OFS="\t" '{ $$2 = or($$2, lshift(1, 10)); print; }' ;\
 	) \
-	| samtools sort -O bam -T $(TMPDIR)/$*.tmpsort -o $@ -
-	#| samtools view -Sb - > $@
+		| samtools sort -m $(MAX_MEM)G -@ $(THREADS) -O bam -T $(TMPDIR)/$*.tmpsort -o $@ -
 	rm $^ $(TMPDIR)/$*.reads.sorted $(TMPDIR)/$*.reads.alldups $(TMPDIR)/$*.reads.firstdup
 
 # Prints out all duplicates (except the first one) (previous step
@@ -85,7 +82,7 @@ $(TMPDIR)/%.reads.sorted: $(TMPDIR)/%.reads.bam
 
 $(TMPDIR)/%.reads.bam: $(INPUT_BAM_FILE) $(INDEX)
 	( samtools view -H $<  ;\
-	  samtools view $< $* | $(SORT) --buffer-size=$(MAX_MEM)G -k1,1 ; \
+		samtools view $< $* | $(SORT) --buffer-size=$(MAX_MEM)G -k1,1 ; \
 	) \
 	| samtools view -S -1 - -o $@
 
