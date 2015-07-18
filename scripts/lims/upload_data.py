@@ -544,7 +544,7 @@ class UploadLIMS(object):
 
         log.info("MD5sum: %s\tFile size: %d\tLast modified: %s" % (md5sum, file_size, str(last_modified)))
 
-        data.update({
+        data = {
             'path': path,
             'content_type': contenttype["url"],
             'object_id': object_id,
@@ -553,7 +553,7 @@ class UploadLIMS(object):
             'md5sum': md5sum,
             'file_last_modified': last_modified,
             'size_bytes': file_size,
-        })
+        }
 
         log.debug(data)
 
