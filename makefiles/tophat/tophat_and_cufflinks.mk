@@ -87,7 +87,7 @@ ribosomal: $(ribosomal_files) $(ribo_txt)
 alignment: $(marked_bam) $(strand_bam) $(bai)
 
 upload: $(upload_txt)
-	python $(STAMPIPES)/scripts/lims/upload_data.py --rnafile $^ --alignment_id $(ALIGNMENT_ID)
+	python3 $(STAMPIPES)/scripts/lims/upload_data.py --rnafile $^ --alignment_id $(ALIGNMENT_ID)
 
 
 #### Coverage files
