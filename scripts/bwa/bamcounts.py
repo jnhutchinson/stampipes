@@ -52,6 +52,7 @@ class BAMFilter(object):
     def process_read(self, read, inbam): 
 
         tags = dict(read.tags)
+        chr = inbam.getrname(read.rname)
 
         mapq = "mapq-%d" % read.mapq
         if not mapq in self.mapqcounts:
@@ -79,9 +80,6 @@ class BAMFilter(object):
 
         if read.is_qcfail:
             self.counts['qc-flagged'] += 1
-
-        if read.flag & 1024:
-            self.counts['umi-duplicate'] += 1
 
         if read.is_unmapped:
             self.counts['nm'] += 1
@@ -117,6 +115,19 @@ class BAMFilter(object):
             self.counts['paired-aligned-qcfail'] += 1
             return
 
+        nuclear = not chr in ("chrM", "chrC")
+
+        if nuclear:
+            self.counts['paired-nuclear-align'] += 1
+
+        if nuclear and not chr in ("chrX", "chrY", "chrZ", "chrW"):
+            self.counts['paired-autosomal-align'] += 1
+
+        if read.flag & 1024:
+            self.counts['umi-duplicate'] += 1
+            if nuclear:
+                self.counts['umi-duplicate-nuclear'] += 1
+
         self.counts['paired-aligned'] += 1
         self.counts['u'] += 1
 
@@ -141,7 +152,6 @@ class BAMFilter(object):
         else:
             self.counts['u-pf-n-mm%d' % self.max_mismatches] += 1
 
-        chr = inbam.getrname(read.rname)
 
         if not chr in self.chrcounts:
             self.chrcounts[chr] = 1
@@ -165,8 +175,9 @@ class BAMFilter(object):
         inbam = Samfile(infile, 'rb')
 
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
-          'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged', 'umi-duplicate',
-          'all-aligned', 'paired-aligned', 'all-mapq-filter', 'paired-mapq-filter', 'paired-aligned-qcfail']
+          'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
+          'all-aligned', 'paired-aligned', 'paired-nuclear-align', 'paired-autosomal-align', 
+          'all-mapq-filter', 'paired-mapq-filter', 'paired-aligned-qcfail']
 
         self.counts = dict([(label, 0) for label in count_labels])
 
