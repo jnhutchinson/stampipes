@@ -52,7 +52,6 @@ class BAMFilter(object):
     def process_read(self, read, inbam): 
 
         tags = dict(read.tags)
-        chr = inbam.getrname(read.rname)
 
         mapq = "mapq-%d" % read.mapq
         if not mapq in self.mapqcounts:
@@ -115,6 +114,7 @@ class BAMFilter(object):
             self.counts['paired-aligned-qcfail'] += 1
             return
 
+        chr = inbam.getrname(read.rname)
         nuclear = not chr in ("chrM", "chrC")
 
         if nuclear:
