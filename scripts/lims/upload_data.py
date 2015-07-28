@@ -559,7 +559,7 @@ class UploadLIMS(object):
 
         if exists:
             log.info("Updating information for file %s" % path)
-            result = requests.put(data['url'], headers = self.headers, data = data)
+            result = requests.put(exists['url'], headers = self.headers, data = data)
         else:
             log.info("Uploading information for file %s" % path)
             result = requests.post("%s/file/" % self.api_url, headers = self.headers, data = data)
