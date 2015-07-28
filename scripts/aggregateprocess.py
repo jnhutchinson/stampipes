@@ -17,6 +17,7 @@ script_options = {
     "token": None,
     "aggregation_id": None,
     "outfile": os.path.join(os.getcwd(), "run.bash"),
+    "overwrite": False,
     "script_name": "run.bash",
     "qsub_prefix": ".agg",
     "dry_run": False,
@@ -43,6 +44,8 @@ def parser_setup():
 
     parser.add_argument("-o", "--outfile", dest="outfile",
         help="Append commands to run this alignment to this file.")
+    parser.add_argument("--overwrite", dest="overwrite", action="store_true",
+        help="Create a new outfile instead of appending commands.")
     parser.add_argument("--script_template", dest="script_template",
         help="The script template to use.")
     parser.add_argument("--aggregation_directory", dest="aggregation_directory",
@@ -78,6 +81,7 @@ class ProcessSetUp(object):
         self.aggregation_directory = args.aggregation_directory
         self.headers = {'Authorization': "Token %s" % self.token}
         self.script_template = args.script_template
+        self.overwrite = args.overwrite
 
     def api_single_result(self, url_addition=None, url=None):
 
@@ -229,6 +233,27 @@ class ProcessSetUp(object):
 
         return os.path.join(genome_location["base_path"], genome_location["directory"], genome_location["filename"])
 
+    def get_script_template(self, process_template_url, script_template=None):
+
+        if script_template:
+            logging.info("Using script template %s" % script_template)
+            return open(script_template, 'r').read()
+
+        if not process_template_url:
+            logging.critical("No process template for aggregation %d\n" % self.aggregation_id)
+            return None
+
+        logging.info("Getting process template %s" % process_template_url)
+
+        process_template = self.api_single_result(url=process_template_url)
+
+        if not process_template:
+            logging.critical("Could not find processing template for %s\n" % process_template_url)
+            return None
+
+        script_path = os.path.expandvars(process_template["process_version"]["script_location"])
+        return open(script_path, 'r').read()
+
     def get_example_flowcell(self, aggregation_lanes):
         included = None
         for aggregation_lane in aggregation_lanes:
@@ -251,7 +276,12 @@ class ProcessSetUp(object):
 
     def add_script(self, aggregation_folder, library_number):
 
-        with open(self.outfile, "a") as runfile:
+        if self.overwrite:
+            mode = "w"
+        else:
+            mode = "a"
+
+        with open(self.outfile, mode) as runfile:
             runfile.write("cd %s && " % aggregation_folder)
             runfile.write("qsub -V -cwd -S /bin/bash -N \"%sLN%d_AGG#%d\" %s\n\n" % (self.qsub_prefix, library_number, self.aggregation_id, self.qsub_scriptname))
 
@@ -288,6 +318,12 @@ class ProcessSetUp(object):
                 logging.info(bamfile)
                 files.append(bamfile)
 
+        script_contents = self.get_script_template(aggregation["aggregation_process_template"], self.script_template)
+
+        if not script_contents:
+            logging.critical("No script contents")
+            return
+
         os.makedirs(aggregation_folder, exist_ok=True)
 
         file_record = open("%s/bamfiles.txt" % aggregation_folder, "w")
@@ -305,15 +341,17 @@ class ProcessSetUp(object):
         script.write("export GENOME_INDEX=%s\n" % genome_index_location)
         script.write("export AGGREGATION_FOLDER=%s\n" % aggregation_folder)
         script.write("export READ_LENGTH=%d\n" % flowcell["read_length"])
+        if aggregation["umi"]:
+            script.write("export UMI=True\n")
         if flowcell["paired_end"]:
-            script.write("export PAIRED=True")
+            script.write("export PAIRED=True\n")
         script.write("\n")
 
-        script.write(open(self.script_template, 'r').read())
+        script.write(script_contents)
 
         script.close()
 
-        self.add_script(aggregation_folder, library_info["number"]) 
+        self.add_script(aggregation_folder, library_info["number"])
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
@@ -324,11 +362,13 @@ from the command line."""
 
     if poptions.quiet:
         logging.basicConfig(level=logging.WARNING, format=log_format)
+        logging.getLogger("requests").setLevel(logging.WARNING)
     elif poptions.debug:
         logging.basicConfig(level=logging.DEBUG, format=log_format)
     else:
         # Set up the logging levels
         logging.basicConfig(level=logging.INFO, format=log_format)
+        logging.getLogger("requests").setLevel(logging.WARNING)
 
     if not poptions.base_api_url and "LIMS_API_URL" in os.environ:
         api_url = os.environ["LIMS_API_URL"]
