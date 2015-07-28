@@ -151,6 +151,12 @@ class ProcessSetUp(object):
 
         self.create_script(processing_info)
 
+    def setup_tag(self, tag_slug):
+
+        align_tags = self.api_list_result("tagged_object?content_type=47&tag__slug=%s" % tag_slug)
+
+        [self.setup_alignment(align_tag["object_id"]) for align_tag in align_tags]
+
     def setup_flowcell(self, flowcell_label):
 
         logging.info("Setting up flowcell for %s" % flowcell_label)
@@ -184,13 +190,19 @@ class ProcessSetUp(object):
         align_id = alignment["id"]
 
         if not "process_template" in alignment:
-            logging.critical("Alignment %d has no process template")
+            logging.critical("Alignment %d has no process template" % align_id)
             return False
 
         process_template = self.get_process_template(align_id, alignment["process_template"])
 
         if not process_template:
             return
+
+        flowcell_directory = processing_info['flowcell']['directory']
+
+        if not flowcell_directory:
+            logging.critical("Alignment %d has no flowcell directory for flowcell %s" % (align_id, processing_info['flowcell']['label']))
+            return False
 
         fastq_directory = os.path.join(processing_info['flowcell']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
 
@@ -294,8 +306,7 @@ from the command line."""
         process.setup_flowcell(poptions.flowcell_label)
 
     if poptions.tag:
-        print("Not implemented yet.")
-        pass
+        process.setup_tag(poptions.tag)
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
