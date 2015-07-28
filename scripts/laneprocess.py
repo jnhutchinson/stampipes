@@ -51,6 +51,7 @@ def parser_setup():
         help="Lane ID")
 
     parser.add_argument("--flowcell_label", dest="flowcell_label", help="Flowcell Label")
+    parser.add_argument("--tag", dest="tag", help="Lanes tagged by")
 
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
@@ -262,6 +263,9 @@ from the command line."""
 
     if poptions.flowcell_label:
         process.setup_flowcell(poptions.flowcell_label)
+
+    if poptions.tag:
+        process.setup_tag(poptions.tag)
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
