@@ -24,9 +24,11 @@ READ_LENGTH ?= 36
 MIN_MAP_QUALITY ?= 10
 MAX_MISMATCHES ?= 2
 
+EXCLUDE_FLAG ?= 512
+
 # Filter to a minimum mapping quality, where both pairs
 # are properly paired in the mapping
-SAMTOOL_OPTIONS ?= -F 512
+SAMTOOL_OPTIONS ?= -F $(EXCLUDE_FLAG)
 
 # Ideally this will be set to something else set in the environment or on the command line
 TMPDIR ?= $(shell pwd)
