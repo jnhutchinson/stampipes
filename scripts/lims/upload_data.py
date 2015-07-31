@@ -347,57 +347,6 @@ class UploadLIMS(object):
 
         return self.get_single_result(filetype_url, field="url")
 
-    def upload_directory_attachment(self, path, contenttype_name, object_id, file_purpose=None):
-        path = os.path.abspath(path)
-
-        if not (contenttype_name and object_id):
-            log.error("Cannot attach file %s without both content type and object_id" % path)
-            return False
-
-        contenttype = self.get_contenttype(contenttype_name)
-
-        if not contenttype:
-            log.error("Cannot attach file %s without contenttype result" % path)
-            return False
-
-        purpose = self.get_file_purpose(file_purpose)
-
-        if file_purpose and not purpose:
-            log.error("Could not find file purpose %s for uploading directory %s" % (file_purpose, path))
-            return False
-        elif purpose:
-            log.debug("File purpose: %s" % purpose)
-
-        check_exist_url = "%s/directory/?path=%s" % (self.api_url, path)
-        exists = self.get_single_result(check_exist_url)
-
-        if exists:
-            data = exists
-        else:
-            data = {}
-
-        data.update({
-            'path': path,
-            'content_type': contenttype['url'],
-            'object_id': object_id,
-            'purpose': purpose,
-        })
-
-        if exists:
-            log.info("Updating information for directory %s" % path)
-            result = requests.put(data['url'], headers = self.headers, data = data)
-        else:
-            log.info("Uploading information for directory %s" % path)
-            result = requests.post("%s/directory/" % self.api_url, headers = self.headers, data = data)
-
-        log.debug(data)
-
-        if not result.ok:
-            log.error("Could not upload directory %s" % path)
-            log.debug(data)
-        else:
-            log.debug(result.json())
-
     def get_fastqc_tags(self):
 
        if not self.fastqc_tags:
@@ -442,18 +391,6 @@ class UploadLIMS(object):
         contenttype_url = '%s/content_type/?app_label=%s&model=%s' % (self.api_url, appname, modelname)
 
         return self.get_single_result(contenttype_url)
-
-    def get_file_purpose(self, slug):
-
-        filepurpose_url = '%s/file_purpose/?slug=%s' % (self.api_url, slug)
-
-        return self.get_single_result(filepurpose_url, field="url")
-
-    def get_file_type(self, slug):
-
-        filetype_url = '%s/file_type/?slug=%s' % (self.api_url, slug)
-
-        return self.get_single_result(filetype_url, field="url")        
 
     def upload_directory_attachment(self, path, contenttype_name, object_id, file_purpose=None):
         path = os.path.abspath(path)
@@ -571,8 +508,7 @@ class UploadLIMS(object):
             log.debug(result.json())
 
     def get_flowcelllane_contenttype(self):
-        self.flowcelllane_contenttype = self.get_contenttype('SequencingData.flowcelllane')
-        return self.flowcelllane_contenttype
+        return self.get_contenttype('SequencingData.flowcelllane')
 
     def get_alignment_contenttype(self):
         self.alignment_contenttype = self.get_contenttype('SequencingData.flowcelllanealignment')
@@ -628,45 +564,6 @@ class UploadLIMS(object):
                 self.count_types[name] = None
 
         return self.count_types[name]
-
-    # TODO : make sure that no more of one count type exists
-    def get_alignment_counts(self, alignment_id):
-
-        log.debug("Getting alignment counts for %d" % alignment_id)
-
-        if not alignment_id in self.alignment_counts:
-            counts_url = "%s/flowcell_lane_count/?alignment=%d" % (self.api_url, alignment_id)
-            counts = list()
-
-            counts_results = requests.get(counts_url, headers = self.headers).json()
-            counts.extend(counts_results['results'])
-
-            while counts_results['next']:
-                counts_results = requests.get(counts_results['next'], headers = self.headers).json()
-                counts.extend(counts_results['results'])
-
-            self.alignment_counts[alignment_id] = dict([(count['count_type_name'], count) for count in counts])
-        else:
-            return self.alignment_counts[alignment_id]
-
-    def get_flowcell_lane(self, flowcell_lane_id):
-
-        if flowcell_lane_id in self.flowcell_lane_cache:
-            return self.flowcell_lane_cache[flowcell_lane_id]
-        log.debug("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id))
-        exists = requests.get("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id), headers = self.headers)
-        if exists.ok:
-            self.flowcell_lane_cache[flowcell_lane_id] = exists.json()
-        else:
-            log.error("Flowcell lane %d not found" % flowcell_lane_id)
-            log.error(exists)
-            self.flowcell_lane_cache[flowcell_lane_id] = None
-
-        return self.flowcell_lane_cache[flowcell_lane_id]
-
-    def upload_counts(self, alignment_id, counts_file):
-
-        content = open(counts_file, 'r')
 
     # TODO : make sure that no more of one count type exists
     def get_alignment_counts(self, alignment_id):
@@ -781,7 +678,6 @@ class UploadLIMS(object):
         # TODO: Don't upload redundant barcodes.
         result = requests.post("%s/barcode_report/" % self.api_url, headers = self.headers, data = data)
         log.debug(result.json())
-
 
     def upload_counts(self, alignment_id, counts_file):
 
