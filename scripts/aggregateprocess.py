@@ -296,6 +296,7 @@ class ProcessSetUp(object):
         flowcell = self.get_example_flowcell(aggregation_lanes)
 
         logging.info("Aggregation %d folder: %s" % (self.aggregation_id, aggregation_folder))
+        logging.debug(aggregation)
 
         files = []
         for aggregation_lane in aggregation_lanes:
