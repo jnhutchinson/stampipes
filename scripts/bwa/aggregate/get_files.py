@@ -167,6 +167,13 @@ class FileFetch(object):
 
         print(files[0]["path"])
 
+    def find_single_aggregation(self, aggregations):
+
+        for aggregation in aggregations:
+            if aggregation['default_aggregation']: return aggregation
+
+        return None
+
     def retrieve_library_file(self, library_number, file_purpose):
         library = self.api_single_list_result("library/?number=%d" % library_number)
 
@@ -179,10 +186,20 @@ class FileFetch(object):
         aggregations = self.api_list_result("aggregation/?library=%d" % (library["id"]))
 
         if len(aggregations) > 1:
-            logging.critical("More than one aggregation for library %d, must specify specifics" % (library_number))
-            logging.critical("Options: " + ", ".join([aggregation["id"] for aggregation in aggregations]))
+            use_aggregation = self.find_single_aggregation(aggregations)
+            if not use_aggregation:
+                logging.critical("More than one aggregation for library %d and no default found, must specify aggregation id" % (library_number))
+                logging.critical("Options: " + ", ".join([aggregation["id"] for aggregation in aggregations]))
+                return
+            else:
+                logging.warn("More than one aggregation for library %d, using default" % (library_number))
+        elif len(aggregations) == 0:
+            logging.critical("Cannot find aggregations for library %d" % (library_number))
+            return
+        elif len(aggregations) == 1:
+            use_aggregation = aggregations[0]
 
-        self.retrieve_file(aggregations[0]["id"], file_purpose)
+        self.retrieve_file(use_aggregation["id"], file_purpose)
 
     def retrieve(self, aggregation_id, library_number, file_purpose_slug):
 
