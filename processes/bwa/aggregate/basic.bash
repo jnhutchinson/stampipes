@@ -2,9 +2,10 @@
 source $MODULELOAD
 module load bedops/2.4.2
 module load java/jdk1.7.0_05
+module load gcc/4.7.2
+module load R/3.1.0
 module load picard/1.118
 module load samtools/1.2
-module load gcc/4.7.2
 module load git/2.3.3
 module load coreutils/8.9
 
@@ -26,7 +27,7 @@ export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.b
 export DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.bw
 
 if [ -n "$REDO_AGGREGATION" ]; then
-    bash $STAMPIPES/scripts/bwa/aggregate/simple/reset.bash
+    bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
 fi
 
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
@@ -42,7 +43,15 @@ if [ ! -e ${FINAL_BAM} ]; then
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
-qsub -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+# If we are  UMI, we will need a lot of power for sorting!
+if [ "$UMI" = "True" ]; then
+  echo "Processing with UMI"
+  export SUBMIT_SLOTS="-pe threads 4"
+  echo "Excluding duplicates from uniques bam"
+  export EXCLUDE_FLAG=1536
+fi
+
+qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -52,6 +61,7 @@ qsub -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   date
 
   export BAM_COUNT=$BAM_COUNT
+
   bash $STAMPIPES/scripts/bwa/aggregate/merge.bash
 
   make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk SAMPLE_NAME=${LIBRARY_NAME} INBAM=${FINAL_BAM} OUTBAM=${TEMP_UNIQUES_BAM}
@@ -100,6 +110,7 @@ qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/ba
 
   make -f $STAMPIPES/makefiles/densities/density.mk FAI=${GENOME_INDEX}.fai SAMPLE_NAME=${LIBRARY_NAME} GENOME=${GENOME} \
      BAMFILE=${TEMP_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
+  make -f /home/audrakj/stampipes/makefiles/densities/normalize-density.mk BAMFILE=${TEMP_UNIQUES_BAM} SAMPLE_NAME=${LIBRARY_NAME} FAI=${GENOME_INDEX}.fai
 
   echo "FINISH: "
   date
@@ -119,8 +130,8 @@ qsub -N "${JOB_BASENAME}_complete" -hold_jid "${PROCESSING}" -V -cwd -S /bin/bas
   echo "START: "
   date
 
-  bash $STAMPIPES/scripts/bwa/aggregate/simple/checkcomplete.bash
-  bash $STAMPIPES/scripts/bwa/aggregate/simple/attachfiles.bash
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash
 
   rm ${TEMP_UNIQUES_BAM} ${TEMP_UNIQUES_BAM}.bai
 

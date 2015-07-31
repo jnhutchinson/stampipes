@@ -8,7 +8,6 @@ files=( \
     "${LIBRARY_NAME}.${GENOME}.sorted.bam.bai" \ 
     "${LIBRARY_NAME}.tagcounts.txt" \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard" \
-    "${LIBRARY_NAME}.MarkDuplicates.picard" \
     "${LIBRARY_NAME}.75_20.${GENOME}.bw" \
 )
 
@@ -18,6 +17,14 @@ if [ ! -s $FILE ]; then
     EXIT=1
 fi
 done
+
+# Only check for MarkDuplicates report if this is not a UMI sample
+if [[ "$UMI" != "True" ]]; then
+    if [ ! -s "${LIBRARY_NAME}.MarkDuplicates.picard" ]; then
+        echo "Missing $FILE"
+        EXIT=1
+    fi
+fi
 
 if [[ $EXIT -ne 1 ]]; then
     python3 /home/audrakj/stampipes/scripts/lims/upload_data.py --aggregation_id 508 --complete_aggregation
