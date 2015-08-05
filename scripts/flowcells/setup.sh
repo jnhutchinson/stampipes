@@ -307,6 +307,8 @@ cd "$analysis_dir"
 
 $link_command
 
+# Remove existing scripts if they exist (to avoid appending)
+rm -f fastqc.bash collate.bash run.bash
 
 # Create fastqc scripts
 python /home/audrakj/stampipes/scripts/laneprocess.py \
