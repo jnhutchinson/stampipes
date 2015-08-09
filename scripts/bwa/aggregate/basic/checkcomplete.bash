@@ -9,6 +9,9 @@ files=( \
     "${LIBRARY_NAME}.tagcounts.txt" \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard" \
     "${LIBRARY_NAME}.75_20.${GENOME}.bw" \
+    "${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch" \
+    "${LIBRARY_NAME}.75_20.normalized.${GENOME}.bw" \
+    "${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch" \
 )
 
 for FILE in "${files[@]}"; do
