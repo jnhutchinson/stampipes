@@ -15,7 +15,7 @@ script_options = {
     "debug": False,
     "base_api_url": None,
     "token": None,
-    "aggregation_id": None,
+    "aggregation_ids": [],
     "outfile": os.path.join(os.getcwd(), "run.bash"),
     "overwrite": False,
     "script_name": "run.bash",
@@ -52,8 +52,11 @@ def parser_setup():
         help="The directory for the aggregation.  Will deduce if not given.")
     parser.add_argument("-b", "--script_basename", dest="script_name",
         help="Name of the script that goes after the sample name.")
-    parser.add_argument("--aggregation", dest="aggregation_id", type=int,
-        help="Run for this particular aggregation.")
+
+    parser.add_argument("--tag", dest="tag",
+        help="Run for alignments tagged here.")    
+    parser.add_argument("--aggregation", dest="aggregation_ids", type=int, action="append",
+        help="Run for these aggregations (can be used more than once).")
 
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
@@ -75,7 +78,6 @@ class ProcessSetUp(object):
         self.qsub_scriptname = args.script_name
         self.qsub_prefix = args.qsub_prefix
         self.outfile = args.outfile
-        self.aggregation_id = args.aggregation_id
         self.dry_run = args.dry_run
         self.aggregation_base_directory = aggregation_base_directory
         self.aggregation_directory = args.aggregation_directory
@@ -187,12 +189,12 @@ class ProcessSetUp(object):
 
         return results
 
-    def get_lane_alignments_file(self, alignment_id):
+    def get_lane_alignments_file(self, aggregation_id, alignment_id):
 
         results = self.api_list_result("file/?purpose__slug=all-alignments-bam&filetype__slug=bam&content_type=47&object_id=%d" % alignment_id)
 
         if len(results) != 1:
-            logging.error("Found %d files for alignment %d, require 1 (Aggregation %d)" % (len(results), alignment_id, self.aggregation_id))
+            logging.error("Found %d files for alignment %d, require 1 (Aggregation %d)" % (len(results), alignment_id, aggregation_id))
             logging.error(results)
             return None
         file_info = results[0]
@@ -213,7 +215,7 @@ class ProcessSetUp(object):
             sys.exit(1)
         return genome_info
 
-    def get_genome_index_location(self, aggregation_lanes):
+    def get_genome_index_location(self, aggregation_id, aggregation_lanes):
         included = None
         for aggregation_lane in aggregation_lanes:
             if aggregation_lane["include"]:
@@ -223,24 +225,24 @@ class ProcessSetUp(object):
         alignment = self.api_single_result(url=aggregation_lane["alignment"])
 
         if not alignment:
-            logging.critical("Was not able to fetch alignment %s! (Aggregation %d)" % (aggregation_lane["alignment"], self.aggregation_id))
+            logging.critical("Was not able to fetch alignment %s! (Aggregation %d)" % (aggregation_lane["alignment"], aggregation_id))
             sys.exit(1)
 
         genome_location = self.api_single_result(url=alignment["genome_index_location"])
         if not genome_location:
-            logging.critical("Could not get genome location from alignment %d! (Aggregation %d)" % (included["id"], self.aggregation_id))
+            logging.critical("Could not get genome location from alignment %d! (Aggregation %d)" % (included["id"], aggregation_id))
             sys.exit(1)
 
         return os.path.join(genome_location["base_path"], genome_location["directory"], genome_location["filename"])
 
-    def get_script_template(self, process_template_url, script_template=None):
+    def get_script_template(self, aggregation_id, process_template_url, script_template=None):
 
         if script_template:
             logging.info("Using script template %s" % script_template)
             return open(script_template, 'r').read()
 
         if not process_template_url:
-            logging.critical("No process template for aggregation %d\n" % self.aggregation_id)
+            logging.critical("No process template for aggregation %d\n" % aggregation_id)
             return None
 
         logging.info("Getting process template %s" % process_template_url)
@@ -254,7 +256,7 @@ class ProcessSetUp(object):
         script_path = os.path.expandvars(process_template["process_version"]["script_location"])
         return open(script_path, 'r').read()
 
-    def get_example_flowcell(self, aggregation_lanes):
+    def get_example_flowcell(self, aggregation_id, aggregation_lanes):
         included = None
         for aggregation_lane in aggregation_lanes:
             if aggregation_lane["include"]:
@@ -264,17 +266,17 @@ class ProcessSetUp(object):
         lane = self.api_single_result(url=aggregation_lane["lane"])
 
         if not lane:
-            logging.critical("Was not able to fetch lane %s (Aggregation %d)" % (aggregation_lane["lane"], self.aggregation_id))
+            logging.critical("Was not able to fetch lane %s (Aggregation %d)" % (aggregation_lane["lane"], aggregation_id))
             sys.exit(1)
 
         flowcell = self.api_single_result(url=lane["flowcell"])
         if not flowcell:
-            logging.critical("Could not get flowcell at %d (Aggregation %d)" % (lane["flowcell"], self.aggregation_id))
+            logging.critical("Could not get flowcell at %d (Aggregation %d)" % (lane["flowcell"], aggregation_id))
             sys.exit(1)
 
         return flowcell
 
-    def add_script(self, aggregation_folder, library_number):
+    def add_script(self, aggregation_id, aggregation_folder, library_number):
 
         if self.overwrite:
             mode = "w"
@@ -283,43 +285,49 @@ class ProcessSetUp(object):
 
         with open(self.outfile, mode) as runfile:
             runfile.write("cd %s && " % aggregation_folder)
-            runfile.write("qsub -V -cwd -S /bin/bash -N \"%sLN%d_AGG#%d\" %s\n\n" % (self.qsub_prefix, library_number, self.aggregation_id, self.qsub_scriptname))
+            runfile.write("qsub -V -cwd -S /bin/bash -N \"%sLN%d_AGG#%d\" %s\n\n" % (self.qsub_prefix, library_number, aggregation_id, self.qsub_scriptname))
 
-    def create(self):
+    def setup_tag(self, tag_slug):
 
-        aggregation = self.get_aggregation_info(self.aggregation_id)
-        aggregation_lanes = self.get_aggregation_lanes(self.aggregation_id)
+        aggregation_tags = self.api_list_result("tagged_object?content_type=126&tag__slug=%s" % tag_slug)
+
+        [self.setup_aggregation(aggregation_tag["object_id"]) for aggregation_tag in aggregation_tags]
+
+    def setup_aggregation(self, aggregation_id):
+
+        aggregation = self.get_aggregation_info(aggregation_id)
+        aggregation_lanes = self.get_aggregation_lanes(aggregation_id)
         library_info = self.get_library_info(aggregation)
         aggregation_folder = self.set_aggregation_folder(aggregation, library_info)
         genome_index = self.get_genome_index(aggregation)
-        genome_index_location = self.get_genome_index_location(aggregation_lanes)
-        flowcell = self.get_example_flowcell(aggregation_lanes)
+        genome_index_location = self.get_genome_index_location(aggregation_id, aggregation_lanes)
+        flowcell = self.get_example_flowcell(aggregation_id, aggregation_lanes)
 
-        logging.info("Aggregation %d folder: %s" % (self.aggregation_id, aggregation_folder))
+        logging.info("Aggregation %d folder: %s" % (aggregation_id, aggregation_folder))
         logging.debug(aggregation)
 
         files = []
         for aggregation_lane in aggregation_lanes:
             if not aggregation_lane["include"]:
-                logging.info("Not including lane %s (Aggregation %d)" % (aggregation_lane["lane"], self.aggregation_id))
+                logging.info("Not including lane %s (Aggregation %d)" % (aggregation_lane["lane"], aggregation_id))
                 continue
             alignment_endpoint = aggregation_lane["alignment"]
 
             if not alignment_endpoint:
-                logging.info("Not including lane %s because no alignment set (Aggregation %d)" % (aggregation_lane["lane"], self.aggregation_id))
+                logging.info("Not including lane %s because no alignment set (Aggregation %d)" % (aggregation_lane["lane"], aggregation_id))
 
             alignment_id = int(alignment_endpoint.strip("/").split("/")[-1])
 
-            bamfile = self.get_lane_alignments_file(alignment_id)
+            bamfile = self.get_lane_alignments_file(aggregation_id, alignment_id)
 
             if not bamfile:
-                logging.critical("No BAM alignment file for alignment %s for lane %s (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], self.aggregation_id))
-                sys.exit(1)
+                logging.critical("No BAM alignment file for alignment %s for lane %s, skipping (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], aggregation_id))
+                return False
             else:
                 logging.info(bamfile)
                 files.append(bamfile)
 
-        script_contents = self.get_script_template(aggregation["aggregation_process_template"], self.script_template)
+        script_contents = self.get_script_template(aggregation_id, aggregation["aggregation_process_template"], self.script_template)
 
         if not script_contents:
             logging.critical("No script contents")
@@ -335,7 +343,7 @@ class ProcessSetUp(object):
         logging.info("Creating script file %s" % script_file)
 
         script = open("%s/run.bash" % aggregation_folder, "w")
-        script.write("export AGGREGATION_ID=%d\n" % self.aggregation_id)
+        script.write("export AGGREGATION_ID=%d\n" % aggregation_id)
         script.write("export LIBRARY=%d\n" % library_info["number"])
         script.write("export BAM_FILES=\"%s\"\n" % " ".join([bamfile[0] for bamfile in files]))
         script.write("export GENOME=%s\n" % genome_index["label"])
@@ -352,7 +360,7 @@ class ProcessSetUp(object):
 
         script.close()
 
-        self.add_script(aggregation_folder, library_info["number"])
+        self.add_script(aggregation_id, aggregation_folder, library_info["number"])
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
@@ -395,7 +403,12 @@ from the command line."""
         aggregation_base_dir = None
 
     process = ProcessSetUp(poptions, api_url, token, aggregation_base_dir)
-    process.create()
+
+    for aggregation_id in poptions.aggregation_ids:
+        process.setup_aggregation(aggregation_id)
+
+    if poptions.tag:
+        process.setup_tag(poptions.tag)
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
