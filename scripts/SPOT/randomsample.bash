@@ -3,7 +3,7 @@ FAI=$2
 INBAM=$3
 OUTBAM=$4
 
-N_READS=`samtools view -t $FAI -c ${INBAM}`
+N_READS=`samtools view -c ${INBAM}`
 
 if [ ${SAMPLE_SIZE} -gt ${N_READS} ]
 then
@@ -12,7 +12,7 @@ then
         ln -s $INBAM $OUTBAM
     fi
 else
-    samtools view -t $FAI ${INBAM} | 
+    samtools view ${INBAM} | 
 		random-lines -n${SAMPLE_SIZE} -N${N_READS} | \
 		samtools view -bS -t ${FAI} - > \
 		${OUTBAM}

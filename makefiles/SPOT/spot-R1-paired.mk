@@ -44,10 +44,9 @@ calcspot : $(SPOT_OUT)
 calcdup : $(DUP_OUT)
 
 $(RANDOM_SAMPLE_BAM) : $(BAMFILE)
-	# sam flag 67 = read paired, read mapped in proper pair, first in pair
-	# sam flag 12 = read unmapped, mate unmapped
-	samtools view -F 12 -f 67 $^ | awk '{if( ! index($$3, "chrM") && $$3 != "chrC" && $$3 != "random"){print}}' > $(TMPDIR)/R1.sam
-	bash -e $(STAMPIPES)/scripts/SPOT/randomsample.bash $(SAMPLE_SIZE) $(FAI) $(TMPDIR)/R1.sam $@
+	samtools view -F 12 -f 3 $^ | awk '{if( ! index($$3, "chrM") && $$3 != "chrC" && $$3 != "random"){print}}' | sort -k 1,1 | awk -f $(STAMPIPES)/awk/matchreadpairs.awk > $(TMPDIR)/linematch.sam
+	bash -e $(STAMPIPES)/scripts/SPOT/pairedrandomsample.bash $(SAMPLE_SIZE) $(FAI) $(TMPDIR)/linematch.sam $(TMPDIR)/randsample.bam
+	samtools sort $(TMPDIR)/randsample.bam $(basename $@)
 
 # Only use Read 1 from our sample for SPOT score
 $(RANDOM_SAMPLE_BAM_R1) : $(RANDOM_SAMPLE_BAM)
