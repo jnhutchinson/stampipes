@@ -24,6 +24,7 @@ script_options = {
     "dry_run": False,
     "no_mask": False,
     "bases_mask": None,
+    "redo_completed": False,
 }
 
 def parser_setup():
@@ -47,6 +48,9 @@ def parser_setup():
     parser.add_argument("--tag", dest="tag",
         help="Run for alignments tagged here.")
 
+    parser.add_argument("--script_template", dest="script_template",
+        help="The script template to use.")
+
     parser.add_argument("-o", "--outfile", dest="outfile",
         help="Append commands to run this alignment to this file.")
     parser.add_argument("-b", "--sample-script-basename", dest="sample_script_basename",
@@ -59,6 +63,8 @@ def parser_setup():
         help="Don't use any barcode mask.")
     parser.add_argument("--bases_mask", dest="bases_mask",
         help="Set a bases mask.")
+    parser.add_argument("--redo_completed", dest="redo_completed", help="Redo alignments marked as completed.",
+        action="store_true")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -78,6 +84,8 @@ class ProcessSetUp(object):
         self.dry_run = args.dry_run
         self.no_mask = args.no_mask
         self.headers = {'Authorization': "Token %s" % self.token}
+        self.redo_completed = args.redo_completed
+        self.script_template = args.script_template
 
     def api_single_result(self, url_addition=None, url=None):
 
@@ -148,8 +156,10 @@ class ProcessSetUp(object):
     def setup_alignment(self, align_id):
 
         processing_info = self.get_align_process_info(align_id)
+        alignment = self.api_single_result("flowcell_lane_alignment/%d" % (align_id))
 
-        self.create_script(processing_info)
+        if not alignment['complete_time'] and not self.redo_completed:
+            self.create_script(processing_info)
 
     def setup_tag(self, tag_slug):
 
@@ -180,7 +190,10 @@ class ProcessSetUp(object):
 
     def get_script_template(self, process_template):
 
-        script_path = os.path.expandvars(process_template["process_version"]["script_location"])
+        if self.script_template:
+            script_path = self.script_template
+        else:
+            script_path = os.path.expandvars(process_template["process_version"]["script_location"])
         return open(script_path, 'r').read()
 
     def create_script(self, processing_info):
