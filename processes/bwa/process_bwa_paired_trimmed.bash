@@ -12,6 +12,7 @@ module load R/3.1.0
 module load git/2.3.3
 module load coreutils/8.9
 module load FastQC/0.11.3
+module load pigz/2.3.1
 
 # Load in this order specifically, currently the python3 activation
 # overwrites the default "python" call, against advice
@@ -54,7 +55,10 @@ python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
   --adapter_file $ADAPTER_FILE \
   --version_file $VERSION_FILE
 
-bash $STAMPIPES/scripts/fastq/splitfastq.bash
+if [ ! -e "${SAMPLE_NAME}_R1_000.fastq.gz" ]; then
+  bash $STAMPIPES/scripts/fastq/splitfastq.bash $R1_FASTQ $R2_FASTQ $FASTQ_TMP
+fi
+
 fi
 
 NUMBER_FASTQ_FILES=`find $FASTQ_TMP -maxdepth 1 -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l`
