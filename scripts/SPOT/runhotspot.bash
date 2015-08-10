@@ -121,9 +121,9 @@ EOF
 # in troubleshooting
 cat > $SCRIPTOUT <<EOF
 
-scriptTokBin=${HOTSPOT_DISTR}/ScriptTokenizer/src/script-tokenizer.py
+scriptTokBin="python2 ${HOTSPOT_DISTR}/ScriptTokenizer/src/script-tokenizer.py"
 pipeDir=${HOTSPOT_DISTR}/pipeline-scripts
-tokenFile=$OUTDIR/runall.tokens.txt
+tokenFile=$CONFIGOUT
 
 cd $OUTDIR
 
