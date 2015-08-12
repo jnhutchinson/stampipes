@@ -4,7 +4,7 @@ out=$1
 shift
 
 if [ $# -gt 1 ] ; then
-    samtools merge $out $@
+    samtools merge -f $out $@
 elif [ $# -eq 1 ] ; then
     cp $1 $out
 else

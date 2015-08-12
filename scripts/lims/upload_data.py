@@ -833,7 +833,7 @@ class UploadLIMS(object):
         if not self.fastqc_tags:
             self.fastqc_tags = self.get_fastqc_tags()
         if not self.flowcelllane_contenttype:
-            self.get_flowcelllane_contenttype()
+            self.flowcelllane_contenttype = self.get_flowcelllane_contenttype()
 
         m = re.search(r'(?P<samplename>[^/]+)_(?P<barcode>[AGTC-]+|NoIndex)_L00(?P<lane>[0-9])_(?P<read>R[12])', filename)
 
