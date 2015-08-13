@@ -398,7 +398,7 @@ from the command line."""
     if not poptions.aggregation_base_directory and "AGGREGATIONS" in os.environ:
         aggregation_base_dir = os.environ["AGGREGATIONS"]
     elif poptions.aggregation_base_directory:
-        aggregation_base_dir = poptions.base_aggregation_directory
+        aggregation_base_dir = poptions.aggregation_base_directory
     else:
         aggregation_base_dir = None
 
