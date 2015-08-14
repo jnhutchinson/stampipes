@@ -161,6 +161,7 @@ if [ -z "$demux" ] ; then
 else # Set some options for manual demultiplexing
   bcl_mask=$(tr Nn Ii <<< $mask)
   mismatches="0,0"
+  dmx_mismatches=$(python3 $STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes | cut -c1 )
 fi
 
 case $run_type in
@@ -238,7 +239,7 @@ esac
 copy_from_dir="$fastq_dir"
 if [ -n "$demux" ] ; then
   copy_from_dir="$(pwd)/Demultiplexed/"
-  demux_cmd="$STAMPIPES/scripts/flowcells/demux_flowcell.sh -i "$fastq_dir" -o "$copy_from_dir" -p "$json" "
+  demux_cmd="$STAMPIPES/scripts/flowcells/demux_flowcell.sh -i "$fastq_dir" -o "$copy_from_dir" -p "$json" " -m "$dmx_mismatches"
   link_command="#Demuxing happened, no linking to do"
 fi
 
