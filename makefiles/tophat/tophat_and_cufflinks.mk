@@ -116,6 +116,16 @@ $(TMPDIR)/%.bed : %.bam
 	<( samtools view -h  -u -f 0x50 -F 0x80 $^) \
 	<( samtools view     -u -F 0x50 -f 0x80 $^) \
 
+# Alternate rules
+%.neg.bam : %.bam
+	samtools merge -f $@ \
+	<( samtools view -h  -u -f 0x90 -F 0x40 $^) \
+	<( samtools view     -u -F 0x90 -f 0x40 $^) \
+
+%.pos.bam : %.all.bam
+	samtools merge -f $@ \
+	<( samtools view -h  -u -f 0x50 -F 0x80 $^) \
+	<( samtools view     -u -F 0x50 -f 0x80 $^) \
 
 
 $(cufflinks_finished) : $(marked_bam)
