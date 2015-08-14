@@ -167,9 +167,9 @@ def split_file(filename, barcodes, labels):
         match = barcode_re.search(record)
 
         if not match:
-            debug.error("Could not match %s" % record)
-            debug.error(str(seq))
-            debug.error("Record %d in %s" % (tally, filename))
+            logging.error("Could not match %s" % record)
+            logging.error(str(seq))
+            logging.error("Record %d in %s" % (tally, filename))
             sys.exit(1)
 
         matches = match.groups()
