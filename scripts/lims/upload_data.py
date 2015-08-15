@@ -508,7 +508,9 @@ class UploadLIMS(object):
             log.debug(result.json())
 
     def get_flowcelllane_contenttype(self):
-        return self.get_contenttype('SequencingData.flowcelllane')
+        if not self.flowcelllane_contenttype:
+            self.flowcelllane_contenttype = self.get_contenttype('SequencingData.flowcelllane')
+        return self.flowcelllane_contenttype
 
     def get_alignment_contenttype(self):
         self.alignment_contenttype = self.get_contenttype('SequencingData.flowcelllanealignment')
