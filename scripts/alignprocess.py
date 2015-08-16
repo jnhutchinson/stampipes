@@ -163,6 +163,16 @@ class ProcessSetUp(object):
         else:
             logging.info("Skipping completed alignment %d" % align_id)
 
+    def get_lane_file(self, lane_id, purpose):
+        candidates = self.api_list_result("file/?content_type=40&purpose__slug=%s&object_id=%d" % (purpose, lane_id))
+
+        if not candidates:
+            logging.critical("Could not find %s file for lane %d" % (purpose, lane_id))
+        if len(candidates) > 1:
+            logging.critical("More than one %s file for lane %d" % (purpose, lane_id))
+
+        return candidates[0]
+
     def setup_tag(self, tag_slug):
 
         align_tags = self.api_list_result("tagged_object/?content_type=47&tag__slug=%s" % tag_slug)
@@ -244,6 +254,13 @@ class ProcessSetUp(object):
 
         self.add_script(align_id, processing_info, script_file, alignment['sample_name'])
 
+        r1_fastq = self.get_lane_file(lane["id"], "r1-fastq")
+        r2_fastq = self.get_lane_file(lane["id"], "r2-fastq")
+
+        if not r1_fastq: logging.info("Missing r1-fastq for lane %d" % lane["id"])
+        if not r2_fastq: logging.info("Missing r2-fastq for lane %d" % lane["id"])
+        if not r1_fastq or not r2_fastq: return
+
         outfile = open(script_file, 'w')
         outfile.write("set -e -o pipefail\n")
         outfile.write("export SAMPLE_NAME=%s\n" % alignment['sample_name'])
@@ -256,8 +273,8 @@ class ProcessSetUp(object):
         outfile.write("export FLOWCELL_LANE_ID=%s\n" % lane['id'])
         outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
         outfile.write("export ALIGN_DIR=%s/%s\n" % (fastq_directory, align_dir))
-        outfile.write("export R1_FASTQ=%s/%s_%s_R1.fastq.gz\n" %  (fastq_directory, processing_info['flowcell']['label'], alignment['sample_name']))
-        outfile.write("export R2_FASTQ=%s/%s_%s_R2.fastq.gz\n" %  (fastq_directory, processing_info['flowcell']['label'], alignment['sample_name']))
+        outfile.write("export R1_FASTQ=%s\n" % r1_fastq["path"])
+        outfile.write("export R2_FASTQ=%s\n" % r2_fastq["path"])
         outfile.write("export FASTQ_DIR=%s\n" % fastq_directory)
         outfile.write("export FLOWCELL=%s\n" % processing_info['flowcell']['label'])
         if "barcode1" in lane and lane["barcode1"]:
