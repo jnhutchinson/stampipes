@@ -132,7 +132,7 @@ class ProcessSetUp(object):
 
         if not results:
             logging.error("Could not find information for aggregation %d" % aggregation_id)
-            sys.exit(1)
+            return None
 
         return results
 
@@ -185,7 +185,7 @@ class ProcessSetUp(object):
 
         if not results:
             logging.error("Could not find lanes for aggregation %d" % aggregation_id)
-            sys.exit(1)
+            return []
 
         return results
 
@@ -296,7 +296,15 @@ class ProcessSetUp(object):
     def setup_aggregation(self, aggregation_id):
 
         aggregation = self.get_aggregation_info(aggregation_id)
+
+        if not aggregation:
+            return False
+
         aggregation_lanes = self.get_aggregation_lanes(aggregation_id)
+
+        if not aggregation_lanes:
+            return False
+
         library_info = self.get_library_info(aggregation)
         aggregation_folder = self.set_aggregation_folder(aggregation, library_info)
         genome_index = self.get_genome_index(aggregation)
@@ -305,6 +313,8 @@ class ProcessSetUp(object):
 
         logging.info("Aggregation %d folder: %s" % (aggregation_id, aggregation_folder))
         logging.debug(aggregation)
+
+        missing = False
 
         files = []
         for aggregation_lane in aggregation_lanes:
@@ -322,10 +332,13 @@ class ProcessSetUp(object):
 
             if not bamfile:
                 logging.critical("No BAM alignment file for alignment %s for lane %s, skipping (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], aggregation_id))
-                return False
+                missing = True
+                continue
             else:
                 logging.info(bamfile)
                 files.append(bamfile)
+
+        if missing: return False
 
         script_contents = self.get_script_template(aggregation_id, aggregation["aggregation_process_template"], self.script_template)
 
@@ -339,10 +352,10 @@ class ProcessSetUp(object):
         file_record.write("\n".join(["\t".join(bamfile) for bamfile in files]))
         file_record.close()
 
-        script_file = "%s/run.bash" % aggregation_folder
+        script_file = os.path.join(aggregation_folder, self.qsub_scriptname)
         logging.info("Creating script file %s" % script_file)
 
-        script = open("%s/run.bash" % aggregation_folder, "w")
+        script = open(script_file, "w")
         script.write("export AGGREGATION_ID=%d\n" % aggregation_id)
         script.write("export LIBRARY=%d\n" % library_info["number"])
         script.write("export BAM_FILES=\"%s\"\n" % " ".join([bamfile[0] for bamfile in files]))
