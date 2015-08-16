@@ -130,7 +130,7 @@ class ProcessSetUp(object):
 
     def get_align_process_info(self, alignment_id):
 
-        process_info = self.api_single_result("flowcell_lane_alignment/%d/processing_information" % alignment_id)
+        process_info = self.api_single_result("flowcell_lane_alignment/%d/processing_information/" % alignment_id)
 
         if not process_info:
             logging.critical("Could not find processing info for alignment %d\n" % alignment_id)
@@ -145,7 +145,7 @@ class ProcessSetUp(object):
             logging.critical("No process template for alignment %d\n" % align_id)
             return None
 
-        info = self.api_single_result("process_template/%d" % (process_template_id))
+        info = self.api_single_result("process_template/%d/" % (process_template_id))
 
         if not info:
             logging.critical("Could not find processing template for ID %d\n" % process_template_id)
@@ -156,21 +156,23 @@ class ProcessSetUp(object):
     def setup_alignment(self, align_id):
 
         processing_info = self.get_align_process_info(align_id)
-        alignment = self.api_single_result("flowcell_lane_alignment/%d" % (align_id))
+        alignment = self.api_single_result("flowcell_lane_alignment/%d/" % (align_id))
 
-        if not alignment['complete_time'] and not self.redo_completed:
+        if self.redo_completed or not alignment['complete_time']:
             self.create_script(processing_info)
+        else:
+            logging.info("Skipping completed alignment %d" % align_id)
 
     def setup_tag(self, tag_slug):
 
-        align_tags = self.api_list_result("tagged_object?content_type=47&tag__slug=%s" % tag_slug)
+        align_tags = self.api_list_result("tagged_object/?content_type=47&tag__slug=%s" % tag_slug)
 
         [self.setup_alignment(align_tag["object_id"]) for align_tag in align_tags]
 
     def setup_flowcell(self, flowcell_label):
 
         logging.info("Setting up flowcell for %s" % flowcell_label)
-        alignments = self.api_list_result("flowcell_lane_alignment?lane__flowcell__label=%s" % flowcell_label)
+        alignments = self.api_list_result("flowcell_lane_alignment/?lane__flowcell__label=%s" % flowcell_label)
 
         [self.setup_alignment(alignment["id"]) for alignment in alignments]
 
