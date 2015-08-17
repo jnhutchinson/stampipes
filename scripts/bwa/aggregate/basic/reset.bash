@@ -12,7 +12,7 @@ files=( \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard" \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.pdf" \
     "${LIBRARY_NAME}.MarkDuplicates.picard" \
-    "${LIBRARY_NAME}.75_20.uniques-density.${READLENGTH}.${GENOME}.bed.starch" \
+    "${LIBRARY_NAME}.75_20.uniques-density.${GENOME}.bed.starch" \
     "${LIBRARY_NAME}.75_20.${GENOME}.bw" \
     "${LIBRARY_NAME}.75_20.normalized.${GENOME}.bw" \
     "${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch" \ 
