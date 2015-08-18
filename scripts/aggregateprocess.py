@@ -365,8 +365,12 @@ class ProcessSetUp(object):
         script.write("export READ_LENGTH=%d\n" % flowcell["read_length"])
         if aggregation["umi"]:
             script.write("export UMI=True\n")
+        else:
+            script.write("unset UMI\n")
         if flowcell["paired_end"]:
             script.write("export PAIRED=True\n")
+        else:
+            script.write("unset PAIRED\n")
         script.write("\n")
 
         script.write(script_contents)

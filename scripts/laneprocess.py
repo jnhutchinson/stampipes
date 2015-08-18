@@ -214,6 +214,16 @@ class ProcessSetUp(object):
         outfile.write("export READLENGTH=%s\n" % processing_info['flowcell']['read_length'])
         if processing_info['flowcell']['paired_end']:
             outfile.write("export PAIRED=True\n")
+        else:
+            outfile.write("unset PAIRED\n")
+
+        # Process with UMI if the barcode has one and this is a dual index
+        # flowcell
+        if lane['barcode1']['umi'] and processing_info['flowcell']['dual_index']:
+            outfile.write("export UMI=True\n")
+        else:
+            outfile.write("unset UMI\n")
+
         outfile.write("export FLOWCELL_LANE_ID=%s\n" % lane['id'])
         outfile.write("export FASTQ_DIR=%s\n" % fastq_directory)
         outfile.write("export FLOWCELL=%s\n" % processing_info['flowcell']['label'])
