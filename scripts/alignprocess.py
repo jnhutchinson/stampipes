@@ -270,6 +270,8 @@ class ProcessSetUp(object):
         outfile.write("export READLENGTH=%s\n" % processing_info['flowcell']['read_length'])
         if processing_info['flowcell']['paired_end']:
             outfile.write("export PAIRED=True\n")
+        else:
+            outfile.write("unset PAIRED\n")
         outfile.write("export FLOWCELL_LANE_ID=%s\n" % lane['id'])
         outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
         outfile.write("export ALIGN_DIR=%s/%s\n" % (fastq_directory, align_dir))
@@ -291,6 +293,8 @@ class ProcessSetUp(object):
             # flowcell
             if lane['barcode1']['umi'] and processing_info['flowcell']['dual_index']:
                 outfile.write("export UMI=True\n")
+            else:
+                outfile.write("unset UMI\n")
 
         outfile.write("\n")
         outfile.write(self.get_script_template(process_template))
