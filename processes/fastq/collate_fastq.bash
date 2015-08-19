@@ -49,15 +49,28 @@ do
 
 done
 
+gzip -t $R1_TMP_FILE
+
+if [ ! -s $R1_TMP_FILE ]; then
+  echo "ERROR: $R1_TMP_FILE is 0 size"
+  exit 1
+fi
+
+if [ "$PAIRED" == "True" ]; then
+  gzip -t $R2_TMP_FILE
+  if [ ! -s $R2_TMP_FILE ]; then
+    echo "ERROR: $R2_TMP_FILE is 0 size"
+    exit 1
+  fi
+fi
+
 mv "$R1_TMP_FILE" "$R1_FILE"
 if [[ "$PAIRED" == "True" ]] ; then
   mv "$R2_TMP_FILE" "$R2_FILE"
 fi
 
-gzip -t $R1_FILE
 $UPLOAD_SCRIPT --attach_file_purpose r1-fastq --attach_file ${R1_FILE}
 
 if [ -e $R2_FILE ]; then
-  gzip -t $R2_FILE
   $UPLOAD_SCRIPT --attach_file_purpose r2-fastq --attach_file ${R2_FILE}
 fi
