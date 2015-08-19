@@ -168,8 +168,10 @@ class ProcessSetUp(object):
 
         if not candidates:
             logging.critical("Could not find %s file for lane %d" % (purpose, lane_id))
+            return None
         if len(candidates) > 1:
             logging.critical("More than one %s file for lane %d" % (purpose, lane_id))
+            return None
 
         return candidates[0]
 
@@ -257,8 +259,8 @@ class ProcessSetUp(object):
         r1_fastq = self.get_lane_file(lane["id"], "r1-fastq")
         r2_fastq = self.get_lane_file(lane["id"], "r2-fastq")
 
-        if not r1_fastq: logging.info("Missing r1-fastq for lane %d" % lane["id"])
-        if not r2_fastq: logging.info("Missing r2-fastq for lane %d" % lane["id"])
+        if not r1_fastq: logging.info("Missing r1-fastq for lane %d (alignment %d)" % (lane["id"], alignment["id"]))
+        if not r2_fastq: logging.info("Missing r2-fastq for lane %d (alignment %d)" % (lane["id"], alignment["id"]))
         if not r1_fastq or not r2_fastq: return
 
         outfile = open(script_file, 'w')
