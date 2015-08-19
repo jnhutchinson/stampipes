@@ -46,8 +46,6 @@ def parser_setup():
 
     parser.add_argument("-t", "--token", dest="token",
         help="Your authentication token.  Required.")
-    parser.add_argument("-f", "--flowcell", dest="flowcell",
-        help="The flowcell we're working on.  Enter it to clear cache after uploading.")
 
     parser.add_argument("--aggregation_id", dest="aggregation_id", type=int)
     parser.add_argument("-l", "--library_number", dest="library_number")
