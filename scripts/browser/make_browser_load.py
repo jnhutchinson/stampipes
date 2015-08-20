@@ -314,12 +314,28 @@ class MakeBrowserload(object):
         commands.write("# %s\n\n" % ", ".join(self.subtrack_sets.keys()))
 
         if self.link_dir:
-            commands.write("ln -s %s %s\n\n" % (self.basedir, self.link_dir))
+            commands.write("""
+if [ ! -e %(link_dir)s ]; then
+  ln -s %(base_dir)s %(link_dir)s
+else
+  echo %(link_dir)s already exists
+fi
+\n""" % {"base_dir": self.basedir, "link_dir": self.link_dir})
 
         for hgdb, subtracks in self.subtrack_sets.items():
             self.create_genome_commands( hgdb, commands)
 
-        commands.write("\ncat %s >> %s\n" % (self.excludes_file, self.browser_excludes_file))
+        # commands.write("\ncat %s >> %s\n" % (self.excludes_file, self.browser_excludes_file))
+
+        commands.write("""
+for EXCLUDE_FILE in `cat %(excludes_file)s`; do
+  if ! grep -q "$EXCLUDE_FILE" %(browser_excludes_file)s; then
+    echo "$EXCLUDE_FILE" >> %(browser_excludes_file)s
+  else
+    echo "$EXCLUDE_FILE already exists in %(browser_excludes_file)s"
+  fi
+done
+""" % {"excludes_file": self.excludes_file, "browser_excludes_file": self.browser_excludes_file})
 
         commands.close()
 
@@ -361,7 +377,18 @@ class MakeBrowserload(object):
 
         commandsout.write("\ncp %s %s/%s/%s\n" % (self.html_files[hgdb], self.track_basedir, organism, hgdb))
         commandsout.write("cp %s %s/%s/%s\n\n" % (self.ra_files[hgdb], self.track_basedir, organism, hgdb))
-        commandsout.write('# add line "include trackDb.%s.%s.ra" to %s/%s/%s/trackDb.%s.ra\n\n' % (self.file_label, self.main_label, self.track_basedir, organism, hgdb, self.file_label))
+        include_name = "trackDb.%s.%s.ra" % (self.file_label, self.main_label)
+        include_file = "%s/%s/%s/trackDb.%s.ra" % (self.track_basedir, organism, hgdb, self.file_label)
+        commandsout.write("""
+if ! grep -q "include %(include_name)s" %(include_file)s
+then
+     echo "Adding %(include_name)s to %(include_file)s"
+     echo "include %(include_name)s" >> %(include_file)s
+else
+     echo "%(include_name)s already in %(include_file)s"
+fi
+""" % { "include_name": include_name, "include_file": include_file })
+        # commandsout.write('# add line "include trackDb.%s.%s.ra" to %s/%s/%s/trackDb.%s.ra\n\n' % (self.file_label, self.main_label, self.track_basedir, organism, hgdb, self.file_label))
 
     def create_excludes(self):
         excludes = open( self.excludes_file, 'w')
