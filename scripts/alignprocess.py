@@ -198,7 +198,7 @@ class ProcessSetUp(object):
             outfile = open(self.outfile, 'a')
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
-        outfile.write("qsub -N %s%s-%s-ALIGN#%d -cwd -V -S /bin/bash %s\n\n" % (self.qsub_prefix, sample_name, processing_info['flowcell']['label'], align_id, script_file))
+        outfile.write("qsub -N \"%s%s-%s-ALIGN#%d\" -cwd -V -S /bin/bash %s\n\n" % (self.qsub_prefix, sample_name, processing_info['flowcell']['label'], align_id, script_file))
 
         outfile.close()
 
