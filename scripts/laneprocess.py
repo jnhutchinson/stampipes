@@ -180,7 +180,7 @@ class ProcessSetUp(object):
             outfile = open(self.outfile, 'a')
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
-        outfile.write("qsub -N %s%s-%s-LANE#%d -cwd -V -S /bin/bash %s\n\n" % (self.qsub_prefix, sample_name, flowcell_label, lane_id, script_file))
+        outfile.write("qsub -N \"%s%s-%s-LANE#%d\" -cwd -V -S /bin/bash %s\n\n" % (self.qsub_prefix, sample_name, flowcell_label, lane_id, script_file))
 
         outfile.close()
 
