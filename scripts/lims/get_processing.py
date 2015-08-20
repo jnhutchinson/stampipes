@@ -47,7 +47,7 @@ def parser_setup():
 
 def get_processing_info(api_url, token, id, outfile):
 
-    info = requests.get("%s/flowcell_lane_alignment_group/%d/processing_information" % (api_url, id),
+    info = requests.get("%s/flowcell_lane_alignment_group/%d/processing_information/" % (api_url, id),
         headers={'Authorization': "Token %s" % token})
 
     if info.ok:
@@ -73,6 +73,7 @@ from the command line."""
         logging.basicConfig(level=logging.DEBUG, format=log_format)
     else:
         # Set up the logging levels
+        logging.getLogger("requests").setLevel(logging.WARNING)
         logging.basicConfig(level=logging.INFO, format=log_format)
 
     if not poptions.base_api_url and "LIMS_API_URL" in os.environ:
