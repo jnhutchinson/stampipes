@@ -263,7 +263,7 @@ source $PYTHON3_ACTIVATE
 
 
 # Register the file directory
-python /home/audrakj/stampipes/scripts/lims/upload_data.py \
+python3 /home/audrakj/stampipes/scripts/lims/upload_data.py \
   --attach_directory "$analysis_dir" \
   --attach_file_contenttype sequencingdata.flowcellrun \
   --attach_file_purpose flowcell-directory \
@@ -312,7 +312,7 @@ $link_command
 rm -f fastqc.bash collate.bash run.bash
 
 # Create fastqc scripts
-python /home/audrakj/stampipes/scripts/laneprocess.py \
+python3 /home/audrakj/stampipes/scripts/laneprocess.py \
   --script_template "$STAMPIPES/processes/fastq/fastqc.bash" \
   --qsub-prefix .fq \
   --sample-script-basename fastqc.bash \
@@ -320,7 +320,7 @@ python /home/audrakj/stampipes/scripts/laneprocess.py \
   --outfile fastqc.bash
 
 # Create collation scripts
-python /home/audrakj/stampipes/scripts/laneprocess.py \
+python3 /home/audrakj/stampipes/scripts/laneprocess.py \
   --script_template "$STAMPIPES/processes/fastq/collate_fastq.bash" \
   --qsub-prefix .cl \
   --sample-script-basename "collate.bash" \
@@ -328,7 +328,7 @@ python /home/audrakj/stampipes/scripts/laneprocess.py \
   --outfile collate.bash
 
 # Create alignment scripts
-python $STAMPIPES/scripts/alignprocess.py \
+python3 $STAMPIPES/scripts/alignprocess.py \
   --flowcell $flowcell \
   --outfile run.bash
 
