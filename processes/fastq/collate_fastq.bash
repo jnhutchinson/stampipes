@@ -64,10 +64,18 @@ if [ "$PAIRED" == "True" ]; then
   fi
 fi
 
-mv "$R1_TMP_FILE" "$R1_FILE"
+rsync "$R1_TMP_FILE" "$R1_FILE"
+# Files created in temp directories do not have appropriate
+# permissions; make sure our collated files can be read by
+# anybody
+chmod 644 $R1_FILE
+rm $R1_TMP_FILE
 if [[ "$PAIRED" == "True" ]] ; then
-  mv "$R2_TMP_FILE" "$R2_FILE"
+  rsync "$R2_TMP_FILE" "$R2_FILE"
+  chmod 644 $R2_FILE
+  rm $R2_TMP_FILE
 fi
+
 
 $UPLOAD_SCRIPT --attach_file_purpose r1-fastq --attach_file ${R1_FILE}
 
