@@ -18,7 +18,6 @@ BAM_COUNT=`ls $BAM_FILES | wc -l`
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 
 export FINAL_BAM=${LIBRARY_NAME}.all.bam
-export TEMP_UNIQUES_BAM=${LIBRARY_NAME}.${GENOME}.uniques.sorted.bam
 
 if [ -n "$REDO_AGGREGATION" ]; then
   # TODO: Make
@@ -41,7 +40,7 @@ if [ ! -e ${FINAL_BAM} ]; then
   qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __MERGE__
     set -x -e -o pipefail
 
-    TMPBAM="$TMPDIR/$LIBRARY_NAME.bam"
+    TMPBAM="\$TMPDIR/$LIBRARY_NAME.bam"
 
     echo "Hostname: "
     hostname
@@ -53,7 +52,7 @@ if [ ! -e ${FINAL_BAM} ]; then
 
     java -Xmx24g -jar \$(which MarkDuplicates.jar) \
       INPUT=\$TMPBAM \
-      METRICS_FILE=$LIBRARY_NAME.spotdups.txt \
+      METRICS_FILE=$LIBRARY_NAME.dups.txt \
       OUTPUT=$FINAL_BAM \
       REMOVE_DUPLICATES=false \
       ASSUME_SORTED=true
@@ -65,6 +64,7 @@ __MERGE__
 
 fi
 
+# Currently single-threaded
 make_strand(){
   name=$1
   targets="$name.bam $name.starch $name.bw $name.bam.bai"
@@ -72,7 +72,7 @@ make_strand(){
 
   if ! make -q -f $makefile $targets ; then
     PROCESSING="$PROCESSING,${MAKE_JOBNAME}-$name"
-    qsub -N "${MAKE_JOBNAME}-$name" -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr << __MAKE__
+    qsub -N "${MAKE_JOBNAME}-$name" -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr << __STRAND__
       set -x -e -o pipefail
 
       echo "Hostname: "
@@ -88,7 +88,7 @@ make_strand(){
       echo "FINISH: "
       date
 
-__MAKE__
+__STRAND__
   fi
 }
 
@@ -96,25 +96,22 @@ make_strand $LIBRARY_NAME.all
 make_strand $LIBRARY_NAME.pos
 make_strand $LIBRARY_NAME.neg
 
-# TODO
 if [ -n ${PROCESSING} ]; then
 
   qsub -N "${JOB_BASENAME}_complete" -hold_jid "${PROCESSING}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-  #set -x -e -o pipefail
+  set -x -e -o pipefail
 
-  #echo "Hostname: "
-  #hostname
+  echo "Hostname: "
+  hostname
 
-  #echo "START: "
-  #date
+  echo "START: "
+  date
 
-  #bash $STAMPIPES/scripts/tophat/aggregate/basic/checkcomplete.bash
-  #bash $STAMPIPES/scripts/tophat/aggregate/basic/attachfiles.bash
+  bash $STAMPIPES/scripts/tophat/aggregate/basic/checkcomplete.bash
+  bash $STAMPIPES/scripts/tophat/aggregate/basic/attachfiles.bash
 
-  ##rm ${TEMP_UNIQUES_BAM} ${TEMP_UNIQUES_BAM}.bai
-
-  #echo "FINISH: "
-  #date
+  echo "FINISH: "
+  date
 
 __SCRIPT__
 
