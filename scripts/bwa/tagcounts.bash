@@ -1,7 +1,8 @@
 SAMPLE_NAME=$1
 INBAM=$2
 OUTPUT=$3
-FASTQ_DIR=$4
+R1_FASTQ=$4
+R2_FASTQ=$5
 
 # Delete output if it already exists; do not want to append to existing output
 if [ -e $OUTPUT ]; then
@@ -14,6 +15,7 @@ if [ ! -e $INBAM ]; then
 fi
 
 echo "Calculating total/pf/qc counts"
+<<<<<<< HEAD
 if [[ "$PAIRED" == "True" ]]; then
     AWK_PAIRED="-v paired=1";
 else
@@ -30,4 +32,8 @@ TRIMMED=`find . -maxdepth 1 -name "$SAMPLE_NAME*trimstats.txt" | xargs awk 'BEGI
 echo -e "adapter-trimmed\t$TRIMMED" >> $OUTPUT
 
 echo "Creating bam counts"
-python3 $STAMPIPES/scripts/bwa/bamcounts.py $INBAM $OUTPUT
+if [[ "$PAIRED" = "True" ]]; then
+  python3 $STAMPIPES/scripts/bwa/bamcounts.py $INBAM $OUTPUT
+else
+  python3 $STAMPIPES/scripts/bwa/bamcounts.py --unpaired $INBAM $OUTPUT
+fi
