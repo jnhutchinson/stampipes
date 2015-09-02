@@ -12,7 +12,7 @@ source $PYTHON3_ACTIVATE
 module load python/2.7.9
 
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
-export REF_DIR=$(dirname "$BWAINDEX")
+export REF_DIR=$(dirname "$GENOME_INDEX")
 export ADAPTER_FILE="$SAMPLE_NAME.adapters.txt"
 export VERSION_FILE="$SAMPLE_NAME.versions.txt"
 

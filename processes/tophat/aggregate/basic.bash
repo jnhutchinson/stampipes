@@ -1,6 +1,7 @@
+source $PYTHON3_ACTIVATE
 
 source $MODULELOAD
-module load bedops/2.4.2
+module load bedops/2.4.14
 module load java/jdk1.7.0_05
 module load gcc/4.7.2
 module load R/3.1.0
@@ -9,9 +10,12 @@ module load samtools/1.2
 module load git/2.3.3
 module load coreutils/8.9
 
+module load python/2.7.9
+
 cd $AGGREGATION_FOLDER
 
 export LIBRARY_NAME=LN${LIBRARY}
+export REF_DIR=$(dirname "$GENOME_INDEX")
 
 BAM_COUNT=`ls $BAM_FILES | wc -l`
 
