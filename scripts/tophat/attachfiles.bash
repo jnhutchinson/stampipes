@@ -8,7 +8,7 @@
 
 UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
 
-ATTACH_ALIGNMENT="python $UPLOAD_SCRIPT --attach_file_contenttype SequencingData.flowcelllanealignment --attach_file_objectid ${ALIGNMENT_ID}"
+ATTACH_ALIGNMENT="python3 $UPLOAD_SCRIPT --attach_file_contenttype SequencingData.flowcelllanealignment --attach_file_objectid ${ALIGNMENT_ID}"
 
 cd ${ALIGN_DIR}
 
