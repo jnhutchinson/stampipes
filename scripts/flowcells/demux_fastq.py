@@ -102,7 +102,11 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_
 
     for library in lane_libraries:
 
-        label = library['alignments'][0]['sample_name']
+        if library.get('alignments', []):
+            label = library['alignments'][0]['sample_name']
+        else:
+            label = "%s_%s_L%03d" % ( library['samplesheet_name'], library['barcode_index'], library['lane'] )
+
         if ignore_failed_lanes and library["failed"]:
             logging.info("Ignoring failed library %s" % label) 
             continue
