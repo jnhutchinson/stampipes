@@ -24,7 +24,7 @@ qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
 
   if [ "$UMI" = "True" ]; then
       echo "Tallying up top UMI tags seen in R1"
-      zcat ${SAMPLE_NAME}_R1_???.fastq.gz | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | head -n 100 > ${SAMPLE_NAME}.topumis.txt
+      zcat ${R1_FASTQ} | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | head -n 100 > ${SAMPLE_NAME}.topumis.txt
   fi
 
   bash $STAMPIPES/scripts/fastq/attachfiles.bash
