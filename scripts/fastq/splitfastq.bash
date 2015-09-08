@@ -40,8 +40,12 @@ if [ "$SPLIT_COUNT" -eq 1 ]; then
 fi
 
 for RAW_FILE in `find ${TMPDIR} -name "${SAMPLE_NAME}_R?_???"`; do
+    echo "Compressing ${RAW_FILE}"
+    date
     mv $RAW_FILE ${RAW_FILE}.fastq
     FASTQ_FILENAME=`basename $RAW_FILE`
     pigz --fast -p 2 -c ${RAW_FILE}.fastq > $FASTQ_TMP/$FASTQ_FILENAME.fastq.gz
-    date
 done
+
+echo "Done compressing"
+date
