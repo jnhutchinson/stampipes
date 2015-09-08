@@ -167,10 +167,8 @@ class ProcessSetUp(object):
         candidates = self.api_list_result("file/?content_type=40&purpose__slug=%s&object_id=%d" % (purpose, lane_id))
 
         if not candidates:
-            logging.critical("Could not find %s file for lane %d" % (purpose, lane_id))
             return None
         if len(candidates) > 1:
-            logging.critical("More than one %s file for lane %d" % (purpose, lane_id))
             return None
 
         return candidates[0]
@@ -217,18 +215,18 @@ class ProcessSetUp(object):
         align_id = alignment["id"]
 
         if not "process_template" in alignment:
-            logging.critical("Alignment %d has no process template" % align_id)
+            logging.error("Alignment %d has no process template" % align_id)
             return False
 
         process_template = self.get_process_template(align_id, alignment["process_template"])
 
         if not process_template:
-            return
+            return False
 
         flowcell_directory = processing_info['flowcell']['directory']
 
         if not flowcell_directory:
-            logging.critical("Alignment %d has no flowcell directory for flowcell %s" % (align_id, processing_info['flowcell']['label']))
+            logging.error("Alignment %d has no flowcell directory for flowcell %s" % (align_id, processing_info['flowcell']['label']))
             return False
 
         fastq_directory = os.path.join(processing_info['flowcell']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
@@ -243,25 +241,30 @@ class ProcessSetUp(object):
 
         script_directory = "%s/%s" % (fastq_directory, align_dir)
 
+        r1_fastq = self.get_lane_file(lane["id"], "r1-fastq")
+
+        if not r1_fastq:
+            logging.error("Missing r1-fastq for lane %d (alignment %d)" % (lane["id"], alignment["id"]))
+            return False
+
+        if processing_info['flowcell']['paired_end']:
+            r2_fastq = self.get_lane_file(lane["id"], "r2-fastq")
+            if not r2_fastq:
+                logging.error("Missing r2-fastq for lane %d (alignment %d)" % (lane["id"], alignment["id"]))
+                return False
+
         script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         logging.info(script_file)
 
         if self.dry_run:
             logging.info("Dry run, would have created: %s" % script_file)
-            return
+            return True
 
         if not os.path.exists(script_directory):
             logging.info("Creating directory %s" % script_directory)
             os.makedirs(script_directory)
 
         self.add_script(align_id, processing_info, script_file, alignment['sample_name'])
-
-        r1_fastq = self.get_lane_file(lane["id"], "r1-fastq")
-        r2_fastq = self.get_lane_file(lane["id"], "r2-fastq")
-
-        if not r1_fastq: logging.info("Missing r1-fastq for lane %d (alignment %d)" % (lane["id"], alignment["id"]))
-        if not r2_fastq: logging.info("Missing r2-fastq for lane %d (alignment %d)" % (lane["id"], alignment["id"]))
-        if not r1_fastq or not r2_fastq: return
 
         outfile = open(script_file, 'w')
         outfile.write("set -e -o pipefail\n")
@@ -278,7 +281,8 @@ class ProcessSetUp(object):
         outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
         outfile.write("export ALIGN_DIR=%s/%s\n" % (fastq_directory, align_dir))
         outfile.write("export R1_FASTQ=%s\n" % r1_fastq["path"])
-        outfile.write("export R2_FASTQ=%s\n" % r2_fastq["path"])
+        if processing_info['flowcell']['paired_end']:
+            outfile.write("export R2_FASTQ=%s\n" % r2_fastq["path"])
         outfile.write("export FASTQ_DIR=%s\n" % fastq_directory)
         outfile.write("export FLOWCELL=%s\n" % processing_info['flowcell']['label'])
         if "barcode1" in lane and lane["barcode1"]:
