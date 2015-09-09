@@ -327,15 +327,17 @@ python3 /home/audrakj/stampipes/scripts/laneprocess.py \
   --flowcell_label "$flowcell" \
   --outfile collate.bash
 
-# Create alignment scripts
-python3 $STAMPIPES/scripts/alignprocess.py \
-  --flowcell $flowcell \
-  --outfile run.bash
-
 bash collate.bash
 bash fastqc.bash
 
-qsub -hold_jid '.cl*' -cwd -V -q all.q -S /bin/bash run.bash
+qsub -N .run$flowcell -hold_jid '.cl*' -cwd -V -q all.q -S /bin/bash <<__ALIGN__
+  # Create alignment scripts
+  python3 $STAMPIPES/scripts/alignprocess.py \
+    --flowcell $flowcell \
+    --outfile run.bash
+
+  bash run.bash
+__ALIGN__
 
 __COPY__
 
