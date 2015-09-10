@@ -535,21 +535,27 @@ class LimsQuery(object):
             self.cache[url] = requests.get(url, headers={'Authorization': "Token %s" % self.api_token}).json()
         return self.cache[url]
 
+    def get_all(self, query):
+        data = self.get(query)
+        results = data['results']
+        while data['next'] is not None:
+            data = self.get_by_url(data['next'])
+            results += data['results']
+        return results
+
+    def get_counttype_by_codename(self, codename):
+        return self.get_all("flowcell_lane_count_type/?codename=%s" % codename)[0]
+
     def get_counts_for_alignment(self, alignment):
         counts = dict()
-        page = 1
-        while len(counts) < len(self.count_types):
-            result = self.get("flowcell_lane_count/?alignment=%s&page=%s" % (alignment, page ))
-            if not 'results' in result:
-                break
-            for count in result['results']:
-                count_name = count['count_type_name']
-                if count_name in self.count_types:
-                    counts[count_name] = count['count']
-            page += 1
+        for type in self.count_types:
+            type_id = self.get_counttype_by_codename(type)['id']
+            count_vals = self.get_all("flowcell_lane_count/?alignment=%s&count_type=%d" % (alignment, type_id))
+            if count_vals:
+                counts[type] = count_vals[0]['count']
 
         # Check to see if we got all the types we wanted
-        for count  in self.count_types:
+        for count in self.count_types:
             if count not in counts:
                 logging.warn("Could not fetch count %s for alignment: %s" % (count, alignment))
 
@@ -593,7 +599,7 @@ def get_alignment_data(library, alignment, lims):
 
     lims_lane = lims.get("flowcell_lane/%s" % library['id'])
     lims_sample = lims.get_by_url( lims_lane['sample'] )
-    lims_library = lims.get_by_url( lims_lane['library'] )
+    #lims_library = lims.get_by_url( lims_lane['library'] )
 
     d['failed_lane'] = lims_lane['failed']
     if d['failed_lane']:
