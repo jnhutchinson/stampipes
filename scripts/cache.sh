@@ -37,7 +37,7 @@ if [ ! -d "$CACHE_DIR" ] ; then
 fi
 
 # Name destination & lockfile
-dest="$(readlink -f $CACHE_DIR/$src)"
+dest="$(readlink -m $CACHE_DIR/$src)"
 mkdir -p "$(dirname $dest)"
 lockfile="$CACHE_DIR.lock"
 
