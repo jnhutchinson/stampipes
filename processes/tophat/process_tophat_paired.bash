@@ -11,6 +11,7 @@ module load tophat/2.0.13
 source $PYTHON3_ACTIVATE
 module load python/2.7.9
 
+export GENOME_INDEX="${GENOME_INDEX:-BWAINDEX}"
 export SCRIPT_DIR="$STAMPIPES/scripts/tophat"
 export REF_DIR=$(dirname "$GENOME_INDEX")
 export ADAPTER_FILE="$SAMPLE_NAME.adapters.txt"
