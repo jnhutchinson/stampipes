@@ -11,7 +11,7 @@ source $PYTHON3_ACTIVATE
 
 PRIORITY=${PRIORITY:-0}
 
-outdir=$(dirname $0)
+outdir=$(pwd)
 
 scriptdir="$STAMPIPES/scripts/rna-star/"
 script="$scriptdir/STAR_RSEM.sh"
