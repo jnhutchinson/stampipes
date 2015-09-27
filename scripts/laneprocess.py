@@ -156,7 +156,11 @@ class ProcessSetUp(object):
 
         lanes = self.api_list_result("flowcell_lane?flowcell__label=%s" % flowcell_label)
 
-        [self.setup_lane(lane["id"]) for lane in lanes]
+        for lane in lanes:
+            try:
+                self.setup_lane(lane["id"])
+            except Exception as e:
+                logging.error("Could not set up lane %s: %s" % (lane, e))
 
     def setup_tag(self, tag_slug):
 

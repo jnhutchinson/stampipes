@@ -184,7 +184,11 @@ class ProcessSetUp(object):
         logging.info("Setting up flowcell for %s" % flowcell_label)
         alignments = self.api_list_result("flowcell_lane_alignment/?lane__flowcell__label=%s" % flowcell_label)
 
-        [self.setup_alignment(alignment["id"]) for alignment in alignments]
+        for alignment in alignments:
+            try:
+                self.setup_alignment(alignment["id"])
+            except Exception as e:
+                logging.error("Could not set up alignment %s: %s" % (alignment, e))
 
     def add_script(self, align_id, processing_info, script_file, sample_name):
 
