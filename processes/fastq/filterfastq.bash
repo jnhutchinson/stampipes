@@ -1,4 +1,4 @@
-# USAGE: bash ~audrakj/stampy/scripts/filterfastq.bash D14_WT_IgG_K4me3_IP_TGACCA_L004_R1
+# USAGE: bash $STAMPIPES/scripts/filterfastq.bash D14_WT_IgG_K4me3_IP_TGACCA_L004_R1
 
 cd "$FASTQ_DIR"
 

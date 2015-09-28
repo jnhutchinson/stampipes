@@ -30,7 +30,7 @@ if [[ "$UMI" != "True" ]]; then
 fi
 
 if [[ $EXIT -ne 1 ]]; then
-    python3 /home/audrakj/stampipes/scripts/lims/upload_data.py --aggregation_id 508 --complete_aggregation
+    python3 "$STAMPIPES/scripts/lims/upload_data.py" --aggregation_id 508 --complete_aggregation
 fi
 
 exit $EXIT

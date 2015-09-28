@@ -22,7 +22,6 @@
 
 FAI ?= $(BWAINDEX)
 BAMFILE ?= $(SAMPLE_NAME).uniques.sorted.$(GENOME).bam
-STAMPIPES ?= /home/audrakj/stampipes
 
 TMPDIR ?= $(shell pwd)
 
