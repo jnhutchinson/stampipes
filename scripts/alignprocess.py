@@ -5,6 +5,7 @@ import argparse
 import logging
 import requests
 import subprocess
+from collections import OrderedDict
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
@@ -74,7 +75,7 @@ def parser_setup():
 
 class ProcessSetUp(object):
 
-    def __init__(self, args, api_url, token): 
+    def __init__(self, args, api_url, token):
 
         self.token = token
         self.api_url = api_url
@@ -266,25 +267,31 @@ class ProcessSetUp(object):
 
         self.add_script(align_id, processing_info, script_file, alignment['sample_name'])
 
-        outfile = open(script_file, 'w')
-        outfile.write("set -e -o pipefail\n")
-        outfile.write("export SAMPLE_NAME=%s\n" % alignment['sample_name'])
-        outfile.write("export BWAINDEX=%s\n" % alignment['genome_index_location'])
-        outfile.write("export GENOME=%s\n" % alignment['genome_index'])
-        outfile.write("export ASSAY=%s\n" % lane['assay'])
-        outfile.write("export READLENGTH=%s\n" % processing_info['flowcell']['read_length'])
+        # Set up & add environment variables
+        env_vars = OrderedDict()
+
+        env_vars["SAMPLE_NAME"] = alignment['sample_name']
+        env_vars["BWAINDEX"]    = alignment['genome_index_location']
+        env_vars["GENOME"]      = alignment['genome_index']
+        env_vars["ASSAY"]       = lane['assay']
+        env_vars["READLENGTH"]  = processing_info['flowcell']['read_length']
+
         if processing_info['flowcell']['paired_end']:
-            outfile.write("export PAIRED=True\n")
+            env_vars["PAIRED"] = "True"
         else:
-            outfile.write("unset PAIRED\n")
-        outfile.write("export FLOWCELL_LANE_ID=%s\n" % lane['id'])
-        outfile.write("export ALIGNMENT_ID=%s\n" % alignment['id'])
-        outfile.write("export ALIGN_DIR=%s/%s\n" % (fastq_directory, align_dir))
-        outfile.write("export R1_FASTQ=%s\n" % r1_fastq["path"])
+            env_vars["PAIRED"] = None
+
+        env_vars["FLOWCELL_LANE_ID"] = lane['id']
+        env_vars["ALIGNMENT_ID"]     = alignment['id']
+        env_vars["ALIGN_DIR"]        = os.path.join(fastq_directory, align_dir)
+        env_vars["R1_FASTQ"]         = r1_fastq["path"]
+
         if processing_info['flowcell']['paired_end']:
-            outfile.write("export R2_FASTQ=%s\n" % r2_fastq["path"])
-        outfile.write("export FASTQ_DIR=%s\n" % fastq_directory)
-        outfile.write("export FLOWCELL=%s\n" % processing_info['flowcell']['label'])
+            env_vars["R2_FASTQ"] = r2_fastq["path"]
+
+        env_vars["FASTQ_DIR"] = fastq_directory
+        env_vars["FLOWCELL"]  = processing_info['flowcell']['label']
+
         if "barcode1" in lane and lane["barcode1"]:
             p7_adapter = lane['barcode1']['adapter7']
             p5_adapter = lane['barcode1']['adapter5']
@@ -292,15 +299,32 @@ class ProcessSetUp(object):
                 # Override the "default" end adapter from barcode1
                 # TODO: Make sure we want adapter7, double-check lims methods
                 p5_adapter = lane['barcode2']['adapter7']
-            outfile.write("export ADAPTER_P7=%s\n" % p7_adapter)
-            outfile.write("export ADAPTER_P5=%s\n" % p5_adapter)
+            env_vars["ADAPTER_P7"] = p7_adapter
+            env_vars["ADAPTER_P5"] = p5_adapter
 
             # Process with UMI if the barcode has one and this is a dual index
             # flowcell
             if lane['barcode1']['umi'] and processing_info['flowcell']['dual_index']:
-                outfile.write("export UMI=True\n")
+                env_vars["UMI"] = "True"
             else:
-                outfile.write("unset UMI\n")
+                env_vars["UMI"] = None
+
+        # Set process template env var overrides
+        process_template_variables = json.loads(process_template['process_variables'],
+                                                object_pairs_hook=OrderedDict)
+        for var, value in process_template_variables.items():
+            env_vars[var] = value
+
+        # Write file
+        outfile = open(script_file, 'w')
+        outfile.write("set -e -o pipefail\n")
+
+        # Set env vars
+        for var, value in env_vars.items():
+            if value is not None:
+                outfile.write("export %s=%s\n" % (var, value))
+            else:
+                outfile.write("unset %s\n" % var)
 
         outfile.write("\n")
         outfile.write(self.get_script_template(process_template))
