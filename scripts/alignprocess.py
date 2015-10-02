@@ -257,15 +257,9 @@ class ProcessSetUp(object):
         script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         logging.info(script_file)
 
-        if self.dry_run:
-            logging.info("Dry run, would have created: %s" % script_file)
-            return True
-
         if not os.path.exists(script_directory):
             logging.info("Creating directory %s" % script_directory)
             os.makedirs(script_directory)
-
-        self.add_script(align_id, processing_info, script_file, alignment['sample_name'])
 
         # Set up & add environment variables
         env_vars = OrderedDict()
@@ -310,10 +304,28 @@ class ProcessSetUp(object):
                 env_vars["UMI"] = None
 
         # Set process template env var overrides
-        process_template_variables = json.loads(process_template['process_variables'],
-                                                object_pairs_hook=OrderedDict)
-        for var, value in process_template_variables.items():
-            env_vars[var] = value
+        if 'process_variables' in process_template and process_template['process_variables']:
+            try:
+                process_template_variables = json.loads(process_template['process_variables'],
+                                                        object_pairs_hook=OrderedDict)
+                for var, value in process_template_variables.items():
+                    env_vars[var] = value
+            except ValueError as e:
+                logging.error("Could not parse process variables for align %d (template %d): '%s'" %
+                              (
+                                  alignment['id'],
+                                  process_template['id'],
+                                  process_template['process_variables']
+                              ))
+                return False
+
+        if self.dry_run:
+            logging.info("Dry run, would have created: %s" % script_file)
+            logging.debug(env_vars)
+            return True
+
+        # Append to master script
+        self.add_script(align_id, processing_info, script_file, alignment['sample_name'])
 
         # Write file
         outfile = open(script_file, 'w')
