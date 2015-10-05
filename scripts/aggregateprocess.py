@@ -157,14 +157,14 @@ class ProcessSetUp(object):
                 logging.critical("Cannot find file purpose all-alignment-bam")
                 sys.exit(1)
 
-            file_purpose = results[0]["id"]
+            file_purpose = results[0]["url"]
 
             path = os.path.join(self.aggregation_base_directory, "LN%d" % library_info["number"], "aggregation-%d" % aggregation_info["id"])
 
             logging.info("Setting aggregation folder to %s" % path)
 
             data = {
-                "object_content_type": aggregation_info["object_content_type"],
+                "content_type": "%s/content_type/%d/" % (self.api_url, aggregation_info["object_content_type"]),
                 "object_id": aggregation_info["id"],
                 "path": path,
                 "purpose": file_purpose,
@@ -173,7 +173,8 @@ class ProcessSetUp(object):
             new_result = requests.post("%s/directory" % self.api_url, headers = self.headers, data = data)
 
             if not new_result.ok:
-                logging.critical("Could not upload new aggregation folder path to LIMS: %s" % str(data))
+                logging.critical(new_result)
+                logging.critical("Could not upload new aggregation folder path to LIMS: %s" % json.dumps(data))
                 sys.exit(1)
 
             return path
