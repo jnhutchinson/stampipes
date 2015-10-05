@@ -23,7 +23,11 @@ OUTBAM ?= /dev/null
 
 all : $(DUP_OUT)
 
+NODE_RAM_GB ?= 8
+NSLOTS ?= 1
+JAVA_HEAP = $(shell echo "($(NODE_RAM_GB)*$(NSLOTS) - 2) * 1024" | bc)m
+
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(BAMFILE)
-	time java -jar `which MarkDuplicates.jar` INPUT=$(BAMFILE) OUTPUT=$(OUTBAM) \
+	time java -Xmx$(JAVA_HEAP) -jar `which MarkDuplicates.jar` INPUT=$(BAMFILE) OUTPUT=$(OUTBAM) \
 	  METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT
