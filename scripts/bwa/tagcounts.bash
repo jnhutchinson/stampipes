@@ -14,20 +14,14 @@ if [ ! -e $INBAM ]; then
 fi
 
 echo "Calculating total/pf/qc counts"
-if [ -e ${FASTQ_DIR}/${SAMPLE_NAME}_R1_001.fastq.gz ]; then
-zcat ${FASTQ_DIR}/${SAMPLE_NAME}_R?_???.fastq.gz \
-     | awk 'BEGIN{
-     filter = 0;
-   }{ \
-   if ( FNR % 4 == 1 && substr($2, 3, 1) == "Y" ) \
-     { filter+=1 }
-   }\
-   END { \
-     TOTAL = NR / 4; \
-     print "total", TOTAL ; \
-     print "pf", TOTAL - filter ; \
-     print "qc", filter ; \
-   }' >> $OUTPUT
+if [[ "$PAIRED" == "True" ]]; then
+    AWK_PAIRED="-v paired=1";
+else
+    AWK_PAIRED="-v paired=0";
+fi
+if [ -e $R1_FASTQ ]; then
+  echo $AWK_PAIRED
+  zcat $R1_FASTQ | awk $AWK_PAIRED -f $STAMPIPES/awk/illumina_fastq_count.awk >> $OUTPUT
 fi
 
 echo "Calculate tags trimmed"
