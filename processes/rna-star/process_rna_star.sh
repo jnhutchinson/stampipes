@@ -11,6 +11,8 @@ source $PYTHON3_ACTIVATE
 
 PRIORITY=${PRIORITY:-0}
 
+SLOTS=${SLOTS:-4-8}
+
 outdir=$(pwd)
 
 scriptdir="$STAMPIPES/scripts/rna-star/"
@@ -72,8 +74,8 @@ uploadjob=".up$jobbase"
 
 # Run STAR & RSEM
 # TODO: Break these into sub-steps
-if ! "$STAMPIPES/rna-star/checkcomplete.bash" ; then
-  qsub -cwd -V -N "$starjob" -pe threads 4-8 -p "$PRIORITY" -S /bin/bash << __RNA-STAR__
+if ! "$STAMPIPES/rna-star/scripts/checkcomplete.bash" ; then
+  qsub -cwd -V -N "$starjob" -pe threads "$SLOTS" -p "$PRIORITY" -S /bin/bash << __RNA-STAR__
     set -x
 
     STARdir=\$($STAMPIPES/scripts/cache.sh $STARdir)
@@ -91,6 +93,7 @@ fi
 
 # Check for completeness and upload files.
 qsub -cwd -V -hold_jid "$starjob" -N "$uploadjob" -S /bin/bash << __UPLOAD__
+  set -e
   bash "$STAMPIPES/scripts/rna-star/checkcomplete.bash"
   bash "$STAMPIPES/scripts/rna-star/attachfiles.sh"
 
