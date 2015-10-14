@@ -80,7 +80,7 @@ $STAR $STARparCommon $STARparRun $STARparBAM $STARparStrand $STARparsMeta
 
 ###### bedGraph generation, now decoupled from STAR alignment step
 # working subdirectory for this STAR run
-mkdir Signal
+mkdir -p Signal
 
 echo $STAR --runMode inputAlignmentsFromBAM   --inputBAMfile Aligned.sortedByCoord.out.bam --outWigType bedGraph $STARparWig --outFileNamePrefix ./Signal/ --outWigReferencesPrefix chr
 $STAR --runMode inputAlignmentsFromBAM   --inputBAMfile Aligned.sortedByCoord.out.bam --outWigType bedGraph $STARparWig --outFileNamePrefix ./Signal/ --outWigReferencesPrefix chr
@@ -131,12 +131,12 @@ str_PE|unstr_PE)
       # paired-end data, merge mates into one line before sorting, and un-merge after sorting
       cat \
         <( samtools view -H Tr.bam ) \
-        <( samtools view -@ $nThreadsRSEM Tr.bam \
+        <( samtools view '-@' "$nThreadsRSEM" Tr.bam \
             | awk '{printf $0 " "; getline; print}' \
-            | sort -S $trBAMsortRAM -T "$TMPDIR" --parallel "$nThreadsRSEM" \
+            | sort -S "$trBAMsortRAM" -T "$TMPDIR" --parallel "$nThreadsRSEM" \
             | tr ' ' '\n'
         ) \
-        | samtools view -@ $nThreadsRSEM -bS - \
+        | samtools view '-@' "$nThreadsRSEM" -bS - \
         > Aligned.toTranscriptome.out.bam
       ;;
 esac

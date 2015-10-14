@@ -12,7 +12,7 @@ export TARGET_BAM=Aligned.toTranscriptome.out.bam
 
 numbam=$(wc -w <<< $BAM_FILES)
 # Temporary
-if [ ! -e "$TARGET_BAM" ] ; then
+if [ ! -s "$TARGET_BAM" ] ; then
   if [ $numbam -eq 1 ] ; then
     cp "$BAM_FILES" "$TARGET_BAM"
   else
