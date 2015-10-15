@@ -13,12 +13,11 @@ ATTACH_FASTQ="$ATTACH_LANE --attach_file_purpose raw-reads --attach_file_type gz
 
 $ATTACH_LANE --attach_directory ${FASTQ_DIR} --attach_file_purpose fastq-directory
 
-$ATTACH_LANE --attach_file ${FASTQ_DIR}/${SAMPLE_NAME}_R1_fastqc.zip --attach_file_type zip --attach_file_purpose fastqc-results-zip
+$ATTACH_LANE --attach_file ${R1_FASTQC} --attach_file_type zip --attach_file_purpose fastqc-results-zip
+$ATTACH_FASTQ --attach_file ${R1_FASTQ}
 
 if [ "$PAIRED" = "True" ]; then
-    $ATTACH_LANE --attach_file ${FASTQ_DIR}/${SAMPLE_NAME}_R2_fastqc.zip --attach_file_type zip --attach_file_purpose fastqc-results-zip
+    $ATTACH_LANE --attach_file ${R2_FASTQC} --attach_file_type zip --attach_file_purpose fastqc-results-zip
+    $ATTACH_FASTQ --attach_file ${R2_FASTQ}
 fi
 
-for FASTQ_FILE in `find $FASTQ_DIR -name "$SAMPLE_NAME*.fastq.gz"`; do
-    $ATTACH_FASTQ --attach_file $FASTQ_FILE
-done
