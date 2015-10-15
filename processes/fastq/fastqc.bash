@@ -32,7 +32,9 @@ qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
 
   if [ "$UMI" = "True" ]; then
       echo "Tallying up top UMI tags seen in R1"
+      set +o pipefail  # Prevent premature exit
       zcat ${R1_FASTQ} | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | head -n 100 > ${TOP_UMIS}
+      set -o pipefail
   fi
 
   if [ "$PAIRED" = "True" ]; then
@@ -41,6 +43,7 @@ qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   else
       python3 ${STAMPIPES}/scripts/lims/upload_data.py -f ${FLOWCELL} --flowcell_lane_id=${FLOWCELL_LANE_ID} \
 	  --fastqcfile $R1_FASTQC
+  fi
 
   bash $STAMPIPES/scripts/fastq/attachfiles.bash
 
