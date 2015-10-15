@@ -9,7 +9,7 @@ export R1_FASTQ=${FASTQ_NAME}_R1.fastq.gz
 export R2_FASTQ=${FASTQ_NAME}_R2.fastq.gz
 export R1_FASTQC=${FASTQ_NAME}_R1_fastqc.zip
 export R2_FASTQC=${FASTQ_NAME}_R2_fastqc.zip
-export TOP_UMIS=${SAMPLE_NAME}.topumis.txt
+export TOP_UMIS=${SAMPLE_NAME}.topumis.txt.gz
 
 cd $FASTQ_DIR
 
@@ -32,9 +32,7 @@ qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
 
   if [ "$UMI" = "True" ]; then
       echo "Tallying up top UMI tags seen in R1"
-      set +o pipefail  # Prevent premature exit
-      zcat ${R1_FASTQ} | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | head -n 100 > ${TOP_UMIS}
-      set -o pipefail
+      zcat ${R1_FASTQ} | grep "^@" | cut -f 2 -d "+" | sort | uniq -c | sort -n -r | gzip -c > ${TOP_UMIS}
   fi
 
   if [ "$PAIRED" = "True" ]; then
