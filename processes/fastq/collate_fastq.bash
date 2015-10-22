@@ -8,6 +8,8 @@ cd $FASTQ_DIR
 
 FASTQ_NAME=${FLOWCELL}_${SAMPLE_NAME}
 
+echo "Collating $FASTQ_DIR/$FASTQ_NAME"
+
 R1_NUM_FILES=$(find . -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l)
 
 if [[ "$PAIRED" == "True" ]]; then
