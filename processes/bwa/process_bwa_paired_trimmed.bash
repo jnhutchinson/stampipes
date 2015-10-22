@@ -23,6 +23,12 @@ MAX_MISMATCHES=2
 MIN_MAPPING_QUALITY=10
 MAX_INSERT_SIZE=750
 
+export BASE_PRIORITY=${BASE_PRIORITY:-"-10"}
+
+if [ -n $ALN_PRIORITY ]; then
+  export ALN_PRIORITY=`echo "$BASE_PRIORITY - 10" | bc`
+fi
+
 JOB_BASENAME=${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}
 
 export FINAL_BAM=${SAMPLE_NAME}.sorted.bam
@@ -55,7 +61,7 @@ python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
   --adapter_file $ADAPTER_FILE \
   --version_file $VERSION_FILE
 
-if [ ! -e "${SAMPLE_NAME}_R1_000.fastq.gz" ]; then
+if [ ! -e "$FASTQ_TMP/${SAMPLE_NAME}_R1_000.fastq.gz" ]; then
   bash $STAMPIPES/scripts/fastq/splitfastq.bash $R1_FASTQ $R2_FASTQ $FASTQ_TMP
 fi
 
@@ -72,7 +78,7 @@ do
     
 if [ ! -e $BAMFILE -a ! -e ${FINAL_BAM} ]; then
 
-qsub -l h_data=5650M -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -p $ALN_PRIORITY -l h_data=5650M -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -140,7 +146,7 @@ export PRE_DUP_BAM=${SAMPLE_NAME}.predup.sorted.bam
 export PRE_DUP_BAM_PREFIX=${PRE_DUP_BAM%.*}
 export FINAL_BAM_PREFIX=${FINAL_BAM%.*}
 
-qsub ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd -S /bin/bash << __SCRIPT__
+qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd -S /bin/bash << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -223,7 +229,7 @@ if [ ! -e ${SAMPLE_NAME}.tagcounts.txt -o -n "$FORCE_COUNTS" ]; then
 JOBNAME=".ct${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME"
    
-qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: "
   hostname
@@ -252,7 +258,7 @@ if [ ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out -o ! -e ${SAMPLE_NAME}.
 JOBNAME=".sp${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME" 
     
-qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -284,7 +290,7 @@ if [ ! -e ${SAMPLE_NAME}.75_20.${GENOME}.bw ]; then
 JOBNAME=".den${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME" 
 
-qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -305,7 +311,7 @@ fi
 
 if [ -n "$PROCESSING" ]; then
 
-qsub -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -p $BASE_PRIORITY -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: "
   hostname
