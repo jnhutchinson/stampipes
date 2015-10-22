@@ -26,6 +26,7 @@ script_options = {
     "no_mask": False,
     "bases_mask": None,
     "redo_completed": False,
+    "qsub_priority": -50,
 }
 
 def parser_setup():
@@ -51,6 +52,8 @@ def parser_setup():
 
     parser.add_argument("--script_template", dest="script_template",
         help="The script template to use.")
+    parser.add_argument("--qsub_priority", dest="qsub_priority", type=int,
+        help="The priority to give scripts we are submitting.")
 
     parser.add_argument("-o", "--outfile", dest="outfile",
         help="Append commands to run this alignment to this file.")
@@ -87,6 +90,7 @@ class ProcessSetUp(object):
         self.headers = {'Authorization': "Token %s" % self.token}
         self.redo_completed = args.redo_completed
         self.script_template = args.script_template
+        self.qsub_priority = args.qsub_priority
 
     def api_single_result(self, url_addition=None, url=None):
 
@@ -197,7 +201,7 @@ class ProcessSetUp(object):
             outfile = open(self.outfile, 'a')
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
-        outfile.write("qsub -N \"%s%s-%s-ALIGN#%d\" -cwd -V -S /bin/bash %s\n\n" % (self.qsub_prefix, sample_name, processing_info['flowcell']['label'], align_id, script_file))
+        outfile.write("qsub -p %d -N \"%s%s-%s-ALIGN#%d\" -cwd -V -S /bin/bash %s\n\n" % (self.qsub_priority, self.qsub_prefix, sample_name, processing_info['flowcell']['label'], align_id, script_file))
 
         outfile.close()
 
