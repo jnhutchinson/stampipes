@@ -27,21 +27,16 @@ SCRIPT_DIR ?= $(STAMPIPES)/scripts/tophat
 RIBOSOMAL_REF ?= $(REF_DIR)/contamination/hg_rRNA
 CONTROL_REF   ?= $(REF_DIR)/spikeInControlRNA/ERCC92
 
-R1_FASTQ_FILES ?= $(wildcard $(FASTQ_DIR)/$(SAMPLE_NAME)_R1_*.fastq.gz)
-R2_FASTQ_FILES ?= $(wildcard $(FASTQ_DIR)/$(SAMPLE_NAME)_R2_*.fastq.gz)
-
-r1_fastq_names = $(notdir $(R1_FASTQ_FILES))
-r2_fastq_names = $(notdir $(R2_FASTQ_FILES))
 
 ADAPTER_FILE ?= $(SAMPLE_NAME).adapters.txt
 
 TRIM_DIR ?= $(TMPDIR)/trimmed
-R1_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(r1_fastq_names)))
-R2_trimmed_fastq_files ?= $(addprefix $(TRIM_DIR)/,$(r2_fastq_names))
+R1_trimmed_fastq ?= $(addprefix $(TRIM_DIR)/,$(notdir $(R1_FASTQ)))
+R2_trimmed_fastq ?= $(addprefix $(TRIM_DIR)/,$(notdir $(R2_FASTQ)))
 
-ribosomal_files ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(r1_fastq_names)))
-control_files   ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt,$(r1_fastq_names)))
-tophat_files    ?= $(addprefix $(TMPDIR)/, $(patsubst $(SAMPLE_NAME)_R1_%.fastq.gz,$(SAMPLE_NAME)_tophat_%/accepted_hits.bam,$(r1_fastq_names)))
+ribosomal_file ?= $(addprefix $(TMPDIR)/, $(addsuffix .ribosomalRNA.txt, $(notdir $(R1_FASTQ))))
+control_file   ?= $(addprefix $(TMPDIR)/, $(addsuffix .spikeInControlRNA.bowtie.txt, $(notdir $(R1_FASTQ))))
+tophat_file    ?= $(TMPDIR)/tophat/accepted_hits.bam
 
 ribo_txt = $(SAMPLE_NAME).rRNAcounts.txt
 control_txt = $(SAMPLE_NAME).spikeInControlCounts.txt
@@ -52,7 +47,6 @@ summary_txt = $(SAMPLE_NAME).sample_summary.txt
 upload_txt = $(SAMPLE_NAME).rna_metrics.txt
 
 marked_bam = $(SAMPLE_NAME).all.$(GENOME).bam
-merged_bam = $(TMPDIR)/$(SAMPLE_NAME)_tophat_merged.bam
 
 cufflinks_finished = $(SAMPLE_NAME)_cufflinks/finished.txt
 coverage_types = all pos neg
@@ -66,7 +60,7 @@ starch = $(addsuffix .starch, $(strand_prefix))
 
 .SUFFIXES:
 
-.INTERMEDIATE: $(merged_bam) $(tophat_files) $(R1_trimmed_fastq_files) $(R2_trimmed_fastq_files) $(ribosomal_files)
+.INTERMEDIATE: $(tophat_file) $(R1_trimmed_fastq) $(R2_trimmed_fastq) $(ribosomal_file) $(control_file)
 
 .PHONY: default all summary cufflinks coverage ribosomal alignment upload
 
@@ -147,21 +141,21 @@ $(bamcount_txt) : $(marked_bam)
 	$(SCRIPT_DIR)/collectStatsFromTransposedPicardTables.pl . $(SAMPLE_NAME) >> $@
 
 # Read counts:
-$(readcount_txt) : $(R1_FASTQ_FILES) $(R2_FASTQ_FILES)
-	$(SCRIPT_DIR)/countReads.pl $(SAMPLE_NAME) total_reads $(FASTQ_DIR) > $@
+$(readcount_txt) : $(R1_FASTQ) $(R2_FASTQ)
+	$(SCRIPT_DIR)/countReads.pl $(SAMPLE_NAME) total_reads $^ > $@
 
 # Ribosomal counts:
-$(ribo_txt) : $(ribosomal_files)
+$(ribo_txt) : $(ribosomal_file)
 	$(SCRIPT_DIR)/countLines.pl $(SAMPLE_NAME) rRNA $^ > $@
 
 # Spike-in counts:
-$(control_txt) : $(control_files)
+$(control_txt) : $(control_file)
 	cat $^ | cut -f3 | $(SCRIPT_DIR)/countFew.pl > $@
 
 #### Alignment
 
 # Final (all) BAM
-$(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(merged_bam)
+$(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(tophat_file)
 	$(JAVA) -Xmx24g -jar $(MARK_DUPS) \
 		INPUT=$< \
 		METRICS_FILE=$(SAMPLE_NAME).spotdups.txt \
@@ -169,31 +163,23 @@ $(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(merged_bam)
 		REMOVE_DUPLICATES=false \
 		ASSUME_SORTED=true
 
-# Merge alignments together
-$(merged_bam) : $(tophat_files)
-	$(SCRIPT_DIR)/merge_or_copy_bam.sh $@ $^
-
-# File-specific processing
-# TODO: These rules are hecka ugly. There's probably a nice make-way to write
-# the filetype transformation, but my make-fu is weak.
-
-$(TMPDIR)/$(SAMPLE_NAME)_tophat_%/accepted_hits.bam : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
-	$(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(TMPDIR)/$(SAMPLE_NAME)_tophat_$* \
+$(tophat_file) : $(R1_trimmed_fastq) $(R2_trimmed_fastq)
+	$(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(TMPDIR)/tophat \
 		$(THREADS)
 
-$(TMPDIR)/ribosomalRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
+$(ribosomal_file) : $(R1_trimmed_fastq)
 	zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(RIBOSOMAL_REF) - $@
 
-$(TMPDIR)/spikeInControlRNA.$(SAMPLE_NAME)_%.bowtie.txt : $(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz
+$(control_file) : $(R1_trimmed_fastq)
 	zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \
 		$(CONTROL_REF) - $@
 
-$(TRIM_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz : $(FASTQ_DIR)/$(SAMPLE_NAME)_R1_%.fastq.gz $(FASTQ_DIR)/$(SAMPLE_NAME)_R2_%.fastq.gz
+$(R1_trimmed_fastq) $(R2_trimmed_fastq) : $(R1_FASTQ) $(R2_FASTQ)
 	mkdir $(TRIM_DIR) -p ; \
 	trim-adapters-illumina \
 		-f $(ADAPTER_FILE) \
 		-1 P5 -2 P7 \
 		$+ \
-		$(TRIM_DIR)/$(SAMPLE_NAME)_R1_$*.fastq.gz $(TRIM_DIR)/$(SAMPLE_NAME)_R2_$*.fastq.gz
+		$(R1_trimmed_fastq) $(R2_trimmed_fastq)
 
