@@ -4,6 +4,8 @@ module load gcc/4.7.2     # R dependent on this
 module load R/3.1.0
 
 module load star/2.4.2a   # Just for densities
+module load bedops/2.4.14
+
 module load RSEM/1.2.22
 
 export REFDIR="$(dirname $GENOME_INDEX)"
@@ -28,8 +30,19 @@ if [ ! -s "$GENOME_BAM" ] ; then
   $STAMPIPES/scripts/tophat/merge_or_copy_bam.sh "$GENOME_BAM" $GENOME_BAM_FILES
 fi
 
-if [ ! -s "Signal.Unique.strand+.bw" ] ; then
+if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
   qsub -cwd -V -N ".AGG#${AGGREGATION_ID}.den" -S /bin/bash <<'__DEN__'
+
+    # Write starch and bigwig to .tmp files
+    function convertBedGraph(){
+      in="$1"
+      base="$2"
+      chrom="$in.onlyChr.bg"
+      grep '^chr' "$in" > $chrom
+      bedGraphToBigWig "$chrom" chrNL.txt "$base.bw.tmp"
+      starch "$chrom" > "$base.starch.tmp"
+    }
+
     set -x -e -o pipefail
 
     mkdir -p $TMPDIR/Signal
@@ -39,17 +52,12 @@ if [ ! -s "Signal.Unique.strand+.bw" ] ; then
 
     grep '^chr' $STARrefDir/chrNameLength.txt > chrNL.txt
 
-    tree -s $TMPDIR #debug
-    for i in $(ls $TMPDIR/Signal/Signal*bg); do
-      grep '^chr' $i > $i.onlyChr.bg
-    done
+    convertBedGraph $TMPDIR/Signal/Signal.Unique.str1.out.bg         Signal.Unique.str-
+    convertBedGraph $TMPDIR/Signal/Signal.Unique.str2.out.bg         Signal.Unique.str+
+    convertBedGraph $TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg Signal.UniqueMultiple.str-
+    convertBedGraph $TMPDIR/Signal/Signal.UniqueMultiple.str2.out.bg Signal.UniqueMultiple.str+
 
-    bedGraphToBigWig $TMPDIR/Signal/Signal.Unique.str1.out.bg.onlyChr.bg         chrNL.txt Signal.Unique.str-.bw.tmp
-    bedGraphToBigWig $TMPDIR/Signal/Signal.Unique.str2.out.bg.onlyChr.bg         chrNL.txt Signal.Unique.str+.bw.tmp
-    bedGraphToBigWig $TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg.onlyChr.bg chrNL.txt Signal.UniqueMultiple.str-.bw.tmp
-    bedGraphToBigWig $TMPDIR/Signal/Signal.UniqueMultiple.str2.out.bg.onlyChr.bg chrNL.txt Signal.UniqueMultiple.str+.bw.tmp
-
-    for i in Signal*bw.tmp ; do
+    for i in Signal*.tmp ; do
       mv $i ${i/.tmp/}
     done
 
