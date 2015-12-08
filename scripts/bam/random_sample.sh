@@ -31,7 +31,7 @@ if [ -z "$pairTotal" ] ; then
 fi
 
 echo "Random sampling started at: `date +%D%t%T.%N`"
-echo "Sampling $numPairs read-pairs from $INBAMFILE to $OUTBAMFILE (from $pairTotal total)..."
+echo "Sampling $numPairs read-pairs from $inbam to $outbam (from $pairTotal total)..."
 
 python3 $STAMPIPES/scripts/bam/random-reads.py "$inbam" "$outbam" "$pairTotal" "$numPairs"
 

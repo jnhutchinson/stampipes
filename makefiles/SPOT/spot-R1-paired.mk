@@ -44,7 +44,7 @@ calcspot : $(SPOT_OUT)
 calcdup : $(DUP_OUT)
 
 $(RANDOM_SAMPLE_BAM) : $(BAMFILE)
-	$(STAMPIPES)/scripts/bam/random_sample.sh $< $@ $(SAMPLE_SIZE)
+	bash $(STAMPIPES)/scripts/bam/random_sample.sh $< $@ $(SAMPLE_SIZE)
 
 # Only use Read 1 from our sample for SPOT score
 $(RANDOM_SAMPLE_BAM_R1) : $(RANDOM_SAMPLE_BAM)
