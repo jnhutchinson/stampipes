@@ -297,6 +297,10 @@ class ProcessSetUp(object):
                 # Override the "default" end adapter from barcode1
                 # TODO: Make sure we want adapter7, double-check lims methods
                 p5_adapter = lane['barcode2']['adapter7']
+
+            if not p7_adapter or not p5_adapter:
+                logging.warn("Alignment %d missing adapters, some processes might not work" % alignment['id'])
+
             env_vars["ADAPTER_P7"] = p7_adapter
             env_vars["ADAPTER_P5"] = p5_adapter
 
