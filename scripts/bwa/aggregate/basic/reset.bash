@@ -16,6 +16,10 @@ files=( \
     "${LIBRARY_NAME}.75_20.${GENOME}.bw" \
     "${LIBRARY_NAME}.75_20.normalized.${GENOME}.bw" \
     "${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch" \ 
+    "$LIBRARY_NAME.${GENOME}.cuts.sorted.bed.starch" \
+    "$LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.starch" \
+    "$LIBRARY_NAME.${GENOME}.fragments.sorted.bed.starch" \
+    "$LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw" \
 )
 
 for FILE in "${files[@]}"; do
