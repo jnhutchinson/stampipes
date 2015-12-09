@@ -14,8 +14,6 @@ BINI=20
 
 cd $AGGREGATION_FOLDER
 
-export LIBRARY_NAME=LN${LIBRARY}
-
 BAM_COUNT=`ls $BAM_FILES | wc -l`
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
@@ -25,6 +23,7 @@ export TEMP_UNIQUES_BAM=${LIBRARY_NAME}.${GENOME}.uniques.sorted.bam
 export TAGCOUNTS_FILE=${LIBRARY_NAME}.tagcounts.txt
 export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.bed.starch
 export DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.bw
+export CUTCOUNTS_BIGWIG=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw
 
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
@@ -33,6 +32,7 @@ fi
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
 COUNT_JOBNAME=${JOB_BASENAME}_count
 DENSITY_JOBNAME=${JOB_BASENAME}_density
+CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 # Check out files match first
 python3 $STAMPIPES/scripts/utility/md5check.py bamfiles.txt || exit 1
@@ -111,6 +111,29 @@ qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/ba
   make -f $STAMPIPES/makefiles/densities/density.mk FAI=${GENOME_INDEX}.fai SAMPLE_NAME=${LIBRARY_NAME} GENOME=${GENOME} \
      BAMFILE=${TEMP_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
   make -f "$STAMPIPES/makefiles/densities/normalize-density.mk" BAMFILE=${TEMP_UNIQUES_BAM} SAMPLE_NAME=${LIBRARY_NAME} FAI=${GENOME_INDEX}.fai
+
+  echo "FINISH: "
+  date
+
+__SCRIPT__
+
+fi
+
+if [ ! -e $CUTCOUNTS_BIGWIG ]; then
+
+PROCESSING="$PROCESSING,${CUTCOUNTS_JOBNAME}"
+
+qsub -N "${CUTCOUNTS_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+
+  set -x -e -o pipefail
+
+  echo "Hostname: "
+  hostname
+
+  echo "START: "
+  date
+
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/cutcounts.bash 
 
   echo "FINISH: "
   date

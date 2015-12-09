@@ -359,6 +359,7 @@ class ProcessSetUp(object):
         script = open(script_file, "w")
         script.write("export AGGREGATION_ID=%d\n" % aggregation_id)
         script.write("export LIBRARY=%d\n" % library_info["number"])
+        script.write("export LIBRARY_NAME=LN%d\n" % library_info["number"])
         script.write("export BAM_FILES=\"%s\"\n" % " ".join([bamfile[0] for bamfile in files]))
         script.write("export GENOME=%s\n" % genome_index["label"])
         script.write("export GENOME_INDEX=%s\n" % genome_index_location)
