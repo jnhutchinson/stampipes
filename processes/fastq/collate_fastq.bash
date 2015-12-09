@@ -10,11 +10,11 @@ FASTQ_NAME=${FLOWCELL}_${SAMPLE_NAME}
 
 echo "Collating $FASTQ_DIR/$FASTQ_NAME"
 
-R1_NUM_FILES=$(find . -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l)
+R1_NUM_FILES=$(find . -maxdepth 1 -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l)
 
 if [[ "$PAIRED" == "True" ]]; then
 
-  R2_NUM_FILES=$(find . -name "${SAMPLE_NAME}_R2_???.fastq.gz" | wc -l)
+  R2_NUM_FILES=$(find . -maxdepth 1 -name "${SAMPLE_NAME}_R2_???.fastq.gz" | wc -l)
 
   if [[ "$R1_NUM_FILES" -ne "$R2_NUM_FILES" ]]; then
     echo "UNEQUAL NUMBER OF FILES FOR $SAMPLE_NAME IN $FASTQ_DIR"
