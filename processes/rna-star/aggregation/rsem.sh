@@ -28,6 +28,7 @@ fi
 if [ ! -s "$GENOME_BAM" ] ; then
   GENOME_BAM_FILES=$(sed 's/toTranscriptome/sortedByCoord/g' <<< "$BAM_FILES")
   $STAMPIPES/scripts/tophat/merge_or_copy_bam.sh "$GENOME_BAM" $GENOME_BAM_FILES
+  samtools index "$GENOME_BAM"
 fi
 
 if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
