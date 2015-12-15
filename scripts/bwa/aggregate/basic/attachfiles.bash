@@ -25,3 +25,13 @@ $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cuts.sorted.bed.starch --attach_file_type starch --attach_file_purpose cuts-starch
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.starch --attach_file_type starch --attach_file_purpose cutcounts-starch
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.fragments.sorted.bed.starch --attach_file_type starch --attach_file_purpose fragments-starch
+
+python3 $UPLOAD_SCRIPT \
+    --aggregation_id ${AGGREGATION_ID}
+    --insertsfile ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard \
+
+if [ -e ${LIBRARY_NAME}.MarkDuplicates.picard ]; then
+python3 $UPLOAD_SCRIPT \
+    --aggregation_id ${AGGREGATION_ID}
+    --dupsfile ${LIBRARY_NAME}.MarkDuplicates.picard
+fi

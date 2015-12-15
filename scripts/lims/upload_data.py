@@ -213,6 +213,7 @@ class UploadLIMS(object):
        self.count_types = {}
        self.flowcelllane_contenttype = None
        self.alignment_contenttype = None
+       self.aggregation_contenttype = None
        self.flowcell_lane_cache = {}
        self.alignment_counts = {}
        self.picard_metrics = None
@@ -516,6 +517,10 @@ class UploadLIMS(object):
         self.alignment_contenttype = self.get_contenttype('SequencingData.flowcelllanealignment')
         return self.alignment_contenttype
 
+    def get_aggregation_contenttype(self):
+        self.aggregation_contenttype = self.get_contenttype('AggregationData.aggregation')
+        return self.aggregation_contenttype
+
     def create_count_type(self, name):
 
         log.info("Creating count type %s" % name)
@@ -607,6 +612,24 @@ class UploadLIMS(object):
             self.flowcell_lane_cache[flowcell_lane_id] = None
 
         return self.flowcell_lane_cache[flowcell_lane_id]
+
+    def get_library(self, library_id):
+
+        exists = requests.get("%s/library/%s" % (self.api_url, library_id), headers = self.headers)
+        if exists.ok:
+            return exists.json()
+        else:
+            log.error("Library id %s not found" % library_id)
+            log.error(exists)
+
+    def get_aggregation(self, aggregation_id):
+
+        exists = requests.get("%s/aggregation/%s" % (self.api_url, aggregation_id), headers = self.headers)
+        if exists.ok:
+            return exists.json()
+        else:
+            log.error("Aggregation id %s not found" % aggregation_id)
+            log.error(exists)
 
     def get_rna_metrics(self, alignment_id):
         exists = requests.get("%s/rna_alignment_metrics/?alignment=%d" % (self.api_url, alignment_id), headers = self.headers)
@@ -923,12 +946,10 @@ class UploadLIMS(object):
         for count_name, count in counts.items():
             self.upload_count(alignment_id, count_name, count)
 
-    def upload_picard_metric(self, alignment_id, flowcell_lane_id, filename, metric_name):
+    def upload_picard_metric(self, alignment_id, flowcell_lane_id, aggregation_id, filename, metric_name):
 
         if not self.picard_metrics:
             self.picard_metrics = self.get_picard_metrics()
-        if not self.alignment_contenttype:
-            self.get_alignment_contenttype()
 
         picard_metric  = None
         try:
@@ -940,25 +961,45 @@ class UploadLIMS(object):
         log.debug("Uploading metric contents from: %s" % filename)
         log.debug(picard_metric)
 
-        lane_info = self.get_flowcell_lane(flowcell_lane_id)
-
-        if not lane_info:
-            return False
-
         if not metric_name in self.picard_metrics:
             log.error("Could not find metrics type %s" % metric_name)
             return False
 
         metric = self.picard_metrics[metric_name]
 
-        label = "FC%s %s %s %s %s" % (lane_info['flowcell_label'],
-            lane_info["samplesheet_name"], str(lane_info["lane"]),
-            lane_info["barcode_index"], metric_name)
+        if alignment_id:
+            object_id = alignment_id
+            if not self.alignment_contenttype:
+                self.get_alignment_contenttype()
+            content_type = self.alignment_contenttype
+            lane_info = self.get_flowcell_lane(flowcell_lane_id)
+
+            if not lane_info:
+                return False
+
+            label = "FC%s %s %s %s %s" % (lane_info['flowcell_label'],
+                lane_info["samplesheet_name"], str(lane_info["lane"]),
+                lane_info["barcode_index"], metric_name)
+        elif aggregation_id:
+            object_id = aggregation_id
+            if not self.aggregation_contenttype:
+                self.get_aggregation_contenttype()
+            content_type = self.aggregation_contenttype
+            aggregation_info = self.get_aggregation(aggregation_id)
+            log.debug(aggregation_info)
+            library_exists = requests.get(aggregation_info['library'], headers = self.headers)
+            if library_exists.ok:
+                library_info = library_exists.json()
+                log.debug(library_info)
+            else:
+                log.error("Could not fetch %s" % aggregation_info['library'])
+                return False
+            label = "AGG%d LN%d %s" % (aggregation_id, library_info['number'], metric_name)
 
         # does this report already exist?
-        exists = requests.get("%s/picard_report/?label=%s&object_id=%d&content_type=%s" % (
-            self.api_url, label, alignment_id,
-            self.alignment_contenttype["id"]), headers = self.headers).json()
+        existing_url = "%s/picard_report/?object_id=%d&content_type=%s&label=%s" % (self.api_url, object_id, content_type["id"], label)
+        log.debug("Checking for existing report at \"%s\"" % existing_url)
+        exists = requests.get(existing_url, headers = self.headers).json()
 
         if exists['count'] >= 1:
             upload = exists['results'][0]
@@ -972,14 +1013,14 @@ class UploadLIMS(object):
                     log.debug(result.json())
             else:
                 log.info("Picard report is the same, not uploading")
-                return
+            return
 
         upload = dict()
 
         upload['metrics'] = [metric['url']]
         upload['raw_data'] = picard_metric
-        upload['content_type'] = self.alignment_contenttype["url"]
-        upload['object_id'] = alignment_id
+        upload['content_type'] = content_type["url"]
+        upload['object_id'] = object_id
         upload['label'] = label
 
         log.info("Uploading new picard report %s" % upload['label'])
@@ -1035,10 +1076,10 @@ from the command line."""
         uploader.upload_fastqc_counts(poptions.alignment_id)
 
     if poptions.inserts_file:
-        uploader.upload_picard_metric(poptions.alignment_id, poptions.flowcell_lane_id, poptions.inserts_file, "CollectInsertSizeMetrics")
+        uploader.upload_picard_metric(poptions.alignment_id, poptions.flowcell_lane_id, poptions.aggregation_id, poptions.inserts_file, "CollectInsertSizeMetrics")
 
     if poptions.dups_file:
-        uploader.upload_picard_metric(poptions.alignment_id, poptions.flowcell_lane_id, poptions.dups_file, "MarkDuplicates")
+        uploader.upload_picard_metric(poptions.alignment_id, poptions.flowcell_lane_id, poptions.aggregation_id, poptions.dups_file, "MarkDuplicates")
 
     if poptions.spot_file or poptions.spot_dup_file:
         uploader.upload_spot(poptions.alignment_id, poptions.spot_file, poptions.spot_dup_file)
