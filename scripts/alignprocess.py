@@ -139,7 +139,7 @@ class ProcessSetUp(object):
 
         if not process_info:
             logging.critical("Could not find processing info for alignment %d\n" % alignment_id)
-            logging.critical(info)
+            logging.critical(process_info)
             sys.exit(1)
 
         return process_info
