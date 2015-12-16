@@ -37,6 +37,7 @@ all : calcdup calcspot
 SPOT_OUT ?= $(OUTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spot.out
 DUP_OUT ?= $(OUTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spotdups.txt
 
+PROPERLY_PAIRED_BAM ?= $(TMPDIR)/$(SAMPLE_NAME).properlypaired.sorted.bam
 RANDOM_SAMPLE_BAM ?= $(TMPDIR)/$(SAMPLE_NAME).rand.uniques.sorted.bam
 RANDOM_SAMPLE_BAM_R1 ?= $(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.bam
 
@@ -44,7 +45,11 @@ calcspot : $(SPOT_OUT)
 calcdup : $(DUP_OUT)
 
 $(RANDOM_SAMPLE_BAM) : $(BAMFILE)
-	bash $(STAMPIPES)/scripts/bam/random_sample.sh $< $@ $(SAMPLE_SIZE)
+	samtools view -h -F 12 -f 3 $^ \
+		| awk '{if( ! index($$3, "chrM") && $$3 != "chrC" && $$3 != "random"){print}}' \
+		| samtools view -uS - \
+		> $(PROPERLY_PAIRED_BAM)
+	bash $(STAMPIPES)/scripts/bam/random_sample.sh $(PROPERLY_PAIRED_BAM) $@ $(SAMPLE_SIZE)
 
 # Only use Read 1 from our sample for SPOT score
 $(RANDOM_SAMPLE_BAM_R1) : $(RANDOM_SAMPLE_BAM)
@@ -60,4 +65,4 @@ $(SPOTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spot.out : $(RANDOM_SAMPLE_BAM_
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM)
 	java -jar `which MarkDuplicates.jar` INPUT=$(RANDOM_SAMPLE_BAM) OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.dup \
-	  METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT
+		METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT

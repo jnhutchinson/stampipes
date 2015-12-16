@@ -20,19 +20,22 @@ outbam="$2"
 numPairs="$3"
 pairTotal="$4"
 
-# If not specified... calculate from the index file
+# If total size of file is not specified, read from samtools
 if [ -z "$pairTotal" ] ; then
-  if [ ! -s "$inbam.bai" ] ;then
-    samtools index $inbam
+  if [ -s "$inbam.bai" ] ;then
+    # If index exists, use idxstats
+    readTotal=$(samtools idxstats $inbam | awk '{sum+=$3}END{print sum}')
+    pairTotal=$((readTotal / 2))
+  else
+    # Otherwise use view to count them
+    pairTotal=$(samtools view -c -f 64 $inbam)
   fi
 
-  readTotal=$(samtools idxstats $inbam | awk '{sum+=$3}END{print sum}')
-  pairTotal=$((readTotal / 2))
 fi
 
 echo "Random sampling started at: `date +%D%t%T.%N`"
 echo "Sampling $numPairs read-pairs from $inbam to $outbam (from $pairTotal total)..."
 
-python3 $STAMPIPES/scripts/bam/random-reads.py "$inbam" "$outbam" "$pairTotal" "$numPairs"
+python3 $STAMPIPES/scripts/bam/random_reads.py "$inbam" "$outbam" "$pairTotal" "$numPairs"
 
 echo "Random sampling finished at: `date +%D%t%T.%N`"
