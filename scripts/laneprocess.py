@@ -194,21 +194,31 @@ class ProcessSetUp(object):
 
         if not "directory" in lane:
             logging.critical("No directory for lane %d" % lane["id"])
-            return
+            return False
 
         fastq_directory = lane["directory"]
 
         barcode = "NoIndex" if lane['barcode_index'] is None else lane['barcode_index']
         spreadsheet_name = "%s_%s_L00%d" % (lane['samplesheet_name'], barcode, lane['lane'])
+
+        if not os.path.exists(fastq_directory):
+            logging.critical("fastq directory %s does not exist, cannot continue" % fastq_directory)
+            return False 
+
         script_file = os.path.join( fastq_directory, "%s-%s" % (spreadsheet_name, self.qsub_scriptname) )
 
         if self.dry_run:
             logging.info("Dry run, would have created: %s" % script_file)
-            return
+            return True
+
+        try:
+            outfile = open(script_file, 'w')
+        except FileNotFoundError:
+            logging.critical("Could not create script file %s" % script_file)
+            return False
 
         self.add_script(script_file, lane["id"], processing_info["flowcell"]["label"], spreadsheet_name)
 
-        outfile = open(script_file, 'w')
         outfile.write("set -e -o pipefail\n")
         outfile.write("export SAMPLE_NAME=%s\n" % spreadsheet_name)
         outfile.write("export ASSAY=%s\n" % lane['assay'])
