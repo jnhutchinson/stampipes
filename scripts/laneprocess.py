@@ -198,7 +198,8 @@ class ProcessSetUp(object):
 
         fastq_directory = lane["directory"]
 
-        spreadsheet_name = "%s_%s_L00%d" % (lane['samplesheet_name'], lane['barcode_index'], lane['lane'])
+        barcode = "NoIndex" if lane['barcode_index'] is None else lane['barcode_index']
+        spreadsheet_name = "%s_%s_L00%d" % (lane['samplesheet_name'], barcode, lane['lane'])
         script_file = os.path.join( fastq_directory, "%s-%s" % (spreadsheet_name, self.qsub_scriptname) )
 
         if self.dry_run:
@@ -219,7 +220,7 @@ class ProcessSetUp(object):
 
         # Process with UMI if the barcode has one and this is a dual index
         # flowcell
-        if lane['barcode1']['umi'] and processing_info['flowcell']['dual_index']:
+        if lane['barcode1'] and lane['barcode1']['umi'] and processing_info['flowcell']['dual_index']:
             outfile.write("export UMI=True\n")
         else:
             outfile.write("unset UMI\n")
