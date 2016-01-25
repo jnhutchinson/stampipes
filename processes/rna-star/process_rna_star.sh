@@ -74,7 +74,7 @@ uploadjob=".up$jobbase"
 
 # Run STAR & RSEM
 # TODO: Break these into sub-steps
-if ! "$STAMPIPES/rna-star/scripts/checkcomplete.bash" ; then
+if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
   qsub -cwd -V -N "$starjob" -pe threads "$SLOTS" -p "$PRIORITY" -S /bin/bash << __RNA-STAR__
     set -x
 
