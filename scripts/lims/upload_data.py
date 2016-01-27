@@ -786,11 +786,13 @@ class UploadLIMS(object):
         if complete_time:
             alignment["complete_time"] = datetime.datetime.now()
 
-        result = requests.put(alignment['url'], headers = self.headers, data = alignment)
+        result = requests.patch(alignment['url'], headers = self.headers, data = alignment)
 
         if result.ok:
+            log.info("Alignment %d updated" % alignment_id)
             log.debug(result.json())
         else:
+            log.debug("No result for uploading %s to %s" % (str(alignment), alignment['url']))
             log.error(result)
 
     def upload_spot(self, alignment_id, spot_file, dup_file):
