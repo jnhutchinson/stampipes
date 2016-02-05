@@ -22,11 +22,11 @@ filesize=$( du --total "$FASTQ_DIR"/*fastq.gz | tail -n1 | cut -f1)
 # For small files, prioritize overall throughput
 # For big files, we want them to finish someday.
 if [ "$filesize" -gt 2000000 ] ; then
-    THREADS=4
-    SLOTS=2
+    export THREADS=4
+    SLOTS=4
     JOBS=4
 else
-    THREADS=1
+    export THREADS=1
     SLOTS=1
     JOBS=2
 fi
