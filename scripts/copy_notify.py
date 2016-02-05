@@ -37,7 +37,7 @@ folder_pattern_ga = re.compile("(?P<date>\d{6})_SOLEXA-1GA-[12]_\d{4,5}_FC(?P<fl
 # 140710_D00453_0080_AC5PBPANXX
 folder_pattern_hiseq = re.compile("(?P<date>\d{6})_(?P<sequencer_id>(SN|D)\d+)_[0-9]+_(A|B)(?P<flowcell>[A-Z0-9]{5})[A-Z]{2}XX")
 # 140808_NS500372_0009_AH115HBGXX
-folder_pattern_nextseq = re.compile("(<?Pdate>\d{6})_(?P<sequencer_id>NS500\d+)_[0-9]+_A(?P<flowcell>[A-Z0-9]{5})[A-Z]{2}XX")
+folder_pattern_nextseq = re.compile("(?P<date>\d{6})_(?P<sequencer_id>NS500\d+)_[0-9]+_A(?P<flowcell>[A-Z0-9]{5})[A-Z]{2}XX")
 
 # To use with datetime.strptime() to translate folder dates
 folder_datepattern = "%y%m%d"
