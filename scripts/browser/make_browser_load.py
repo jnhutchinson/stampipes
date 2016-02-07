@@ -592,7 +592,8 @@ def get_alignment_data(library, alignment, lims):
     d['AlignDir']      = alignment['align_dir']
     d['Index']         = library['barcode_index']
     d['SampleID']      = library['samplesheet_name']
-    d['CellType']      = library['cell_type']
+    # cell_type included for backwards compatibility with older processing files (before Feb 2016)
+    d['CellType']      = library.get('sample_taxonomy') or library.get('cell_type')
     d['Assay']         = library['assay']
     d['Lane']          = library['lane']
     d['SampleProject'] = library['project']
