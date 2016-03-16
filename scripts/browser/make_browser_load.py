@@ -242,7 +242,8 @@ class MakeBrowserload(object):
             track["hasTags"] = False
             track["hasDensities"] = False
 
-            track["Extra"] = track["Extra"].strip()
+            if "Extra" in track and track["Extra"] is not None:
+                track["Extra"] = track["Extra"].strip()
 
             if os.path.exists(os.path.join(track["sampleDir"], track["wigfilename"])) and not self.bigwig:
                 track["hasDensities"] = True
