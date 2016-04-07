@@ -4,7 +4,7 @@ module load gcc/4.7.2     # R dependent on this
 module load R/3.1.0
 
 module load star/2.4.2a   # Just for densities
-module load bedops/2.4.14
+module load bedops/2.4.15
 
 module load RSEM/1.2.22
 

@@ -1,7 +1,7 @@
 source $PYTHON3_ACTIVATE
 
 source $MODULELOAD
-module load bedops/2.4.14
+module load bedops/2.4.15
 module load java/jdk1.7.0_05
 module load gcc/4.7.2
 module load R/3.1.0

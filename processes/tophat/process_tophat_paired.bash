@@ -1,5 +1,5 @@
 source $MODULELOAD
-module load bedops/2.4.14
+module load bedops/2.4.15
 module load bowtie/1.0.0
 module load cufflinks/2.2.1
 module load gcc/4.7.2

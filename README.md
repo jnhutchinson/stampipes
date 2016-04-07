@@ -19,7 +19,7 @@ Modules
 
 The current modules to load for working the pipeline are:
 
-    module load bedops/2.4.14
+    module load bedops/2.4.15
     module load bedtools/2.16.2
     module load bowtie/1.0.0
     module load bwa/0.7.12
