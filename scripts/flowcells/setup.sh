@@ -11,8 +11,6 @@ source $PYTHON3_ACTIVATE
 # Options
 #########
 
-NODES=40
-
 usage(){
 cat << EOF
 usage: $0 [-f flowcell_label]
@@ -68,43 +66,6 @@ fi
 #######################
 # Samplesheet functions
 #######################
-
-make_hiseq_samplesheet(){
-  echo "FCID,Lane,SampleID,SampleRef,Index,Description,Control,Recipe,Operator,SampleProject"
-
-  if [ -z "$demux" ] ; then
-    # ( X | tostring) syntax is for non-string fields
-    # Default values (if field is false or null) come after //
-    jq -r --arg flowcell "$flowcell" '
-    .libraries as $l
-    | $l
-    | map( select(.failed == false) )
-    | map( .lane as $num
-    | .barcode_index =
-    if (  $l | map(select( $num  == .lane )) | length == 1 ) then
-      "NoIndex"
-    else
-      .barcode_index
-      end )
-      | .[] | [
-      "FC" + $flowcell,
-      (.lane | tostring),
-      .samplesheet_name,
-      .alignments[0].genome_index // "contam",
-      .barcode_index              // "NoIndex",
-      .cell_type                  // "None"  ,
-      "N",
-      .assay                      // "N/A"   ,
-      "orders",
-      .project
-      ] | join(",") ' "$json"
-    else
-      for i in $(seq 8) ; do
-        echo "FC$flowcell,$i,none,none,GGGGGGGG-GGGGGGGG,none,N,none,none,none"
-      done
-    fi
-
-  }
 
 make_nextseq_samplesheet(){
   name=Stamlab
@@ -202,36 +163,8 @@ case $run_type in
 _U_
     set -e
     ;;
-    #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
-"HISEQ V4")
-    echo "Regular HiSeq 2500 run detected"
-    parallel_env=""
-    link_command='#no linking to do'
-    samplesheet=$(pwd)/Data/Intensities/BaseCalls/SampleSheet.csv
-    mkdir -p $(dirname "$samplesheet")
-    make_hiseq_samplesheet > "$samplesheet"
-    fastq_dir="$illumina_dir/Unaligned/"  # Trailing slash is important for rsync!
-    bc_flag="--hiseq"
-
-    set +e
-    read -d '' unaligned_command <<_U_
-    if [ ! -e "$fastq_dir" ] ; then
-            configureBclToFastq.pl \\\\
-              --mismatches "$mismatches" \\\\
-              --output-dir "$fastq_dir" \\\\
-              --fastq-cluster-count 16000000 \\\\
-              --with-failed-reads --sample-sheet $samplesheet \\\\
-              --use-bases-mask "$bcl_mask"  \\\\
-              --input-dir "$illumina_dir/Data/Intensities/BaseCalls"
-    fi
-
-    cd "$fastq_dir"
-    qmake -now no -cwd -q all.q -V -- -j "$NODES"
-_U_
-    set -e
-    ;;
-\?)
-    echo "Unrecognized sequencer $sequencer"
+*)
+    echo "Unrecognized sequencer $run_type"
     exit 1
     ;;
 esac
@@ -257,7 +190,6 @@ cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 #!/bin/bash
 
 source $MODULELOAD
-module load bcl2fastq/1.8.4
 module load bcl2fastq2/2.15.0.4
 source $PYTHON3_ACTIVATE
 
