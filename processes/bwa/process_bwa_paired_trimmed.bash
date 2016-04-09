@@ -17,7 +17,7 @@ module load pigz/2.3.1
 # Load in this order specifically, currently the python3 activation
 # overwrites the default "python" call, against advice
 source $PYTHON3_ACTIVATE
-module load python/2.7.3
+module load python/2.7.9
 
 MAX_MISMATCHES=2
 MIN_MAPPING_QUALITY=10
