@@ -86,7 +86,7 @@ class MakeBrowserload(object):
 
     #def __init__(self, browserconfig, browsersheet, basedir, outdir, priority, paired_end, project, project_dir = "",
         #maintrackname = None, bigwig = True, date = None):
-    def __init__(self, group_data, browserconfig, basedir, outdir, priority, paired_end, project, label, date):
+    def __init__(self, group_data, browserconfig, basedir, outdir, mersize, priority, paired_end, project, label, date):
 
 		# anishida: URL for directory with flowcell data
         self.trackhubURL = "http://stampipe0.altiusinstitute.org/flowcells/"
@@ -94,7 +94,7 @@ class MakeBrowserload(object):
         self.basedir = basedir
         self.flowcell_date = date
         self.outdir = outdir
-        self.mersize = 36
+        self.mersize = mersize
         self.win=75
         self.binI=20
         self.priority = priority
@@ -312,8 +312,6 @@ class MakeBrowserload(object):
 
 	# anishida: writes the genome HTML output to file
     def create_html(self, hgdb, file):
- #       self.html_files[hgdb] = os.path.join(self.outdir, hgdb, "%s.html" % self.main_label)
-#        html = open( self.html_files[hgdb], 'w')
         columns = ["Lane", "Index", "SampleID", "SampleRef", "CellType", "Assay", "Factors", "Extra",
             "wellmapping", "wellmapping-no-mito", "SPOT"]
         file.write("<p>Total number of lanes from this flowcell for genome %s: %d </p>\n" % (hgdb, len(self.subtrack_sets[hgdb])))
@@ -328,113 +326,12 @@ class MakeBrowserload(object):
             file.write("</tr>\n")
         file.write("</tbody>\n")
         file.write("</table>\n")
- #       html.close()
 
     def create_ras(self):
         self.ra_files = {}
 
         for hgdb, subtracks in self.subtrack_sets.items():
             self.create_ra(hgdb)
-
-# anishida: depreciated, function is no longer called
-    def create_commands(self):
-        makefile = os.path.join(self.outdir, "make.%s.doc" % self.main_label)
-        logging.info("Makefile: %s" % makefile)
-        commands = open( makefile, 'w')
-
-        commands.write("# %s\n" % makefile)
-        commands.write("# %s\n\n" % ", ".join(self.subtrack_sets.keys()))
-
-        if self.link_dir:
-            commands.write("""
-
- linking unnecessary with trackhubs?
-if [ ! -e %(link_dir)s ]; then
-  ln -s %(base_dir)s %(link_dir)s
-else
-  echo %(link_dir)s already exists
-fi
-\n""" % {"base_dir": self.basedir, "link_dir": self.link_dir})
-
-        for hgdb, subtracks in self.subtrack_sets.items():
-            self.create_genome_commands( hgdb, commands)
-
-        commands.write("\ncat %s >> %s\n" % (self.excludes_file, self.browser_excludes_file))
-
-        commands.write("""
- exclusions (and inclusions) unnecessary with trackhubs?
-for EXCLUDE_FILE in `cat %(excludes_file)s`; do
-  if ! grep -q "$EXCLUDE_FILE" %(browser_excludes_file)s; then
-    echo "$EXCLUDE_FILE" >> %(browser_excludes_file)s
-  else
-    echo "$EXCLUDE_FILE already exists in %(browser_excludes_file)s"
-  fi
-done
-""" % {"excludes_file": self.excludes_file, "browser_excludes_file": self.browser_excludes_file})
-
-        commands.close()
-
-# anishida: depreciated, function is no longer called
-    def create_subtrack_commands(self, subtrack, commandsout):
-        
-        if subtrack["hasDensities"] and not self.bigwig:
-            commandsout.write("hgLoadWiggle -pathPrefix=%s %s %s %s/%s\n" % (
-            subtrack["pathPrefix"], subtrack["hgdb"], subtrack["dentrackname"], subtrack["pathPrefix"], subtrack["wigfilename"]))
-        # hgLoadWiggle -pathPrefix=/usr/local/UW/flowcell-density/FCB0BLA_110620_tag/005 hg19 STAM_FCB0BLA_110620_IT_DEN_L005_6_DS18466_36_DNaseI /usr/local/UW/flowcell-density/FCB0BLA_110620_tag/005/FCB0BLA_lane6_75_20.wig
-
-        if subtrack["hasDensities"] and self.bigwig:
-            commandsout.write("hgBbiDbLink %s %s %s/%s\n" % (subtrack["hgdb"], subtrack["dentrackname"], subtrack["pathPrefix"], subtrack["bigwigfilename"]))
-
-        if subtrack["hasTags"]:
-            hgsqlcommand = "hgsql %s -e '" % subtrack["hgdb"]
-            hgsqlcommand += "drop table if exists %s; " % subtrack["tagtrackname"]
-            hgsqlcommand += "create table %s (filename varchar(255) not null); " % subtrack["tagtrackname"]
-            hgsqlcommand += "insert into %s values " % subtrack["tagtrackname"]
-            hgsqlcommand += "(\"%s/%s\");'\n" % (subtrack["pathPrefix"], subtrack["bamfilename"])
-            commandsout.write(hgsqlcommand)
-
-#ln -s $datafile bam-links/Rudensky/Rudensky_bams/$data.bam
-#ln -s $indexfile bam-links/Rudensky/Rudensky_bams/$data.bam.bai
-#hgsql $forg -e 'drop table if exists $trackType; create table
-#$trackType (fileName varchar(255) not null); insert into $trackType
-#values (\"/usr/local/UW/bam-links/Rudensky/Rudensky_bams/$data.bam\");'"
-
-# anishida: depreciated, function is no longer called
-    def create_genome_commands(self, hgdb, commandsout):
-        if not hgdb in self.genome_organisms:
-            logging.error(hgdb + " not in " + str(self.genome_organisms))
-            commandsout.write("\n ERROR: no " + hgdb + " genome\n")
-            return
-
-        organism = self.genome_organisms[hgdb]
-
-        for subtrack in self.subtrack_sets[hgdb]:
-            self.create_subtrack_commands(subtrack, commandsout)
-
-        include_name = "trackDb.%s.%s.ra" % (self.file_label, self.main_label)
-        include_file = "%s/%s/%s/trackDb.%s.ra" % (self.track_basedir, organism, hgdb, self.file_label)
-        commandsout.write("""
- include file unnecessary with trackhubs?
-if ! grep -q "include %(include_name)s" %(include_file)s
-then
-     echo "Adding %(include_name)s to %(include_file)s"
-     echo "include %(include_name)s" >> %(include_file)s
-else
-     echo "%(include_name)s already in %(include_file)s"
-fi
-""" % { "include_name": include_name, "include_file": include_file })
-        commandsout.write('# add line "include trackDb.%s.%s.ra" to %s/%s/%s/trackDb.%s.ra\n\n' % (self.file_label, self.main_label, self.track_basedir, organism, hgdb, self.file_label))
-
-    def create_excludes(self):
-        excludes = open( self.excludes_file, 'w')
-
-        for subtrack in self.tracks:
-            for suffix in ["frm", "MYD", "MYI"]:
-                logging.debug( "subtrack contents: " + str(subtrack))
-                excludes.write("%s.%s\n" % (subtrack["tagtrackname"], suffix))
-                excludes.write("%s.%s\n" % (subtrack["dentrackname"], suffix))
-
-        excludes.close()
 
     def create_ra(self, hgdb):
         logging.info("CREATING RA FOR %s" % hgdb)
@@ -693,6 +590,7 @@ def main(args = sys.argv):
     # Fetch paired endedness?
     paired_end = data['flowcell']['paired_end']
     label = data['alignment_group']['label']	# anishida: added label
+    mersize = data['flowcell']['read_length']	# anishida: fetches read length
     date = data['alignment_group']['label'].split('_')[1]
 
     # get browsersheet information!
@@ -728,11 +626,11 @@ def main(args = sys.argv):
 
         logging.info("Reading browser configuration from %s" % browserconfig)
 
-        outdir = os.path.join( basedir, "browser-load-%s-%s" % (project, browser))
+#        outdir = os.path.join( basedir, "browser-load-%s-%s" % (project, browser))
 # anishida: ALTERNATE PATH FOR TESTING DUE TO WRITE PERMISSIONS
-#        outdir = os.path.join( "/home/anishida/public_html/", "browser-load-%s-%s-trackhubtest" % (project, browser))
+        outdir = os.path.join( "/home/anishida/public_html/", "browser-load-%s-%s-trackhubtest" % (project, browser))
 
-        loader = MakeBrowserload(lane_group, browserconfig, basedir, outdir, poptions.priority, paired_end, project, label, date)
+        loader = MakeBrowserload(lane_group, browserconfig, basedir, outdir, mersize, poptions.priority, paired_end, project, label, date)
         loader.load()
 
 
