@@ -202,6 +202,42 @@ case $run_type in
 _U_
     set -e
     ;;
+"HiSeq 4000")
+    echo "Hiseq 4000 run detected"
+    parallel_env="-pe threads 4-8"
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--hiseq"
+    make_nextseq_samplesheet > SampleSheet.csv
+
+    # The quadruple-backslash syntax on this is messy and gross.
+    # It works, though, and the output is readable.
+    # read -d '' always exits with status 1, so we ignore error
+
+    # The NSLOTS lines are for scaling the various threads (2 per slot).
+    # WARNING: Does not work for threads < 4
+    # Table:
+    # NSLOTS  l w d p   total
+    # 4       1 1 2 4 = 8
+    # 5       1 1 2 5 = 9
+    # 6       2 2 3 6 = 13
+    # 7       2 2 3 7 = 14
+    # 8       2 2 4 8 = 16
+    set +e
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --with-failed-reads \\\\
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
+      --processing-threads     \\\$(( NSLOTS ))
+_U_
+  ;;
     #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
 "HISEQ V4")
     echo "Regular HiSeq 2500 run detected"
