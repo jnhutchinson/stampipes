@@ -96,6 +96,8 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_
         lane_libraries = data['libraries']
     elif run_type == "HISEQ V4":
         lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
+    elif run_type == "HiSeq 4000":
+        lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
     else:
         logging.warn("Run type %s not supported; using all libraries" % run_type)
         lane_libraries = data['libraries']
