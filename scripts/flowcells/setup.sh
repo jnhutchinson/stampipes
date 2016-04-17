@@ -173,6 +173,7 @@ case $run_type in
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
     make_nextseq_samplesheet > SampleSheet.csv
+    bcl_tasks=1-4
 
     # The quadruple-backslash syntax on this is messy and gross.
     # It works, though, and the output is readable.
@@ -198,7 +199,8 @@ case $run_type in
       --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
       --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
       --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
-      --processing-threads     \\\$(( NSLOTS ))
+      --processing-threads     \\\$(( NSLOTS ))     \\\\
+      --tiles s_\\\$SGE_TASK_ID
 _U_
     set -e
     ;;
@@ -210,6 +212,7 @@ _U_
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--hiseq"
     make_nextseq_samplesheet > SampleSheet.csv
+    bcl_tasks=1-8
 
     # The quadruple-backslash syntax on this is messy and gross.
     # It works, though, and the output is readable.
@@ -235,7 +238,8 @@ _U_
       --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
       --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
       --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
-      --processing-threads     \\\$(( NSLOTS ))
+      --processing-threads     \\\$(( NSLOTS ))     \\\\
+      --tiles s_\\\$SGE_TASK_ID
 _U_
   ;;
     #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
@@ -248,6 +252,7 @@ _U_
     make_hiseq_samplesheet > "$samplesheet"
     fastq_dir="$illumina_dir/Unaligned/"  # Trailing slash is important for rsync!
     bc_flag="--hiseq"
+    bcl_tasks=1
 
     set +e
     read -d '' unaligned_command <<_U_
@@ -314,7 +319,7 @@ qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
   python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
 __BARCODES__
 
-qsub -cwd -N "u-$flowcell" $parallel_env  -V -S /bin/bash  <<'__FASTQ__'
+qsub -cwd -N "u-$flowcell" $parallel_env  -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
 
 set -x -e -o pipefail
 
