@@ -91,7 +91,7 @@ for i in "${inputfiles[@]}" ; do
   if [[ "$run_type" == "NextSeq 500" ]] ; then
     suffix="--autosuffix"
   else
-    suffix="--suffix $(sed 's/.*_L00[0-9]\(_R[12]_.*\)/\1/' <(basename "$i" ))"
+    suffix="--suffix $(sed 's/.*_L00[0-9]\(_R[12]_.*\).fastq.gz/\1/' <(basename "$i" ))"
   fi
 
   # If dryrun; we want the output on stdout, not qsubbed.
