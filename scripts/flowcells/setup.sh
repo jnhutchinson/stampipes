@@ -194,7 +194,6 @@ case $run_type in
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
       --use-bases-mask "$bcl_mask" \\\\
       --output-dir "$fastq_dir" \\\\
-      --with-failed-reads \\\\
       --barcode-mismatches "$mismatches" \\\\
       --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
       --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
@@ -233,7 +232,6 @@ _U_
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
       --use-bases-mask "$bcl_mask" \\\\
       --output-dir "$fastq_dir" \\\\
-      --with-failed-reads \\\\
       --barcode-mismatches "$mismatches" \\\\
       --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
       --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
