@@ -82,7 +82,11 @@ if [ ! -s "$processing" ] ; then
   exit 1
 fi
 
-inputfiles=($(find "$indir" -name "*Undetermined_*$LANE*fastq.gz"))
+if [ -d "$indir.L001" ] ; then
+  inputfiles=($(find $indir.L00[1-9] -name "*Undetermined_*$LANE*fastq.gz" -size +0 ))
+else
+  inputfiles=($(find $indir          -name "*Undetermined_*$LANE*fastq.gz"))
+fi
 run_type=$(jq -r .flowcell.run_type < "$processing")
 
 for i in "${inputfiles[@]}" ; do

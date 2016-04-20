@@ -193,7 +193,7 @@ case $run_type in
     bcl2fastq \\\\
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
       --use-bases-mask "$bcl_mask" \\\\
-      --output-dir "$fastq_dir" \\\\
+      --output-dir "$fastq_dir.L00\\\$SGE_TASK_ID" \\\\
       --barcode-mismatches "$mismatches" \\\\
       --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
       --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
@@ -231,7 +231,7 @@ _U_
     bcl2fastq \\\\
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
       --use-bases-mask "$bcl_mask" \\\\
-      --output-dir "$fastq_dir" \\\\
+      --output-dir "$fastq_dir.L00\\\$SGE_TASK_ID" \\\\
       --barcode-mismatches "$mismatches" \\\\
       --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
       --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
