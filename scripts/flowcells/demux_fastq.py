@@ -1,7 +1,7 @@
 # This is a quick script to split up FASTQ files by barcode given
 # Used to rescue tags from undeterminde state
 
-import sys, os, gzip, re, operator
+import sys, os, re, operator, subprocess
 from Bio import SeqIO
 from Bio.SeqIO.QualityIO import FastqGeneralIterator
 import logging
@@ -96,6 +96,8 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_
         lane_libraries = data['libraries']
     elif run_type == "HISEQ V4":
         lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
+    elif run_type == "HiSeq 4000":
+        lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
     else:
         logging.warn("Run type %s not supported; using all libraries" % run_type)
         lane_libraries = data['libraries']
@@ -139,7 +141,9 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_
 
         labels[label] = { "filtered": 0, "unfiltered": 0, "total": 0 }
         # TODO: Warning! this will overwrite files!
-        labels[label]["outfile"] = gzip.open(outfile_name, 'wt')
+        outfile = open(outfile_name, 'wb')
+        labels[label]["fh"] = outfile
+        labels[label]["out"] = subprocess.Popen(['gzip', '-7'], stdout=outfile, stdin=subprocess.PIPE)
 
     logging.info("Mapping %d barcodes to %s libraries" % (len(barcodes), len(lane_libraries)))
     logging.debug(barcodes)
@@ -162,11 +166,11 @@ def split_file(filename, barcodes, labels):
     logging.info("Demultiplexing file: %s" % filename)
 
     if filename.endswith('.gz'):
-        parsein = gzip.open(filename, 'rt')
+        parsein = subprocess.Popen(['zcat', filename], stdout=subprocess.PIPE, universal_newlines=True)
     else:
-        parsein = open(filename, 'rU')
+        parsein = subprocess.Popen(['cat', filename], stdout=subprocess.PIPE, universal_newlines=True)
 
-    for record, seq, qual in FastqGeneralIterator(parsein):
+    for record, seq, qual in FastqGeneralIterator(parsein.stdout):
         tally += 1
         match = barcode_re.search(record)
 
@@ -198,14 +202,15 @@ def split_file(filename, barcodes, labels):
             sepIndex = record.rfind(':')
             record = record[:sepIndex + 1] + barcode1 + "+" + barcode2
             #write to FASTQ
-            labels[label]['outfile'].write('@%s\n%s\n+\n%s\n' % (record, seq, qual))
+            text = bytes('@' + record + '\n' + seq + '\n+\n' + qual +'\n', 'UTF-8')
+            labels[label]['out'].stdin.write(text)
 
             if filter == "Y":
                 labels[label]["filtered"] += 1
             else:
                 labels[label]['unfiltered'] += 1
 
-    parsein.close()
+    parsein.communicate()
 
 
 def main(argv):
@@ -240,7 +245,8 @@ def main(argv):
         print("%s\t%s" % (label, str(info)))
 
     for label, info in labels.items():
-        info['outfile'].close()
+        info['out'].communicate()
+        info['fh'].close()
 
 if __name__ == "__main__":
     main(sys.argv)

@@ -2,7 +2,7 @@
 # If REDO_COLLATION is set, then do collation again; this will only work if originals still exist
 
 # Ensure that script failures have the script quit before it deletes files
-set -e 
+set -e
 
 cd $FASTQ_DIR
 
@@ -46,7 +46,26 @@ if [ -n "$REDO_COLLATION" -a "$R1_NUM_FILES" -eq 0 ]; then
   exit
 fi
 
-if [ "$R1_NUM_FILES" -ge "1" ]; then
+if [ "$R1_NUM_FILES" -lt "1" ]; then
+  echo "No R1 files to work with"
+  exit 1
+fi
+
+# If only one file, just mv or cp as appropriate
+if [ "$R1_NUM_FILES" -eq "1" ]; then
+  cmd="mv"
+  if [ -n "$RETAIN_ORIGINALS" ] ; then
+    cmd="cp"
+  fi
+
+  "$cmd" "${SAMPLE_NAME}_R1_001.fastq.gz" "$R1_FILE"
+  if [ "$PAIRED" == "True" ] ; then
+    "$cmd" "${SAMPLE_NAME}_R2_001.fastq.gz" "$R2_FILE"
+  fi
+
+  upload
+  exit 0
+else
 
   R1_TMP_FILE=$(mktemp)
   R2_TMP_FILE=$(mktemp)
@@ -103,9 +122,6 @@ if [ "$R1_NUM_FILES" -ge "1" ]; then
     chmod 644 $R2_FILE
     rm $R2_TMP_FILE
   fi
-else
-  echo "No R1 files to work with"
-  exit 1
 fi
 
 upload
