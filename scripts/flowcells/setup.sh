@@ -173,7 +173,7 @@ case $run_type in
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
     make_nextseq_samplesheet > SampleSheet.csv
-    bcl_tasks=1-4
+    bcl_tasks=1
 
     # The quadruple-backslash syntax on this is messy and gross.
     # It works, though, and the output is readable.
@@ -193,13 +193,12 @@ case $run_type in
     bcl2fastq \\\\
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
       --use-bases-mask "$bcl_mask" \\\\
-      --output-dir "$fastq_dir.L00\\\$SGE_TASK_ID" \\\\
+      --output-dir "$fastq_dir" \\\\
       --barcode-mismatches "$mismatches" \\\\
       --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
       --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
       --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
-      --processing-threads     \\\$(( NSLOTS ))     \\\\
-      --tiles s_\\\$SGE_TASK_ID
+      --processing-threads     \\\$(( NSLOTS ))
 _U_
     set -e
     ;;
