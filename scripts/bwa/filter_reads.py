@@ -190,9 +190,9 @@ while(1):
 
             if read1.is_paired:
 
-                if not read.mate_is_unmapped:
+                if not read1.mate_is_unmapped:
 
-                    raise read_exception("No mate found (incongruant flag)!")
+                    raise read_exception("No mate found (incongruent flag)!")
 
                 else:
 
