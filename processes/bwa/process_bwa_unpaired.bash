@@ -48,12 +48,14 @@ fi
 # Indicate we have started this alignment and upload pertinent information
 if [ ! -e ${FINAL_BAM} ]; then
 
+if [ -n ${ALIGNMENT_ID} ]; then
 python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
   -t ${LIMS_API_TOKEN} \
   --alignment_id ${ALIGNMENT_ID} \
   --start_alignment_progress \
   --adapter_file $ADAPTER_FILE \
   --version_file $VERSION_FILE
+fi
 
 if [ ! -e "$FASTQ_TMP/${SAMPLE_NAME}_R1_000.fastq.gz" ]; then
   bash $STAMPIPES/scripts/fastq/splitfastq.bash $FASTQ_TMP $R1_FASTQ $R2_FASTQ
