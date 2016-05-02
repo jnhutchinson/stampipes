@@ -330,6 +330,8 @@ class ProcessSetUp(object):
 
             if not alignment_endpoint:
                 logging.info("Not including lane %s because no alignment set (Aggregation %d)" % (aggregation_lane["lane"], aggregation_id))
+                missing = True
+                continue
 
             alignment_id = int(alignment_endpoint.strip("/").split("/")[-1])
 
