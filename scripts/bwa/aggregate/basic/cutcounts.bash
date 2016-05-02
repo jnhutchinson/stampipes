@@ -7,8 +7,8 @@ cd $AGGREGATION_FOLDER
 SAMPLE_NAME=$LIBRARY_NAME
 
 source $MODULELOAD
-module load anaconda
-module load bedops
+module load anaconda/2.1.0-2.7
+module load bedops/2.4.15
 module load samtools/1.2
 module load python/2.7.3
 
