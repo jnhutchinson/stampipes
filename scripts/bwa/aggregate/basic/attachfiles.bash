@@ -27,7 +27,7 @@ $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.s
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.fragments.sorted.bed.starch --attach_file_type starch --attach_file_purpose fragments-starch
 
 python3 $UPLOAD_SCRIPT \
-    --aggregation_id ${AGGREGATION_ID}
+    --aggregation_id ${AGGREGATION_ID} \
     --insertsfile ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard \
 
 if [ -e ${LIBRARY_NAME}.MarkDuplicates.picard ]; then
