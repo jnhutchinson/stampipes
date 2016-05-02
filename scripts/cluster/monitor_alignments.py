@@ -43,11 +43,38 @@ def parser_setup():
 class ClusterMonitor(object):
 
     QSTAT_COMMAND = ["qstat", "-xml"]
+    QHOST_COMMAND = ["qhost"]
 
     def __init__(self, api_url, token):
         self.api_url = api_url
         self.token = token
         self.headers = {'Authorization': "Token %s" % token}
+
+    def api_list_result(self, url_addition=None, url=None):
+
+        more = True
+        results = []
+
+        if url_addition:
+            url = "%s/%s" % (self.api_url, url_addition)
+
+        while more:
+
+            logging.debug("Fetching more results for query %s" % url)
+
+            request = requests.get(url, headers=self.headers)
+
+            if not request.ok:
+                logging.error(request)
+                return None
+            more_results = request.json()
+            results.extend(more_results["results"])
+            if more_results["next"]:
+                url = more_results["next"]
+            else:
+                more = False
+
+        return results
 
     def run(self):
         currently_running = self.parse_jobnames()
@@ -65,6 +92,8 @@ class ClusterMonitor(object):
             log.info("Alignments no longer processing: %s" % str(finished_alignments))
             [self.update_processing_status(align_id, False) for align_id in finished_alignments]
 
+        self.update_qhost()
+
     def update_processing_status(self, align_id, processing=True):
 
         patch_url = "%s/flowcell_lane_alignment/%d/" % (self.api_url, align_id)
@@ -79,20 +108,17 @@ class ClusterMonitor(object):
 
     def lims_currently_processing(self):
 
-        fetch_url = "%s/flowcell_lane_alignment/?currently_processing=True" % self.api_url
-
-        fetch_results = requests.get(fetch_url, headers = self.headers)
+        fetch_results = self.api_list_result("flowcell_lane_alignment/?currently_processing=True")
         lims_process_align_ids = set()
 
-        if fetch_results.ok:
-            results = fetch_results.json()
-            for result in results['results']:
-                lims_process_align_ids.add(result['id'])
-            log.info("Currently marked as processing on LIMS: %s" % str(lims_process_align_ids))
-            return lims_process_align_ids
-        else:
-            log.critical("Could not execute api query: %s" % fetch_url)
+        if fetch_results == None:
+            log.critical("Could not get list of currently processing alignments")
             sys.exit(1)
+
+        for result in fetch_results:
+            lims_process_align_ids.add(result['id'])
+        log.info("Currently marked as processing on LIMS: %s" % str(lims_process_align_ids))
+        return lims_process_align_ids
 
     def parse_jobnames(self):
         qstat_xml = subprocess.check_output(self.QSTAT_COMMAND, stderr=subprocess.STDOUT)
@@ -111,6 +137,45 @@ class ClusterMonitor(object):
 
         log.info("Alignment IDs: %s" % alignments)
         return alignments
+
+    def update_qhost(self):
+        qhost = subprocess.check_output(self.QHOST_COMMAND, stderr=subprocess.STDOUT)
+
+        key_value = self.get_single_result("%s/key_value/?key=monarch-usage" % self.api_url)
+        if not key_value:
+            log.error("Cannot find \'monarch-usage\' key value")
+            return
+
+        update = requests.patch(key_value["url"], data={"value": qhost}, headers=headers)
+
+        if update.ok:
+            log.info(update.results)
+        else:
+            log.error("Could not update monarch usage.")
+
+    def get_single_result(self, fetch_url, field=None):
+        """
+        Using a list API url that should bring up a single item, retrieve that single item if it exists.
+        """
+
+        fetch_results = requests.get(fetch_url, headers = self.headers)
+
+        if fetch_results.ok:
+            results = fetch_results.json()
+            if results['count'] > 1:
+                log.error("More than one matching item for fetch query: %s" % fetch_url)
+            elif results['count'] == 0:
+                log.debug("No matching items for fetch query: %s" % fetch_url)
+            else:
+                result = results['results'][0]
+                log.debug("Single result fetched from %s: %s" % (fetch_url, str(result)))
+                if field:
+                    return result[field]
+                return result
+        else:
+            log.error("Could not execute api query: %s" % fetch_url)
+
+        return None
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
