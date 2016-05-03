@@ -173,6 +173,7 @@ case $run_type in
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
     make_nextseq_samplesheet > SampleSheet.csv
+    bcl_tasks=1
 
     # The quadruple-backslash syntax on this is messy and gross.
     # It works, though, and the output is readable.
@@ -193,7 +194,6 @@ case $run_type in
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
       --use-bases-mask "$bcl_mask" \\\\
       --output-dir "$fastq_dir" \\\\
-      --with-failed-reads \\\\
       --barcode-mismatches "$mismatches" \\\\
       --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
       --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
@@ -202,6 +202,43 @@ case $run_type in
 _U_
     set -e
     ;;
+"HiSeq 4000")
+    echo "Hiseq 4000 run detected"
+    parallel_env="-pe threads 4-8"
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--hiseq"
+    make_nextseq_samplesheet > SampleSheet.csv
+    bcl_tasks=1-8
+
+    # The quadruple-backslash syntax on this is messy and gross.
+    # It works, though, and the output is readable.
+    # read -d '' always exits with status 1, so we ignore error
+
+    # The NSLOTS lines are for scaling the various threads (2 per slot).
+    # WARNING: Does not work for threads < 4
+    # Table:
+    # NSLOTS  l w d p   total
+    # 4       1 1 2 4 = 8
+    # 5       1 1 2 5 = 9
+    # 6       2 2 3 6 = 13
+    # 7       2 2 3 7 = 14
+    # 8       2 2 4 8 = 16
+    set +e
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
+      --output-dir "$fastq_dir.L00\\\$SGE_TASK_ID" \\\\
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
+      --processing-threads     \\\$(( NSLOTS ))     \\\\
+      --tiles s_\\\$SGE_TASK_ID
+_U_
+  ;;
     #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
 "HISEQ V4")
     echo "Regular HiSeq 2500 run detected"
@@ -212,6 +249,7 @@ _U_
     make_hiseq_samplesheet > "$samplesheet"
     fastq_dir="$illumina_dir/Unaligned/"  # Trailing slash is important for rsync!
     bc_flag="--hiseq"
+    bcl_tasks=1
 
     set +e
     read -d '' unaligned_command <<_U_
@@ -278,7 +316,7 @@ qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
   python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
 __BARCODES__
 
-qsub -cwd -N "u-$flowcell" $parallel_env  -V -S /bin/bash  <<'__FASTQ__'
+qsub -cwd -N "u-$flowcell" $parallel_env  -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
 
 set -x -e -o pipefail
 

@@ -161,7 +161,8 @@ $(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(tophat_file)
 		METRICS_FILE=$(SAMPLE_NAME).spotdups.txt \
 		OUTPUT=$(marked_bam) \
 		REMOVE_DUPLICATES=false \
-		ASSUME_SORTED=true
+		ASSUME_SORTED=true \
+		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
 
 $(tophat_file) : $(R1_trimmed_fastq) $(R2_trimmed_fastq)
 	$(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(TMPDIR)/tophat \

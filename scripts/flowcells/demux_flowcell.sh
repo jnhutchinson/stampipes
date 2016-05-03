@@ -82,28 +82,39 @@ if [ ! -s "$processing" ] ; then
   exit 1
 fi
 
-inputfiles=($(find "$indir" -name "*Undetermined_*$LANE*fastq.gz"))
+if [ -d "$indir.L001" ] ; then
+  inputfiles=($(find $indir.L00[1-9] -name "*Undetermined_*$LANE*fastq.gz" -size +0 ))
+else
+  inputfiles=($(find $indir          -name "*Undetermined_*$LANE*fastq.gz"))
+fi
+run_type=$(jq -r .flowcell.run_type < "$processing")
 
 for i in "${inputfiles[@]}" ; do
-  lane=$( sed 's/.*_L\(00.\)_.*/\1/' <(basename "$i" ))
+  lane=$(sed 's/.*_L\(00[0-9]\)_.*/\1/' <(basename "$i" ))
+
+  if [[ "$run_type" == "NextSeq 500" ]] ; then
+    suffix="--autosuffix"
+  else
+    suffix="--suffix $(sed 's/.*_L00[0-9]\(_R[12]_.*\).fastq.gz/\1/' <(basename "$i" ))"
+  fi
 
   # If dryrun; we want the output on stdout, not qsubbed.
   if [ -z "$dryrun" ] ; then
-    submitjob="qsub -cwd -V -q all.q -N .dmx$(basename $i)"
+    submitjob="qsub -cwd -V -q all.q -N .dmx$(basename "$i")"
   else
     submitjob="bash"
   fi
 
   cat <<__DEMUX__ | $submitjob
-    python3 "$demux_script"        \
-      --autosuffix                \
+    python3 "$demux_script"       \
+      $suffix                     \
       --processing "$processing"  \
       --outdir "$outdir"          \
       --mismatches "$mismatches"  \
       --lane "$lane"              \
       --ignore_failed_lanes       \
       $dryrun                     \
-      $i
+      "$i"
 __DEMUX__
 
 done
