@@ -30,4 +30,5 @@ JAVA_HEAP = $(shell echo "($(NODE_RAM_GB)*$(NSLOTS) - 2) * 1024" | bc)m
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(BAMFILE)
 	time java -Xmx$(JAVA_HEAP) -jar `which MarkDuplicates.jar` INPUT=$(BAMFILE) OUTPUT=$(OUTBAM) \
-	  METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT
+	  METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
+		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
