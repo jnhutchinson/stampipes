@@ -71,9 +71,12 @@ class SymlinkMover(object):
         new_target_path = old_target_path.replace(self.olddir, self.newdir)
 
         logging.info("Moving %s pointer from %s to %s" % (linkpath, old_target_path, new_target_path))
-        if self.domove:
-            os.unlink(linkpath)
-            os.symlink(new_target_path, linkpath)
+        try:
+            if self.domove:
+                os.unlink(linkpath)
+                os.symlink(new_target_path, linkpath)
+        except PermissionError:
+            logging.error("Couldn't move %s, permission denied" % linkpath)
 
     def walk(self, directory):
         for root, dirs, files in os.walk(directory):
