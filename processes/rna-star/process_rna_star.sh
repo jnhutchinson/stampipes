@@ -36,7 +36,7 @@ ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 VERSION_FILE=${SAMPLE_NAME}.versions.txt
 
 bash $STAMPIPES/scripts/versions.bash &> $VERSION_FILE
-if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
+if [[ ( -n "$ADAPTER_P7" ) && ( -n "$ADAPTER_P5" ) ]] ; then
   echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > $ADAPTER_FILE
 fi
 
@@ -54,18 +54,23 @@ if [ ! -e "$R1_FASTQ" -o ! -e "$R2_FASTQ" ] ; then
 fi
 
 # Perform trimming
-if [ ! -e "$TRIM_R1" -o ! -e "$TRIM_R2" ] ; then
-trim-adapters-illumina -f $ADAPTER_FILE \
-  --threads=2 \
-  -1 P5 -2 P7 \
-  "$R1_FASTQ" \
-  "$R2_FASTQ" \
-  "$TRIM_R1.tmp" \
-  "$TRIM_R2.tmp" \
-  &> "$outdir/adapter_trimming.txt"
+if [[ ( "$ADAPTER_P7"  == "NOTAVAILABLE" ) || ( "$ADAPTER_P5" == "NOTAVAILABLE" ) ]] ; then
+  TRIM_R1=$R1_FASTQ
+  TRIM_R2=$R2_FASTQ
+else 
+  if [ ! -e "$TRIM_R1" -o ! -e "$TRIM_R2" ] ; then
+    trim-adapters-illumina -f $ADAPTER_FILE \
+      --threads=2 \
+      -1 P5 -2 P7 \
+      "$R1_FASTQ" \
+      "$R2_FASTQ" \
+      "$TRIM_R1.tmp" \
+      "$TRIM_R2.tmp" \
+      &> "$outdir/adapter_trimming.txt"
 
-  mv "$TRIM_R1.tmp" "$TRIM_R1"
-  mv "$TRIM_R2.tmp" "$TRIM_R2"
+    mv "$TRIM_R1.tmp" "$TRIM_R1"
+    mv "$TRIM_R2.tmp" "$TRIM_R2"
+  fi
 fi
 
 jobbase="${SAMPLE_NAME}-ALIGN#${ALIGNMENT_ID}"
