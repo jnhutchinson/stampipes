@@ -1,4 +1,4 @@
-source $MODULELOAD
+source "$MODULELOAD"
 module load bedops/2.4.14
 module load bowtie/1.0.0
 module load cufflinks/2.2.1
@@ -8,7 +8,7 @@ module load picard/1.118
 module load samtools/1.2
 module load tophat/2.0.13
 
-source $PYTHON3_ACTIVATE
+source "$PYTHON3_ACTIVATE"
 module load python/2.7.9
 
 export GENOME_INDEX="${GENOME_INDEX:-$BWAINDEX}"
@@ -31,9 +31,9 @@ else
     JOBS=2
 fi
 
-bash $STAMPIPES/scripts/versions.bash &> $VERSION_FILE
+bash "$STAMPIPES/scripts/versions.bash" &> "$VERSION_FILE"
 
-qsub -cwd -V -q all.q -N .th${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID} -now no -pe threads $SLOTS -S /bin/bash <<__MAKE__
+qsub -cwd -V -q all.q -N ".th${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}" -now no -pe threads "$SLOTS" -S /bin/bash <<__MAKE__
   set -x -e -o pipefail
   echo "Hostname: "
   hostname
@@ -50,7 +50,7 @@ qsub -cwd -V -q all.q -N .th${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID} -no
     export R2_trimmed_fastq=$R2_FASTQ
   fi
 
-  python3 $STAMPIPES/scripts/lims/upload_data.py -a "$LIMS_API_URL" \
+  python3 "$STAMPIPES/scripts/lims/upload_data.py" -a "$LIMS_API_URL" \
     -t "$LIMS_API_TOKEN" \
     --alignment_id "$ALIGNMENT_ID" \
     --start_alignment_progress \
@@ -59,11 +59,11 @@ qsub -cwd -V -q all.q -N .th${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID} -no
 
   make --keep-going -f \$STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk -j "$JOBS"
 
-  bash $STAMPIPES/scripts/tophat/checkcomplete.bash
+  bash "$STAMPIPES/scripts/tophat/checkcomplete.bash"
 
-  bash $STAMPIPES/scripts/tophat/attachfiles.bash
+  bash "$STAMPIPES/scripts/tophat/attachfiles.bash"
 
-  python3 $STAMPIPES/scripts/lims/upload_data.py -a "$LIMS_API_URL" \
+  python3 "$STAMPIPES/scripts/lims/upload_data.py" -a "$LIMS_API_URL" \
     -t "$LIMS_API_TOKEN" \
     -f "$FLOWCELL" \
     --alignment_id "$ALIGNMENT_ID" \

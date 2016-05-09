@@ -1,4 +1,4 @@
-source $MODULELOAD
+source "$MODULELOAD"
 module load samtools/1.2
 module load gcc/4.7.2     # for adapter trimming
 module load R/3.1.0       # for RSEM
@@ -7,7 +7,7 @@ module load coreutils/8.9 # parallel sort
 module load star/2.4.2a
 module load RSEM/1.2.22
 
-source $PYTHON3_ACTIVATE
+source "$PYTHON3_ACTIVATE"
 
 PRIORITY=${PRIORITY:-0}
 
@@ -20,14 +20,12 @@ script="$scriptdir/STAR_RSEM.sh"
 
 REFDIR=$(dirname "$BWAINDEX")
 
-adapter_file=$(readlink -f *adapters.txt )
-
 STARdir="$REFDIR/STARgenome-hg19-g19-combined/"
 RSEMdir="$REFDIR/RSEMgenome-hg19-g19-combined/"
 
 TRIMDIR="trimmed/"
-TRIM_R1="$TRIMDIR/$(basename $R1_FASTQ)"
-TRIM_R2="$TRIMDIR/$(basename $R2_FASTQ)"
+TRIM_R1=$TRIMDIR/$(basename "$R1_FASTQ")
+TRIM_R2=$TRIMDIR/$(basename "$R2_FASTQ")
 mkdir -p "$TRIMDIR"
 
 dataType="str_PE"  # 4 types; str_SE str_PE unstr_SE unstr_PE
@@ -35,12 +33,12 @@ dataType="str_PE"  # 4 types; str_SE str_PE unstr_SE unstr_PE
 ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 VERSION_FILE=${SAMPLE_NAME}.versions.txt
 
-bash $STAMPIPES/scripts/versions.bash &> $VERSION_FILE
+bash "$STAMPIPES/scripts/versions.bash" &> "$VERSION_FILE"
 if [[ ( -n "$ADAPTER_P7" ) && ( -n "$ADAPTER_P5" ) ]] ; then
-  echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > $ADAPTER_FILE
+  echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > "$ADAPTER_FILE"
 fi
 
-python3 $STAMPIPES/scripts/lims/upload_data.py \
+python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -a "$LIMS_API_URL"             \
   -t "$LIMS_API_TOKEN"           \
   --alignment_id "$ALIGNMENT_ID" \
@@ -49,8 +47,8 @@ python3 $STAMPIPES/scripts/lims/upload_data.py \
   --version_file "$VERSION_FILE"
 
 # Collate FastQ files
-if [ ! -e "$R1_FASTQ" -o ! -e "$R2_FASTQ" ] ; then
-  bash $STAMPIPES/processes/fastq/collate_fastq.bash
+if [[ ( ! -e "$R1_FASTQ" ) || ( ! -e "$R2_FASTQ" ) ]] ; then
+  bash "$STAMPIPES/processes/fastq/collate_fastq.bash"
 fi
 
 # Perform trimming
@@ -58,8 +56,8 @@ if [[ ( "$ADAPTER_P7"  == "NOTAVAILABLE" ) || ( "$ADAPTER_P5" == "NOTAVAILABLE" 
   TRIM_R1=$R1_FASTQ
   TRIM_R2=$R2_FASTQ
 else 
-  if [ ! -e "$TRIM_R1" -o ! -e "$TRIM_R2" ] ; then
-    trim-adapters-illumina -f $ADAPTER_FILE \
+  if [[ ( ! -e "$TRIM_R1" ) || ( ! -e "$TRIM_R2" ) ]] ; then
+    trim-adapters-illumina -f "$ADAPTER_FILE" \
       --threads=2 \
       -1 P5 -2 P7 \
       "$R1_FASTQ" \
@@ -83,8 +81,8 @@ if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
   qsub -cwd -V -N "$starjob" -pe threads "$SLOTS" -p "$PRIORITY" -S /bin/bash << __RNA-STAR__
     set -x
 
-    STARdir=\$($STAMPIPES/scripts/cache.sh $STARdir)
-    RSEMdir=\$($STAMPIPES/scripts/cache.sh $RSEMdir)
+    STARdir=\$("$STAMPIPES/scripts/cache.sh" "$STARdir")
+    RSEMdir=\$("$STAMPIPES/scripts/cache.sh" "$RSEMdir")
 
     nThreadsSTAR=\$((NSLOTS * 2))
     nThreadsRSEM=\$((NSLOTS * 2))
@@ -102,7 +100,7 @@ qsub -cwd -V -hold_jid "$starjob" -N "$uploadjob" -S /bin/bash << __UPLOAD__
   bash "$STAMPIPES/scripts/rna-star/checkcomplete.bash"
   bash "$STAMPIPES/scripts/rna-star/attachfiles.sh"
 
-  python3 $STAMPIPES/scripts/lims/upload_data.py \
+  python3 "$STAMPIPES/scripts/lims/upload_data.py" \
     -a "$LIMS_API_URL"             \
     -t "$LIMS_API_TOKEN"           \
     --alignment_id "$ALIGNMENT_ID" \
