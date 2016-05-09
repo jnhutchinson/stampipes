@@ -45,6 +45,11 @@ qsub -cwd -V -q all.q -N .th${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID} -no
     echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > "$ADAPTER_FILE"
   fi
 
+  if [[ ( "$ADAPTER_P7"  == "NOTAVAILABLE" ) || ( "$ADAPTER_P5" == "NOTAVAILABLE" ) ]] ; then
+    export R1_trimmed_fastq=$R1_FASTQ
+    export R2_trimmed_fastq=$R2_FASTQ
+  fi
+
   python3 $STAMPIPES/scripts/lims/upload_data.py -a "$LIMS_API_URL" \
     -t "$LIMS_API_TOKEN" \
     --alignment_id "$ALIGNMENT_ID" \
