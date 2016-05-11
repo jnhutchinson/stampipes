@@ -223,6 +223,10 @@ class ProcessSetUp(object):
                included = aggregation_lane
                break
 
+        if not "alignment" in aggregation_lane or not aggregation_lane["alignment"]:
+            logging.critical("No alignment set for included aggregation lane %s" % str(aggregation_lane))
+            sys.exit(1)
+
         alignment = self.api_single_result(url=aggregation_lane["alignment"])
 
         if not alignment:
@@ -326,6 +330,8 @@ class ProcessSetUp(object):
 
             if not alignment_endpoint:
                 logging.info("Not including lane %s because no alignment set (Aggregation %d)" % (aggregation_lane["lane"], aggregation_id))
+                missing = True
+                continue
 
             alignment_id = int(alignment_endpoint.strip("/").split("/")[-1])
 

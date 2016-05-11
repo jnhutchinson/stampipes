@@ -74,4 +74,5 @@ $(RANDOM_SAMPLE_BAM).bed.sorted.bam : $(RANDOM_SAMPLE_BAM).bed
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM).bed.sorted.bam
 	java -jar `which MarkDuplicates.jar` INPUT=$(RANDOM_SAMPLE_BAM).bed.sorted.bam OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).Rboth.rand.uniques.dup \
-	  METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).Rboth.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT
+	  METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).Rboth.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
+		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
