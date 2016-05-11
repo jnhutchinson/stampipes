@@ -242,7 +242,8 @@ class MakeBrowserload(object):
             track["hasTags"] = False
             track["hasDensities"] = False
 
-            track["Extra"] = track["Extra"].strip()
+            if "Extra" in track and track["Extra"] is not None:
+                track["Extra"] = track["Extra"].strip()
 
             if os.path.exists(os.path.join(track["sampleDir"], track["wigfilename"])) and not self.bigwig:
                 track["hasDensities"] = True
@@ -592,7 +593,8 @@ def get_alignment_data(library, alignment, lims):
     d['AlignDir']      = alignment['align_dir']
     d['Index']         = library['barcode_index']
     d['SampleID']      = library['samplesheet_name']
-    d['CellType']      = library['cell_type']
+    # cell_type included for backwards compatibility with older processing files (before Feb 2016)
+    d['CellType']      = library.get('sample_taxonomy') or library.get('cell_type')
     d['Assay']         = library['assay']
     d['Lane']          = library['lane']
     d['SampleProject'] = library['project']

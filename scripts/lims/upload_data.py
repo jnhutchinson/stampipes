@@ -203,10 +203,14 @@ def md5sum_file(path):
 
     return md5sum.hexdigest()
 
+def url_join(*args):
+    url = "/".join([ x.rstrip('/') for x in args ])
+    return url
+
 class UploadLIMS(object):
 
     def __init__(self, api_url, token):
-       self.api_url = api_url
+       self.api_url = api_url.rstrip('/')
        self.token = token
        self.headers = {'Authorization': "Token %s" % token}
        self.fastqc_tags = None
@@ -254,7 +258,7 @@ class UploadLIMS(object):
             log.error("Failure to reset flowcell cache for %s" % flowcell)
             return
 
-        log.debug(requests.post("%s/clear_cache/" % url, headers = self.headers).json())
+        log.debug(requests.post(url_join(url, "clear_cache/"), headers = self.headers).json())
 
     def clear_alignment_stats(self, alignment_id):
         url = "flowcell_lane_alignment/%d/clear_stats/" % alignment_id
@@ -786,11 +790,13 @@ class UploadLIMS(object):
         if complete_time:
             alignment["complete_time"] = datetime.datetime.now()
 
-        result = requests.put(alignment['url'], headers = self.headers, data = alignment)
+        result = requests.patch(alignment['url'], headers = self.headers, data = alignment)
 
         if result.ok:
+            log.info("Alignment %d updated" % alignment_id)
             log.debug(result.json())
         else:
+            log.debug("No result for uploading %s to %s" % (str(alignment), alignment['url']))
             log.error(result)
 
     def upload_spot(self, alignment_id, spot_file, dup_file):

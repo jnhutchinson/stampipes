@@ -1,7 +1,7 @@
 
 # Dependencies
 source $MODULELOAD
-module load bedops/2.4.2
+module load bedops/2.4.15
 module load bedtools/2.16.2
 module load bwa/0.7.12
 module load java/jdk1.7.0_05
