@@ -65,8 +65,10 @@ def parser_setup():
 class MakeBrowserload(object):
     genome_organisms = {
       "hg19": "human",
+      "hg38": "human",
       "rn5": "rat",
       "mm9": "mouse",
+      "mm10": "mouse",
       "TAIR9": "arabidopsis",
       "sacCer2": "sacCer",
       "sacCer3": "sacCer",
@@ -88,8 +90,11 @@ class MakeBrowserload(object):
         #maintrackname = None, bigwig = True, date = None):
     def __init__(self, group_data, browserconfig, basedir, outdir, mersize, priority, paired_end, project, label, date):
 
-		# anishida: URL for directory with flowcell data
+		# anishida: web URL, output location for trackhub data, and script locations
         self.trackhubURL = "http://stampipe0.altiusinstitute.org/flowcells/"
+        self.trackhubLOC = "/home/anishida/trackhub_test/"
+        self.trackhubLOC = "/net/seq/data/flowcells/trackhubs/"
+        self.scriptsLOC = "$STAMPIPES/scripts/browser/"
 
         self.basedir = basedir
         self.flowcell_date = date
@@ -170,10 +175,9 @@ class MakeBrowserload(object):
         self.create_hubtxt()		# anishida: calls function to create hub.txt file describing trackhub
         self.create_genomestxt()	# anishida: calls function to create genomes.txt file describing genomes used
         self.create_htmls()
-#        self.create_commands()		# anishida: not necessary for trackhubs
-#        self.create_excludes()		# anishida: not necessary for trackhubs
+        self.create_commands()
 
-	# anishida: added function for creating hub.txt
+	# anishida: added function for creating hub.txt for just the flowcell specifically
     def create_hubtxt(self):
         hubfile = os.path.join(self.outdir, "hub.txt")
         logging.info("Creating hub.txt file: %s" % hubfile)
@@ -186,7 +190,7 @@ class MakeBrowserload(object):
         hub.write("descriptionUrl description.html\n")
         hub.close()
 
-    # anishida: added function for creating genomes.txt
+    # anishida: added function for creating genomes.txt for just the flowcell specifically
     def create_genomestxt(self):
         genomefile = os.path.join(self.outdir, "genomes.txt")
         logging.info("Creating genome.txt file: %s" % genomefile)
@@ -326,6 +330,24 @@ class MakeBrowserload(object):
             file.write("</tr>\n")
         file.write("</tbody>\n")
         file.write("</table>\n")
+        
+    # anishida: create commands for maintaining and copying tracks into master track list
+    def create_commands(self):
+        makefile = os.path.join(self.outdir, "tracksetup.%s.doc" % self.main_label)
+        logging.info("Track Setup Make File: %s" % makefile)
+        commands = open( makefile, 'w')
+        commands.write("# %s\n" % makefile)
+        commands.write("# %s\n\n" % ", ".join(self.subtrack_sets.keys()))
+        project_folder_name = re.search("browser-load.*",self.outdir)
+        include_name = "trackDb.%s.%s.txt" % (self.file_label, self.main_label)
+        for hgdb, subtracks in self.subtrack_sets.items():
+        	# call script to test if 'project/genome' exists
+        	commands.write("sh \"%supdate_projects_genomes.sh\" %s %s\n" % (self.scriptsLOC, project_folder_name.group(0), hgdb))
+        	# copy track files to destination
+        	commands.write("cp %s/%s/%s %s%s/%s/tracks_by_flowcell/\n" % (self.outdir,hgdb,include_name,self.trackhubLOC,project_folder_name.group(0),hgdb))
+        	# call script to update lists for 'project/genome' with new track file
+        	commands.write("sh \"%supdate_tracks.sh\" %s %s \n\n" % (self.scriptsLOC, project_folder_name.group(0), hgdb))
+        commands.close()
 
     def create_ras(self):
         self.ra_files = {}
@@ -626,9 +648,7 @@ def main(args = sys.argv):
 
         logging.info("Reading browser configuration from %s" % browserconfig)
 
-#        outdir = os.path.join( basedir, "browser-load-%s-%s" % (project, browser))
-# anishida: ALTERNATE PATH FOR TESTING DUE TO WRITE PERMISSIONS
-        outdir = os.path.join( "/home/anishida/public_html/", "browser-load-%s-%s-trackhubtest" % (project, browser))
+        outdir = os.path.join( basedir, "browser-load-%s-%s" % (project, browser))
 
         loader = MakeBrowserload(lane_group, browserconfig, basedir, outdir, mersize, poptions.priority, paired_end, project, label, date)
         loader.load()
