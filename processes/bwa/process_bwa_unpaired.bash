@@ -1,3 +1,4 @@
+# Unpaired bwa alignment, untrimmed
 
 # Dependencies
 source $MODULELOAD
@@ -28,7 +29,6 @@ JOB_BASENAME=${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}
 export FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 export UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 
-export ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 export VERSION_FILE=${SAMPLE_NAME}.versions.txt
 
 export FASTQ_TMP=$ALIGN_DIR/fastq
@@ -41,10 +41,6 @@ fi
 
 bash $STAMPIPES/scripts/versions.bash &> $VERSION_FILE
 
-if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
-  echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > $ADAPTER_FILE
-fi
-
 # Indicate we have started this alignment and upload pertinent information
 if [ ! -e ${FINAL_BAM} ]; then
 
@@ -53,7 +49,6 @@ python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
   -t ${LIMS_API_TOKEN} \
   --alignment_id ${ALIGNMENT_ID} \
   --start_alignment_progress \
-  --adapter_file $ADAPTER_FILE \
   --version_file $VERSION_FILE
 fi
 
@@ -207,7 +202,7 @@ __SCRIPT__
 
 fi
 
-if [ ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out -o ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt ]; then
+if [ ! -e ${SAMPLE_NAME}.rand.uniques.sorted.spot.out -o ! -e ${SAMPLE_NAME}.rand.uniques.sorted.spotdups.txt ]; then
 
 JOBNAME=".sp${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME" 
@@ -221,7 +216,7 @@ qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT_
   echo "START: "
   date
 
-  make -f $STAMPIPES/makefiles/SPOT/spot-R1.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
+  make -f $STAMPIPES/makefiles/SPOT/spot-single.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
     READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
   # upload all data to the LIMS
   python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
@@ -229,8 +224,8 @@ qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT_
       -f ${FLOWCELL} \
       --alignment_id ${ALIGNMENT_ID} \
       --flowcell_lane_id ${FLOWCELL_LANE_ID} \
-      --spotfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out \
-      --spotdupfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt
+      --spotfile ${SAMPLE_NAME}.rand.uniques.sorted.spot.out \
+      --spotdupfile ${SAMPLE_NAME}.rand.uniques.sorted.spotdups.txt
 
   echo "FINISH: "
   date
@@ -273,7 +268,7 @@ qsub -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -V -cwd -S /bin/bash > /de
   echo "START: "
   date
 
-  bash $STAMPIPES/scripts/bwa/checkcomplete.bash
+  bash $STAMPIPES/scripts/bwa/unpairedcheckcomplete.bash
 
   python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
     -t ${LIMS_API_TOKEN} \
