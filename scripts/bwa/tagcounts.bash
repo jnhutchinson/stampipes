@@ -15,7 +15,6 @@ if [ ! -e $INBAM ]; then
 fi
 
 echo "Calculating total/pf/qc counts"
-<<<<<<< HEAD
 if [[ "$PAIRED" == "True" ]]; then
     AWK_PAIRED="-v paired=1";
 else
