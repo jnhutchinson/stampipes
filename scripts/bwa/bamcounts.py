@@ -236,48 +236,6 @@ class BAMFilter(object):
 
         countout.close()
 
-    def write_dict(self, countout, counts):
-
-        for count in sorted(counts.keys()):
-            countout.write("%s\t%d\n" % (count, counts[count]))
-
-    def filter(self, infile, countfile):
-
-        inbam = Samfile(infile, 'rb')
-
-        if self.paired:
-            logging.debug("Processing paired reads")
-            count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
-              'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
-              'all-aligned', 'paired-aligned', 'paired-nuclear-align', 'paired-autosomal-align', 
-              'all-mapq-filter', 'paired-mapq-filter', 'paired-aligned-qcfail']
-        else:
-            logging.debug("Processing unpaired reads")
-            count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
-               'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
-               'all-aligned', 'all-mapq-filter', 'nuclear-align', 'autosomal-align']
-
-        logging.debug(count_labels)
-
-        self.counts = dict([(label, 0) for label in count_labels])
-
-        self.chrcounts = {}
-        self.mapqcounts = {}
-        self.samflagcounts = {}
-        self.readlengthcounts = {}
-
-        for read in inbam:
-            self.process_read(read, inbam)
-
-        countout = open(countfile, 'a')
-
-        self.write_dict(countout, self.counts)
-        self.write_dict(countout, self.chrcounts)
-        self.write_dict(countout, self.mapqcounts)
-        self.write_dict(countout, self.samflagcounts)
-        self.write_dict(countout, self.readlengthcounts)
-
-        countout.close()
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
