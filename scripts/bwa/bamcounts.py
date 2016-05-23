@@ -8,6 +8,7 @@ Useful SAM flag reference: http://broadinstitute.github.io/picard/explain-flags.
 """
 
 import os, sys, logging, re
+from collections import defaultdict
 from pysam import Samfile
 import argparse
 
@@ -62,22 +63,13 @@ class BAMFilter(object):
         """
 
         mapq = "mapq-%d" % read.mapq
-        if not mapq in self.mapqcounts:
-            self.mapqcounts[mapq] = 1
-        else:
-            self.mapqcounts[mapq] += 1
+        self.mapqcounts[mapq] += 1
 
         samflag = "samflag-%d" % read.flag
-        if not samflag in self.samflagcounts:
-            self.samflagcounts[samflag] = 1
-        else:
-            self.samflagcounts[samflag] += 1
+        self.samflagcounts[samflag] += 1
 
         readlength = "readlength-%d" % read.rlen
-        if not readlength in self.readlengthcounts:
-            self.readlengthcounts[readlength] = 1
-        else:
-            self.readlengthcounts[readlength] += 1
+        self.readlengthcounts[readlength] += 1
 
     def process_read_paired(self, read, inbam):
         """
@@ -151,10 +143,7 @@ class BAMFilter(object):
         self.counts['u'] += 1
 
         passreadlength = "aligned-readlength-%d" % read.rlen
-        if not passreadlength in self.readlengthcounts:
-            self.readlengthcounts[passreadlength] = 1
-        else:
-            self.readlengthcounts[passreadlength] += 1
+        self.readlengthcounts[passreadlength] += 1
 
         if read.is_qcfail:
             return False
@@ -171,10 +160,10 @@ class BAMFilter(object):
         else:
             self.counts['u-pf-n-mm%d' % self.max_mismatches] += 1
 
-        if not chr in self.chrcounts:
-            self.chrcounts[chr] = 1
-        else:
-            self.chrcounts[chr] += 1
+        self.chrcounts[chr] += 1
+
+        if not "chrM" == chr:
+            self.counts['u-pf-n-mm%d-mito' % self.max_mismatches] += 1
 
         if self.paired:
             nuclear_align_count = "paired-nuclear-align"
@@ -202,21 +191,22 @@ class BAMFilter(object):
 
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
                         'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
-                        'all-aligned', 'all-mapq-filter', 'nuclear-align', 'autosomal-align']
+                        'all-aligned', 'all-mapq-filter']
 
         if self.paired:
             logging.debug("Processing paired reads")
             count_labels += ['paired-aligned', 'paired-nuclear-align', 'paired-autosomal-align']
         else:
             logging.debug("Processing unpaired reads")
+            count_labels += ['nuclear-align', 'autosomal-align']
 
         logging.debug(count_labels)
         self.counts = dict([(label, 0) for label in count_labels])
 
-        self.chrcounts = {}
-        self.mapqcounts = {}
-        self.samflagcounts = {}
-        self.readlengthcounts = {}
+        self.chrcounts = defaultdict(int)
+        self.mapqcounts = defaultdict(int)
+        self.samflagcounts = defaultdict(int)
+        self.readlengthcounts = defaultdict(int)
 
         for read in inbam:
             self.process_read(read, inbam)
