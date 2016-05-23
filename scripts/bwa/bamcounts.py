@@ -105,13 +105,12 @@ class BAMFilter(object):
 
     def process_read(self, read, inbam):
 
-        tags = dict(read.tags)
         self.process_flags(read, inbam)
 
         # This might not be the most perfect indicator, but it will do for now
         # Must take place before minimum quality filter--most multiple matching
         # reads have mapq set to 0
-        if "XT" in tags and tags["XT"] == "R":
+        if read.has_tag("XT") and read.get_tag("XT") == "R":
             self.counts['mm'] += 1
 
         if read.is_qcfail:
@@ -155,7 +154,7 @@ class BAMFilter(object):
         else:
             self.counts['u-pf-n'] += 1
 
-        if tags['NM'] > self.max_mismatches:
+        if read.has_tag("NM") and read.get_tag("NM") > self.max_mismatches:
             return False
         else:
             self.counts['u-pf-n-mm%d' % self.max_mismatches] += 1
