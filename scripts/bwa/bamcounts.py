@@ -189,9 +189,6 @@ class BAMFilter(object):
         if nuclear and not chr in ("chrX", "chrY", "chrZ", "chrW"):
             self.counts[autosomal_align_count] += 1
 
-        if self.paired:
-            self.counts['paired-aligned'] += 1
-
         return True
 
     def write_dict(self, countout, counts):
