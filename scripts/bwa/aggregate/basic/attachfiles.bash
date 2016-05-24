@@ -32,6 +32,6 @@ python3 $UPLOAD_SCRIPT \
 
 if [ -e ${LIBRARY_NAME}.MarkDuplicates.picard ]; then
 python3 $UPLOAD_SCRIPT \
-    --aggregation_id ${AGGREGATION_ID}
+    --aggregation_id ${AGGREGATION_ID} \
     --dupsfile ${LIBRARY_NAME}.MarkDuplicates.picard
 fi
