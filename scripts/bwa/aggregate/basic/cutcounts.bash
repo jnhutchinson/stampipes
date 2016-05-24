@@ -43,7 +43,7 @@ fi
 
 # Convert a BAM file into fragments and cut counts
 time bam2bed --do-not-sort < $UNIQUES_BAMFILE \
-  | awk -v cutfile=$CUTSTMP -v fragmentfile=$FRAGMENTSTMP -f ${HOTSPOT2_DIR}/scripts/cutfragments.awk
+  | awk -v cutfile=$CUTSTMP -v fragmentfile=$FRAGMENTSTMP -f ${STAMPIPES}/scripts/cutfragments.awk
 sort-bed --max-mem 16G $FRAGMENTSTMP | starch - > $FRAGMENTS
 sort-bed --max-mem 16G $CUTSTMP | starch - > $CUTS_BED 
 
