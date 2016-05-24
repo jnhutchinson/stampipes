@@ -31,8 +31,4 @@ TRIMMED=`find . -maxdepth 1 -name "$SAMPLE_NAME*trimstats.txt" | xargs awk 'BEGI
 echo -e "adapter-trimmed\t$TRIMMED" >> $OUTPUT
 
 echo "Creating bam counts"
-if [[ "$PAIRED" = "True" ]]; then
-  python3 $STAMPIPES/scripts/bwa/bamcounts.py $INBAM $OUTPUT
-else
-  python3 $STAMPIPES/scripts/bwa/bamcounts.py --unpaired $INBAM $OUTPUT
-fi
+python3 $STAMPIPES/scripts/bwa/bamcounts.py $INBAM $OUTPUT

@@ -17,7 +17,6 @@ log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 script_options = {
   "debug": False,
   "quiet": True,
-  "paired": True,
 }
 
 def parser_setup():
@@ -38,9 +37,6 @@ def parser_setup():
     parser.add_argument("--max_mismatches", dest="max_mismatches", type=int, default=2,
         help="Maximum mismatches for filtering")
 
-    parser.add_argument("--unpaired", dest="paired", action="store_false",
-        help="Count style is unpaired.")
-
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
 
@@ -48,12 +44,11 @@ def parser_setup():
 
 class BAMFilter(object):
 
-    def __init__(self, max_mismatches=2, min_mapping_quality=10, paired=True):
+    def __init__(self, max_mismatches=2, min_mapping_quality=10):
 
         self.max_mismatches = max_mismatches
         self.previous_read = None
         self.min_mapping_quality = min_mapping_quality
-        self.paired = paired
         self.upfnmm = 'u-pf-n-mm%d' % self.max_mismatches
         self.upfnmmmito = 'u-pf-n-mm%d-mito' % self.max_mismatches
 
@@ -129,9 +124,10 @@ class BAMFilter(object):
 
         chr = inbam.getrname(read.rname)
         nuclear = not chr in ("chrM", "chrC")
+        autosomal = not nuclear and chr not in ("chrX", "chrY", "chrZ", "chrW")
 
         # Do our paired alignment checks, return if we don't pass here
-        if self.paired and not self.process_read_paired(read, inbam):
+        if read.is_paired and not self.process_read_paired(read, inbam):
             return
 
         if read.flag & 1024:
@@ -164,18 +160,15 @@ class BAMFilter(object):
         if not "chrM" == chr:
             self.counts['u-pf-n-mm%d-mito' % self.max_mismatches] += 1
 
-        if self.paired:
-            nuclear_align_count = "paired-nuclear-align"
-            autosomal_align_count = "paired-autosomal-align"
-        else:
-            nuclear_align_count = "nuclear-align"
-            autosomal_align_count = "autosomal-align"
-
         if nuclear:
-            self.counts[nuclear_align_count] += 1
+            self.counts['nuclear-align'] += 1
+            if autosomal:
+                self.counts['autosomal-align'] += 1
 
-        if nuclear and not chr in ("chrX", "chrY", "chrZ", "chrW"):
-            self.counts[autosomal_align_count] += 1
+            if read.is_paired:
+                self.counts['paired-nuclear-align'] += 1
+                if autosomal:
+                    self.counts['paired-autosomal-align'] += 1
 
         return True
 
@@ -189,15 +182,12 @@ class BAMFilter(object):
         inbam = Samfile(infile, 'rb')
 
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
-                        'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
-                        'all-aligned', 'all-mapq-filter']
-
-        if self.paired:
-            logging.debug("Processing paired reads")
-            count_labels += ['paired-aligned', 'paired-nuclear-align', 'paired-autosomal-align']
-        else:
-            logging.debug("Processing unpaired reads")
-            count_labels += ['nuclear-align', 'autosomal-align']
+                        'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm',
+                        'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
+                        'nuclear-align', 'autosomal-align',
+                        'paired-aligned', 'paired-nuclear-align',
+                        'paired-autosomal-align', 'all-aligned',
+                        'all-mapq-filter']
 
         logging.debug(count_labels)
         self.counts = dict([(label, 0) for label in count_labels])
@@ -239,7 +229,7 @@ from the command line."""
     bamfile = args.bamfile
     countfile = args.outfile
 
-    filter = BAMFilter(max_mismatches=args.max_mismatches, min_mapping_quality=args.min_mapping_quality, paired = args.paired)
+    filter = BAMFilter(max_mismatches=args.max_mismatches, min_mapping_quality=args.min_mapping_quality)
     filter.filter(bamfile, countfile)
 
 # This is the main body of the program that only runs when running this script
