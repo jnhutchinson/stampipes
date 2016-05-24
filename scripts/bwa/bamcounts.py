@@ -124,7 +124,7 @@ class BAMFilter(object):
 
         chr = inbam.getrname(read.rname)
         nuclear = not chr in ("chrM", "chrC")
-        autosomal = not nuclear and chr not in ("chrX", "chrY", "chrZ", "chrW")
+        autosomal = nuclear and chr not in ("chrX", "chrY", "chrZ", "chrW")
 
         # Do our paired alignment checks, return if we don't pass here
         if read.is_paired and not self.process_read_paired(read, inbam):
