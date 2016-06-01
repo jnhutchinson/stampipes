@@ -28,10 +28,10 @@ $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.fragments.sorted.bed.s
 
 python3 $UPLOAD_SCRIPT \
     --aggregation_id ${AGGREGATION_ID} \
-    --insertsfile ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard \
+    --insertsfile ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard 
 
 if [ -e ${LIBRARY_NAME}.MarkDuplicates.picard ]; then
 python3 $UPLOAD_SCRIPT \
-    --aggregation_id ${AGGREGATION_ID}
+    --aggregation_id ${AGGREGATION_ID} \
     --dupsfile ${LIBRARY_NAME}.MarkDuplicates.picard
 fi
