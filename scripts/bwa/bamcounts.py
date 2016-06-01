@@ -123,12 +123,22 @@ class BAMFilter(object):
             return
 
         chr = inbam.getrname(read.rname)
-        nuclear = not chr in ("chrM", "chrC")
-        autosomal = nuclear and chr not in ("chrX", "chrY", "chrZ", "chrW")
-
         # Do our paired alignment checks, return if we don't pass here
         if read.is_paired and not self.process_read_paired(read, inbam):
             return
+
+        nuclear = not chr in ("chrM", "chrC")
+        autosomal = nuclear and chr not in ("chrX", "chrY", "chrZ", "chrW")
+
+        if nuclear:
+            self.counts['nuclear-align'] += 1
+            if autosomal:
+                self.counts['autosomal-align'] += 1
+
+            if read.is_paired:
+                self.counts['paired-nuclear-align'] += 1
+                if autosomal:
+                    self.counts['paired-autosomal-align'] += 1
 
         if read.flag & 1024:
             self.counts['umi-duplicate'] += 1
@@ -160,15 +170,6 @@ class BAMFilter(object):
         if not "chrM" == chr:
             self.counts['u-pf-n-mm%d-mito' % self.max_mismatches] += 1
 
-        if nuclear:
-            self.counts['nuclear-align'] += 1
-            if autosomal:
-                self.counts['autosomal-align'] += 1
-
-            if read.is_paired:
-                self.counts['paired-nuclear-align'] += 1
-                if autosomal:
-                    self.counts['paired-autosomal-align'] += 1
 
         return True
 
