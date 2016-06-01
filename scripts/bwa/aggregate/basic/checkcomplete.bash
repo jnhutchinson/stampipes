@@ -1,36 +1,47 @@
 # Requires LIBRARY_NAME and GENOME to be in the environment 
 # Checks that important files exist and are not size 0
+# Checking for paired-end-specific files will only happen if PAIRED is set
 
 EXIT=0
 
-files=( \
-    "${LIBRARY_NAME}.${GENOME}.sorted.bam" \ 
-    "${LIBRARY_NAME}.${GENOME}.sorted.bam.bai" \ 
-    "${LIBRARY_NAME}.tagcounts.txt" \
-    "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard" \
-    "${LIBRARY_NAME}.75_20.${GENOME}.bw" \
-    "${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch" \
-    "${LIBRARY_NAME}.75_20.normalized.${GENOME}.bw" \
-    "${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch" \
-    "$LIBRARY_NAME.${GENOME}.cuts.sorted.bed.starch" \
-    "$LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.starch" \
-    "$LIBRARY_NAME.${GENOME}.fragments.sorted.bed.starch" \
-    "$LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw" \
-)
+checkfile(){
+    if [[ ! -s "$1" ]] ; then
+        echo "Missing $1"
+        EXIT=1
+    fi
+}
+
+files=(
+    "$LIBRARY_NAME.$GENOME.sorted.bam"
+    "$LIBRARY_NAME.$GENOME.sorted.bam.bai"
+    "$LIBRARY_NAME.tagcounts.txt" 
+    "$LIBRARY_NAME.75_20.$GENOME.bw" 
+    "$LIBRARY_NAME.75_20.$GENOME.uniques-density.bed.starch" 
+    "$LIBRARY_NAME.75_20.normalized.$GENOME.bw" 
+    "$LIBRARY_NAME.75_20.normalized.$GENOME.uniques-density.bed.starch" 
+    "$LIBRARY_NAME.$GENOME.cuts.sorted.bed.starch" 
+    "$LIBRARY_NAME.$GENOME.cutcounts.sorted.bed.starch" 
+    "$LIBRARY_NAME.$GENOME.cutcounts.$READ_LENGTH.bw" 
+    )
+paired_files=(
+    "$LIBRARY_NAME.CollectInsertSizeMetrics.picard"
+    "$LIBRARY_NAME.$GENOME.fragments.sorted.bed.starch"
+    )
 
 for FILE in "${files[@]}"; do
-if [ ! -s $FILE ]; then
-    echo "Missing $FILE"
-    EXIT=1
-fi
+    checkfile "$FILE"
 done
 
 # Only check for MarkDuplicates report if this is not a UMI sample
 if [[ "$UMI" != "True" ]]; then
-    if [ ! -s "${LIBRARY_NAME}.MarkDuplicates.picard" ]; then
-        echo "Missing $FILE"
-        EXIT=1
-    fi
+    checkfile "${LIBRARY_NAME}.MarkDuplicates.picard"
+fi
+
+# Only check for InsertSizeMetrics on paired-end data
+if [[ -n "$PAIRED" ]]; then
+    for FILE in "${paired_files[@]}" ; do
+        checkfile "$FILE"
+    done
 fi
 
 if [[ $EXIT -ne 1 ]]; then
