@@ -31,7 +31,7 @@ FRAGMENTSTMP=$TMPDIR/fragments.bed
 date
 
 # Create cut counts and fragments if they don't exist
-if [ ! -s $CUTS_BED -o ! -s $FRAGMENTS ]; then
+if [ ! -s $CUTS_BED ]; then
 
 # Create the uniques BAM if it doesn't currently exist
 if [ ! -o $AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.uniques.sorted.bam ]; then
@@ -43,8 +43,11 @@ fi
 
 # Convert a BAM file into fragments and cut counts
 time bam2bed --do-not-sort < $UNIQUES_BAMFILE \
-  | awk -v cutfile=$CUTSTMP -v fragmentfile=$FRAGMENTSTMP -f ${HOTSPOT2_DIR}/scripts/cutfragments.awk
-sort-bed --max-mem 16G $FRAGMENTSTMP | starch - > $FRAGMENTS
+  | awk -v cutfile=$CUTSTMP -v fragmentfile=$FRAGMENTSTMP -f ${STAMPIPES}/scripts/bwa/aggregate/basic/cutfragments.awk
+
+if [ -s "$FRAMENTSTMP" ] ; then
+  sort-bed --max-mem 16G $FRAGMENTSTMP | starch - > $FRAGMENTS
+fi
 sort-bed --max-mem 16G $CUTSTMP | starch - > $CUTS_BED 
 
 fi
