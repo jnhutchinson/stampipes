@@ -8,6 +8,7 @@ Useful SAM flag reference: http://broadinstitute.github.io/picard/explain-flags.
 """
 
 import os, sys, logging, re
+from collections import defaultdict
 from pysam import Samfile
 import argparse
 
@@ -48,48 +49,27 @@ class BAMFilter(object):
         self.max_mismatches = max_mismatches
         self.previous_read = None
         self.min_mapping_quality = min_mapping_quality
+        self.upfnmm = 'u-pf-n-mm%d' % self.max_mismatches
+        self.upfnmmmito = 'u-pf-n-mm%d-mito' % self.max_mismatches
 
-    def process_read(self, read, inbam): 
-
-        tags = dict(read.tags)
+    def process_flags(self, read, inbam):
+        """
+        Do a tally of mapq values, samflag values, and read lengths
+        """
 
         mapq = "mapq-%d" % read.mapq
-        if not mapq in self.mapqcounts:
-            self.mapqcounts[mapq] = 1
-        else:
-            self.mapqcounts[mapq] += 1
+        self.mapqcounts[mapq] += 1
 
         samflag = "samflag-%d" % read.flag
-        if not samflag in self.samflagcounts:
-            self.samflagcounts[samflag] = 1
-        else:
-            self.samflagcounts[samflag] += 1
+        self.samflagcounts[samflag] += 1
 
         readlength = "readlength-%d" % read.rlen
-        if not readlength in self.readlengthcounts:
-            self.readlengthcounts[readlength] = 1
-        else:
-            self.readlengthcounts[readlength] += 1
+        self.readlengthcounts[readlength] += 1
 
-        # This might not be the most perfect indicator, but it will do for now
-        # Must take place before minimum quality filter--most multiple matching
-        # reads have mapq set to 0
-        if "XT" in tags and tags["XT"] == "R":
-            self.counts['mm'] += 1
-
-        if read.is_qcfail:
-            self.counts['qc-flagged'] += 1
-
-        if read.is_unmapped:
-            self.counts['nm'] += 1
-            return False
-        else:
-            self.counts['all-aligned'] += 1
-
-        # Figure out how many alignments aren't included because of mapq
-        if self.min_mapping_quality > read.mapq:
-            self.counts['all-mapq-filter'] += 1
-            return
+    def process_read_paired(self, read, inbam):
+        """
+        Check a read for paired alignment conditions, return False if they are not met
+        """
 
         # do not use reads with
         # 0x4 = read is unmapped
@@ -106,36 +86,69 @@ class BAMFilter(object):
         # Figure out how many alignments aren't included because of mapq
         if self.min_mapping_quality > read.mapq:
             self.counts['paired-mapq-filter'] += 1
-            return
+            return False
 
         # do not use reads with QC fail even if they pass all other checks
         # 0x512 QC Fail
         if read.flag & 512:
             self.counts['paired-aligned-qcfail'] += 1
+            return False
+
+        self.counts['paired-aligned'] += 1
+
+        return True
+
+    def process_read(self, read, inbam):
+
+        self.process_flags(read, inbam)
+
+        # This might not be the most perfect indicator, but it will do for now
+        # Must take place before minimum quality filter--most multiple matching
+        # reads have mapq set to 0
+        if read.has_tag("XT") and read.get_tag("XT") == "R":
+            self.counts['mm'] += 1
+
+        if read.is_qcfail:
+            self.counts['qc-flagged'] += 1
+
+        if read.is_unmapped:
+            self.counts['nm'] += 1
+            return False
+        else:
+            self.counts['all-aligned'] += 1
+
+        # Figure out how many alignments aren't included because of mapq
+        if self.min_mapping_quality > read.mapq:
+            self.counts['all-mapq-filter'] += 1
             return
 
         chr = inbam.getrname(read.rname)
+        # Do our paired alignment checks, return if we don't pass here
+        if read.is_paired and not self.process_read_paired(read, inbam):
+            return
+
         nuclear = not chr in ("chrM", "chrC")
+        autosomal = nuclear and chr not in ("chrX", "chrY", "chrZ", "chrW")
 
         if nuclear:
-            self.counts['paired-nuclear-align'] += 1
+            self.counts['nuclear-align'] += 1
+            if autosomal:
+                self.counts['autosomal-align'] += 1
 
-        if nuclear and not chr in ("chrX", "chrY", "chrZ", "chrW"):
-            self.counts['paired-autosomal-align'] += 1
+            if read.is_paired:
+                self.counts['paired-nuclear-align'] += 1
+                if autosomal:
+                    self.counts['paired-autosomal-align'] += 1
 
         if read.flag & 1024:
             self.counts['umi-duplicate'] += 1
             if nuclear:
                 self.counts['umi-duplicate-nuclear'] += 1
 
-        self.counts['paired-aligned'] += 1
         self.counts['u'] += 1
 
         passreadlength = "aligned-readlength-%d" % read.rlen
-        if not passreadlength in self.readlengthcounts:
-            self.readlengthcounts[passreadlength] = 1
-        else:
-            self.readlengthcounts[passreadlength] += 1
+        self.readlengthcounts[passreadlength] += 1
 
         if read.is_qcfail:
             return False
@@ -147,21 +160,16 @@ class BAMFilter(object):
         else:
             self.counts['u-pf-n'] += 1
 
-        if tags['NM'] > self.max_mismatches:
+        if read.has_tag("NM") and read.get_tag("NM") > self.max_mismatches:
             return False
         else:
             self.counts['u-pf-n-mm%d' % self.max_mismatches] += 1
 
-
-        if not chr in self.chrcounts:
-            self.chrcounts[chr] = 1
-        else:
-            self.chrcounts[chr] += 1
+        self.chrcounts[chr] += 1
 
         if not "chrM" == chr:
             self.counts['u-pf-n-mm%d-mito' % self.max_mismatches] += 1
 
-        self.previous_read = read
 
         return True
 
@@ -175,16 +183,20 @@ class BAMFilter(object):
         inbam = Samfile(infile, 'rb')
 
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
-          'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm', 'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
-          'all-aligned', 'paired-aligned', 'paired-nuclear-align', 'paired-autosomal-align', 
-          'all-mapq-filter', 'paired-mapq-filter', 'paired-aligned-qcfail']
+                        'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm',
+                        'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
+                        'nuclear-align', 'autosomal-align',
+                        'paired-aligned', 'paired-nuclear-align',
+                        'paired-autosomal-align', 'all-aligned',
+                        'all-mapq-filter']
 
+        logging.debug(count_labels)
         self.counts = dict([(label, 0) for label in count_labels])
 
-        self.chrcounts = {}
-        self.mapqcounts = {}
-        self.samflagcounts = {}
-        self.readlengthcounts = {}
+        self.chrcounts = defaultdict(int)
+        self.mapqcounts = defaultdict(int)
+        self.samflagcounts = defaultdict(int)
+        self.readlengthcounts = defaultdict(int)
 
         for read in inbam:
             self.process_read(read, inbam)
@@ -198,6 +210,7 @@ class BAMFilter(object):
         self.write_dict(countout, self.readlengthcounts)
 
         countout.close()
+
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
