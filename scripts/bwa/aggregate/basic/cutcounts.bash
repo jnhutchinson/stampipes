@@ -45,7 +45,7 @@ fi
 time bam2bed --do-not-sort < $UNIQUES_BAMFILE \
   | awk -v cutfile=$CUTSTMP -v fragmentfile=$FRAGMENTSTMP -f ${STAMPIPES}/scripts/bwa/aggregate/basic/cutfragments.awk
 
-if [ -s "$FRAMENTSTMP" ] ; then
+if [ -s "$FRAGMENTSTMP" ] ; then
   sort-bed --max-mem 16G $FRAGMENTSTMP | starch - > $FRAGMENTS
 fi
 sort-bed --max-mem 16G $CUTSTMP | starch - > $CUTS_BED 
