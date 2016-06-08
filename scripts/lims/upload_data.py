@@ -491,7 +491,8 @@ class UploadLIMS(object):
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(path))
 
 
-        recorded_mtime = datetime.datetime.fromtimestamp(time.mktime(time.strptime( exists["file_last_modified"], "%Y-%m-%dT%H:%M:%S")))
+        #if exists:
+        #recorded_mtime = datetime.datetime.fromtimestamp(time.mktime(time.strptime( exists["file_last_modified"], "%Y-%m-%dT%H:%M:%S")))
 
         # TODO: Make time-checking work!
         # Current issue: sub-second precision.
