@@ -337,7 +337,12 @@ qsub -p $BASE_PRIORITY -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -V -cwd 
 
   #bash $STAMPIPES/scripts/bwa/attachfiles.bash
   # Attach bam file
-  $ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.sorted.bam --attach_file_purpose all-alignments-bam --attach_file_type bam
+  python3 $STAMPIPES/scripts/lims/upload_data.py \
+    --attach_file_contenttype SequencingData.flowcelllanealignment \
+    --attach_file_objectid ${ALIGNMENT_ID} \
+    --attach_file ${SAMPLE_NAME}.sorted.bam \
+    --attach_file_purpose all-alignments-bam \
+    --attach_file_type bam
 
   rm -r $ALIGN_DIR/fastq
 
