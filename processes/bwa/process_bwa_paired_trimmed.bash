@@ -139,7 +139,7 @@ PROCESSING="$PROCESSING,$JOBNAME"
 
 # If we are processing UMI, we will need a lot of power for sorting!
 if [ "$UMI" = "True" ]; then
-  export SUBMIT_SLOTS="-pe threads 2"
+  export SUBMIT_SLOTS="-pe threads 1"
 fi
 
 export PRE_DUP_BAM=${SAMPLE_NAME}.predup.sorted.bam
@@ -165,22 +165,24 @@ qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd
       samtools merge ${FINAL_BAM} ${FASTQ_PAIR_BAMS}
     fi
   
-    # If we are working with a UMI, we can create the duplicate score and replace
-    # the final BAM with one marked with duplicates
-    if [ "$UMI" = "True" ]; then
-      echo "START UMI DUP: "
-      date
-  
-      rsync $FINAL_BAM \$TMPDIR/${PRE_DUP_BAM}
-      rm $FINAL_BAM
-  
-      make -f $STAMPIPES/makefiles/umi/mark_duplicates.mk INPUT_BAM_FILE=\$TMPDIR/${PRE_DUP_BAM} \
-        OUTPUT_BAM_FILE=\$TMPDIR/${FINAL_BAM}.presort
-      samtools sort \$TMPDIR/${FINAL_BAM}.presort $FINAL_BAM_PREFIX
-  
-      echo "FINISH UMI DUP: "
-      date
-    fi
+# Skip Dup marking
+#
+#    # If we are working with a UMI, we can create the duplicate score and replace
+#    # the final BAM with one marked with duplicates
+#    if [ "$UMI" = "True" ]; then
+#      echo "START UMI DUP: "
+#      date
+#  
+#      rsync $FINAL_BAM \$TMPDIR/${PRE_DUP_BAM}
+#      rm $FINAL_BAM
+#  
+#      make -f $STAMPIPES/makefiles/umi/mark_duplicates.mk INPUT_BAM_FILE=\$TMPDIR/${PRE_DUP_BAM} \
+#        OUTPUT_BAM_FILE=\$TMPDIR/${FINAL_BAM}.presort
+#      samtools sort \$TMPDIR/${FINAL_BAM}.presort $FINAL_BAM_PREFIX
+#  
+#      echo "FINISH UMI DUP: "
+#      date
+#    fi
 
     echo "FINISH MERGE: "
     date
@@ -188,20 +190,21 @@ qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd
     echo "$FINAL_BAM exists already"
   fi
   
-  echo "START PROCESS BAM: "
-  date
-
-  make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk
-
-  echo "FINISH PROCESS BAM: "
-  date
-
-  echo "START PICARD DUP: "
-  date
-
-  make -f $STAMPIPES/makefiles/picard/dups.mk
-
-  echo "FINISH PICARD DUP: " date
+# Skip dup marking and inserts and uniquely-mapping steps.
+#  echo "START PROCESS BAM: "
+#  date
+#
+#  make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk
+#
+#  echo "FINISH PROCESS BAM: "
+#  date
+#
+#  echo "START PICARD DUP: "
+#  date
+#
+#  make -f $STAMPIPES/makefiles/picard/dups.mk
+#
+#  echo "FINISH PICARD DUP: " date
 
   python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
     -t ${LIMS_API_TOKEN} \
@@ -224,90 +227,91 @@ __SCRIPT__
 fi
 
 
-if [ ! -e ${SAMPLE_NAME}.tagcounts.txt -o -n "$FORCE_COUNTS" ]; then
-
-JOBNAME=".ct${JOB_BASENAME}"
-PROCESSING="$PROCESSING,$JOBNAME"
-   
-qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-  set -x -e -o pipefail
-  echo "Hostname: "
-  hostname
-
-  echo "START: " 
-  date
-
-  time bash $STAMPIPES/scripts/bwa/tagcounts.bash $SAMPLE_NAME $SAMPLE_NAME.sorted.bam $SAMPLE_NAME.tagcounts.txt $R1_FASTQ $R2_FASTQ
-  # upload all data to the LIMS
-  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
-      -t ${LIMS_API_TOKEN} \
-      -f ${FLOWCELL} \
-      --alignment_id ${ALIGNMENT_ID} \
-      --flowcell_lane_id ${FLOWCELL_LANE_ID} \
-      --countsfile ${SAMPLE_NAME}.tagcounts.txt
-
-  echo "FINISH: "
-  date
-      
-__SCRIPT__
-
-fi
-
-if [ ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out -o ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt ]; then
-
-JOBNAME=".sp${JOB_BASENAME}"
-PROCESSING="$PROCESSING,$JOBNAME" 
-    
-qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-  set -x -e -o pipefail
-
-  echo "Hostname: "
-  hostname
-
-  echo "START: "
-  date
-
-  make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
-  # upload all data to the LIMS
-  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
-      -t ${LIMS_API_TOKEN} \
-      -f ${FLOWCELL} \
-      --alignment_id ${ALIGNMENT_ID} \
-      --flowcell_lane_id ${FLOWCELL_LANE_ID} \
-      --spotfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out \
-      --spotdupfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt
-
-  echo "FINISH: "
-  date
-
-__SCRIPT__
-
-fi
-
-if [ ! -e ${SAMPLE_NAME}.75_20.${GENOME}.bw ]; then
-
-JOBNAME=".den${JOB_BASENAME}"
-PROCESSING="$PROCESSING,$JOBNAME" 
-
-qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-  set -x -e -o pipefail
-
-  echo "Hostname: "
-  hostname
-
-  echo "START: "
-  date
-
-  make -f $STAMPIPES/makefiles/densities/density.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
-
-  echo "FINISH: "
-  date
-
-__SCRIPT__
-
-fi
+# Skip a bunch of stuff
+#if [ ! -e ${SAMPLE_NAME}.tagcounts.txt -o -n "$FORCE_COUNTS" ]; then
+#
+#JOBNAME=".ct${JOB_BASENAME}"
+#PROCESSING="$PROCESSING,$JOBNAME"
+#   
+#qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+#  set -x -e -o pipefail
+#  echo "Hostname: "
+#  hostname
+#
+#  echo "START: " 
+#  date
+#
+#  time bash $STAMPIPES/scripts/bwa/tagcounts.bash $SAMPLE_NAME $SAMPLE_NAME.sorted.bam $SAMPLE_NAME.tagcounts.txt $R1_FASTQ $R2_FASTQ
+#  # upload all data to the LIMS
+#  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+#      -t ${LIMS_API_TOKEN} \
+#      -f ${FLOWCELL} \
+#      --alignment_id ${ALIGNMENT_ID} \
+#      --flowcell_lane_id ${FLOWCELL_LANE_ID} \
+#      --countsfile ${SAMPLE_NAME}.tagcounts.txt
+#
+#  echo "FINISH: "
+#  date
+#      
+#__SCRIPT__
+#
+#fi
+#
+#if [ ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out -o ! -e ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt ]; then
+#
+#JOBNAME=".sp${JOB_BASENAME}"
+#PROCESSING="$PROCESSING,$JOBNAME" 
+#    
+#qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+#  set -x -e -o pipefail
+#
+#  echo "Hostname: "
+#  hostname
+#
+#  echo "START: "
+#  date
+#
+#  make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
+#    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+#  # upload all data to the LIMS
+#  python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
+#      -t ${LIMS_API_TOKEN} \
+#      -f ${FLOWCELL} \
+#      --alignment_id ${ALIGNMENT_ID} \
+#      --flowcell_lane_id ${FLOWCELL_LANE_ID} \
+#      --spotfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out \
+#      --spotdupfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt
+#
+#  echo "FINISH: "
+#  date
+#
+#__SCRIPT__
+#
+#fi
+#
+#if [ ! -e ${SAMPLE_NAME}.75_20.${GENOME}.bw ]; then
+#
+#JOBNAME=".den${JOB_BASENAME}"
+#PROCESSING="$PROCESSING,$JOBNAME" 
+#
+#qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+#  set -x -e -o pipefail
+#
+#  echo "Hostname: "
+#  hostname
+#
+#  echo "START: "
+#  date
+#
+#  make -f $STAMPIPES/makefiles/densities/density.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
+#    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+#
+#  echo "FINISH: "
+#  date
+#
+#__SCRIPT__
+#
+#fi
 
 if [ -n "$PROCESSING" ]; then
 
@@ -319,7 +323,11 @@ qsub -p $BASE_PRIORITY -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -V -cwd 
   echo "START: "
   date
 
-  bash $STAMPIPES/scripts/bwa/checkcomplete.bash
+  # Skip complete-checking
+  #bash $STAMPIPES/scripts/bwa/checkcomplete.bash
+
+  # Check just for BAM
+  [ -e "$FINAL_BAM" ]
 
   python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
     -t ${LIMS_API_TOKEN} \
@@ -327,7 +335,9 @@ qsub -p $BASE_PRIORITY -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -V -cwd 
     --alignment_id ${ALIGNMENT_ID} \
     --finish_alignment
 
-  bash $STAMPIPES/scripts/bwa/attachfiles.bash
+  #bash $STAMPIPES/scripts/bwa/attachfiles.bash
+  # Attach bam file
+  $ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.sorted.bam --attach_file_purpose all-alignments-bam --attach_file_type bam
 
   rm -r $ALIGN_DIR/fastq
 
