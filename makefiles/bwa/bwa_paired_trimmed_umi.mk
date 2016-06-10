@@ -124,6 +124,7 @@ $(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz : $(TMPDIR)/umi.R1.f
 	time trim-adapters-illumina \
 		-f $(ADAPTER_FILE) \
 		-1 $(ADAPTER_P5_NAME) -2 $(ADAPTER_P7_NAME) \
+		--threads=$(THREADS) \
 		$(TMPDIR)/umi.R1.fastq.gz $(TMPDIR)/umi.R2.fastq.gz \
 		$(TMPDIR)/trimmed.R1.fastq.gz $(TMPDIR)/trimmed.R2.fastq.gz \
 		&> $(TRIMSTATS) \
