@@ -27,7 +27,7 @@ SHELL = bash
 # We can use that for the default number of threads to use for the bwa
 # aln process
 NSLOTS ?= 1
-THREADS ?= $(NSLOTS)
+THREADS ?= 3
 
 # Use the default PATH version of each of these programs unless overridden
 SAMTOOLS ?= samtools
