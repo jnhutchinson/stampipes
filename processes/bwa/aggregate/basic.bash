@@ -35,7 +35,7 @@ DENSITY_JOBNAME=${JOB_BASENAME}_density
 CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 # Check out files match first
-python3 $STAMPIPES/scripts/utility/md5check.py bamfiles.txt || exit 1
+#python3 $STAMPIPES/scripts/utility/md5check.py bamfiles.txt || exit 1
 
 PROCESSING=""
 
