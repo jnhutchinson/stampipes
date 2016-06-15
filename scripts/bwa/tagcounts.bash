@@ -1,7 +1,8 @@
 SAMPLE_NAME=$1
 INBAM=$2
 OUTPUT=$3
-FASTQ_DIR=$4
+R1_FASTQ=$4
+R2_FASTQ=$5
 
 # Delete output if it already exists; do not want to append to existing output
 if [ -e $OUTPUT ]; then
