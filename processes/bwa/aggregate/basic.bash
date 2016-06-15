@@ -25,6 +25,12 @@ export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.b
 export DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.bw
 export CUTCOUNTS_BIGWIG=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw
 
+# Hotspot hack
+export PATH="/home/nelsonjs/code/hotspot2/bin:$PATH"
+export HOTSPOTSCRIPT="/home/nelsonjs/code/hotspot2/scripts/hotspot2.sh"
+export EXCLUDE_REGIONS="/home/nelsonjs/tmp/hg38/exclude_regions.bed"
+export CHROM_SIZES="/home/nelsonjs/tmp/hg38/chrom_sizes.bed"
+
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
 fi
@@ -39,14 +45,14 @@ CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 PROCESSING=""
 
-if [ ! -e ${FINAL_BAM} ]; then
+#if [ ! -e ${FINAL_BAM} ]; then
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
 # If we are  UMI, we will need a lot of power for sorting!
 if [ "$UMI" = "True" ]; then
   echo "Processing with UMI"
-  export SUBMIT_SLOTS="-pe threads 4"
+  #export SUBMIT_SLOTS="-pe threads 4"
   echo "Excluding duplicates from uniques bam"
   export EXCLUDE_FLAG=1536
 fi
@@ -62,16 +68,26 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
 
   export BAM_COUNT=$BAM_COUNT
 
-  bash $STAMPIPES/scripts/bwa/aggregate/merge.bash
+  if [ ! -s "$FINAL_BAM" ] ; then
+    bash $STAMPIPES/scripts/bwa/aggregate/merge.bash
+  fi
 
-  make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk SAMPLE_NAME=${LIBRARY_NAME} INBAM=${FINAL_BAM} OUTBAM=${TEMP_UNIQUES_BAM} info uniques
+  if [ ! -s "$TEMP_UNIQUES_BAM" ] ; then
+    make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk SAMPLE_NAME=${LIBRARY_NAME} INBAM=${FINAL_BAM} OUTBAM=${TEMP_UNIQUES_BAM} info uniques
+  fi
+
+  echo "HOTSPOT: "
+
+  if [ -z \$(ls peaks/*peaks.starch) ] ;then
+    $HOTSPOT_SCRIPT  -F 0.2 -s 12345 -e $EXCLUDE_REGIONS -c $CHROM_SIZES "$TEMP_UNIQUES_BAM"  peaks
+  fi
 
   echo "FINISH: "
   date
 
 __SCRIPT__
 
-fi
+#fi
 
 #if [ ! -e $TAGCOUNTS_FILE ]; then
 #

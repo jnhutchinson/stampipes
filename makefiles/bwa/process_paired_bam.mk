@@ -58,7 +58,7 @@ info :
 
 metrics : $(INSERTMETRICS)
 
-uniques : $(INBAM).bai $(OUTBAM).bai
+uniques : $(INBAM) $(OUTBAM)
 
 # Sometimes this will report errors about a read not mapping that should have a mapq of 0
 # See this for more info: http://seqanswers.com/forums/showthread.php?t=4246
