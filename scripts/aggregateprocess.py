@@ -276,7 +276,7 @@ class ProcessSetUp(object):
 
         flowcell = self.api_single_result(url=lane["flowcell"])
         if not flowcell:
-            logging.critical("Could not get flowcell at %d (Aggregation %d)" % (lane["flowcell"], aggregation_id))
+            logging.critical("Could not get flowcell at %s (Aggregation %d)" % (lane["flowcell"], aggregation_id))
             sys.exit(1)
 
         return flowcell
