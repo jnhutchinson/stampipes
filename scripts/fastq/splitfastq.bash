@@ -1,14 +1,14 @@
 # Environment variables expected:
 #
-# * FASTQ_TMP: where to put the fastq
 # * SAMPLE_NAME: the "base name" of the FASTQ files
-# * R1_FASTQ: The fastq file for Read 1
-# * R2_FASTQ: The fastq file for Read 2
+# * CHUNK_SIZE: optionally change the chunk size from 16,000,000
+#
+# Requires the pigz module to be loaded
 
-R1_FASTQ=$1
-R2_FASTQ=$2
-FASTQ_TMP=$3
-CHUNK_SIZE=16000000
+FASTQ_TMP=$1
+R1_FASTQ=$2
+R2_FASTQ=$3
+CHUNK_SIZE="${CHUNK_SIZE:-16000000}"
 
 LINE_CHUNK=$(($CHUNK_SIZE * 4))
 
@@ -24,9 +24,12 @@ date
 echo "Splitting $R1_FASTQ"
 zcat $R1_FASTQ | split -l $LINE_CHUNK -d -a 3 - "$TMPDIR/${SAMPLE_NAME}_R1_"
 date
-echo "Splitting $R2_FASTQ"
-zcat $R2_FASTQ | split -l $LINE_CHUNK -d -a 3 - "$TMPDIR/${SAMPLE_NAME}_R2_"
-date
+
+if [ -n $R1_FASTQ ]; then
+  echo "Splitting $R2_FASTQ"
+  zcat $R2_FASTQ | split -l $LINE_CHUNK -d -a 3 - "$TMPDIR/${SAMPLE_NAME}_R2_"
+  date
+fi
 
 SPLIT_COUNT=`ls $TMPDIR/${SAMPLE_NAME}_R1_??? | wc -l`
 
@@ -35,7 +38,9 @@ if [ "$SPLIT_COUNT" -eq 1 ]; then
     # Don't bother compressing again, just symlink the existing full fastq files
     echo "Files do not exceed $CHUNK_SIZE; symlinking original files"
     ln -s $R1_FASTQ $FASTQ_TMP/${SAMPLE_NAME}_R1_000.fastq.gz
-    ln -s $R2_FASTQ $FASTQ_TMP/${SAMPLE_NAME}_R2_000.fastq.gz
+    if [ -n $R1_FASTQ ]; then
+      ln -s $R2_FASTQ $FASTQ_TMP/${SAMPLE_NAME}_R2_000.fastq.gz
+    fi
     exit
 fi
 
