@@ -4,7 +4,10 @@ import sys
 import argparse
 import logging
 import requests
-import subprocess
+try:
+    from concurrent.futures import ThreadPoolExecutor
+except ImportError:
+    from futures import ThreadPoolExecutor
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
@@ -83,6 +86,8 @@ class ProcessSetUp(object):
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
 
+        self.pool = ThreadPoolExecutor(max_workers=10)
+
     def api_single_result(self, url_addition=None, url=None):
 
         if url_addition:
@@ -155,13 +160,16 @@ class ProcessSetUp(object):
 
         lanes = self.api_list_result("flowcell_lane?flowcell__label=%s" % flowcell_label)
 
-        [self.setup_lane(lane["id"]) for lane in lanes]
+        self.setup_lanes([lane["id"] for lane in lanes])
 
     def setup_tag(self, tag_slug):
 
         lane_tags = self.api_list_result("tagged_object?content_type=40&tag__slug=%s" % tag_slug)
 
-        [self.setup_lane(lane_tag["object_id"]) for lane_tag in lane_tags]
+        self.setup_lanes([lane_tag["object_id"] for lane_tag in lane_tags])
+
+    def setup_lanes(self, lane_ids):
+        self.pool.map(self.setup_lane, lane_ids)
 
     def setup_lane(self, lane_id):
 
@@ -278,8 +286,7 @@ from the command line."""
 
     process = ProcessSetUp(poptions, api_url, token)
 
-    for lane_id in poptions.lane_ids:
-        process.setup_lane(lane_id)
+    process.setup_lanes(poptions.lane_ids)
 
     if poptions.flowcell_label:
         process.setup_flowcell(poptions.flowcell_label)
