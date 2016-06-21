@@ -87,17 +87,19 @@ class ProcessSetUp(object):
         self.outfile = args.outfile
         self.dry_run = args.dry_run
         self.no_mask = args.no_mask
-        self.headers = {'Authorization': "Token %s" % self.token}
         self.redo_completed = args.redo_completed
         self.script_template = args.script_template
         self.qsub_priority = args.qsub_priority
+
+        self.session = requests.Session()
+        self.session.headers.update({'Authorization': "Token %s" % self.token})
 
     def api_single_result(self, url_addition=None, url=None):
 
         if url_addition:
            url = "%s/%s" % (self.api_url, url_addition)
 
-        request = requests.get(url, headers=self.headers)
+        request = self.session.get(url)
 
         if request.ok:
             logging.debug(request.json())
@@ -119,7 +121,7 @@ class ProcessSetUp(object):
 
             logging.debug("Fetching more results for query %s" % url)
 
-            request = requests.get(url, headers=self.headers)
+            request = self.session.get(url)
 
             if not request.ok:
                 logging.error(request)

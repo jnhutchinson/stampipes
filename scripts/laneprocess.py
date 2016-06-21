@@ -80,14 +80,15 @@ class ProcessSetUp(object):
         self.script_template = args.script_template
         self.dry_run = args.dry_run
         self.no_mask = args.no_mask
-        self.headers = {'Authorization': "Token %s" % self.token}
+        self.session = requests.Session()
+        self.session.headers.update({'Authorization': "Token %s" % self.token})
 
     def api_single_result(self, url_addition=None, url=None):
 
         if url_addition:
            url = "%s/%s" % (self.api_url, url_addition)
 
-        request = requests.get(url, headers=self.headers)
+        request = self.session.get(url)
 
         if request.ok:
             logging.debug(request.json())
@@ -109,7 +110,7 @@ class ProcessSetUp(object):
 
             logging.debug("Fetching more results for query %s" % url)
 
-            request = requests.get(url, headers=self.headers)
+            request = self.session.get(url)
 
             if not request.ok:
                 logging.error(request)
@@ -125,8 +126,7 @@ class ProcessSetUp(object):
 
     def get_lane_process_info(self, lane_id):
 
-        info = requests.get("%s/flowcell_lane/%d/processing_information" % (self.api_url, lane_id),
-            headers=self.headers)
+        info = self.session.get("%s/flowcell_lane/%d/processing_information" % (self.api_url, lane_id))
 
         if info.ok:
             logging.debug(info.json())
@@ -142,8 +142,7 @@ class ProcessSetUp(object):
             logging.critical("No process template for alignment %d\n" % self.alignment_id)
             sys.exit(1)
 
-        info = requests.get("%s/process_template/%d" % (self.api_url, process_template_id),
-            headers=self.headers)
+        info = self.session.get("%s/process_template/%d" % (self.api_url, process_template_id))
 
         if info.ok:
             logging.debug(info.json())

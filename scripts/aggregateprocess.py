@@ -81,16 +81,18 @@ class ProcessSetUp(object):
         self.dry_run = args.dry_run
         self.aggregation_base_directory = aggregation_base_directory
         self.aggregation_directory = args.aggregation_directory
-        self.headers = {'Authorization': "Token %s" % self.token}
         self.script_template = args.script_template
         self.overwrite = args.overwrite
+
+        self.session = requests.Session()
+        self.session.headers.update({'Authorization': "Token %s" % self.token})
 
     def api_single_result(self, url_addition=None, url=None):
 
         if url_addition:
            url = "%s/%s" % (self.api_url, url_addition)
 
-        request = requests.get(url, headers=self.headers)
+        request = self.session.get(url)
 
         if request.ok:
             logging.debug(request.json())
@@ -112,7 +114,7 @@ class ProcessSetUp(object):
 
             logging.debug("Fetching more results for query %s" % url)
 
-            request = requests.get(url, headers=self.headers)
+            request = self.session.get(url)
 
             if not request.ok:
                 logging.error(request)
@@ -170,7 +172,7 @@ class ProcessSetUp(object):
                 "purpose": file_purpose,
             }
 
-            new_result = requests.post("%s/directory" % self.api_url, headers = self.headers, data = data)
+            new_result = self.session.post("%s/directory" % self.api_url, data=data)
 
             if not new_result.ok:
                 logging.critical(new_result)
