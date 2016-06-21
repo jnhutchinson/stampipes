@@ -261,9 +261,6 @@ class ProcessSetUp(object):
         script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         logging.info(script_file)
 
-        if not os.path.exists(script_directory):
-            logging.info("Creating directory %s" % script_directory)
-            os.makedirs(script_directory)
 
         # Set up & add environment variables
         env_vars = OrderedDict()
@@ -331,6 +328,10 @@ class ProcessSetUp(object):
             logging.info("Dry run, would have created: %s" % script_file)
             logging.debug(env_vars)
             return True
+
+        if not os.path.exists(script_directory):
+            logging.info("Creating directory %s" % script_directory)
+            os.makedirs(script_directory)
 
         # Append to master script
         self.add_script(align_id, processing_info, script_file, alignment['sample_name'])
