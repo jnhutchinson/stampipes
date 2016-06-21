@@ -4,7 +4,10 @@ import sys
 import argparse
 import logging
 import requests
-import subprocess
+try:
+    from concurrent.futures import ThreadPoolExecutor
+except ImportError:
+    from futures import ThreadPoolExecutor
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
@@ -86,6 +89,8 @@ class ProcessSetUp(object):
 
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
+
+        self.pool = ThreadPoolExecutor(max_workers=10)
 
     def api_single_result(self, url_addition=None, url=None):
 
@@ -298,7 +303,10 @@ class ProcessSetUp(object):
 
         aggregation_tags = self.api_list_result("tagged_object?content_type=126&tag__slug=%s" % tag_slug)
 
-        [self.setup_aggregation(aggregation_tag["object_id"]) for aggregation_tag in aggregation_tags]
+        self.setup_aggregations([aggregation_tag["object_id"] for aggregation_tag in aggregation_tags])
+
+    def setup_aggregations(self, aggregation_ids):
+        self.pool.map(self.setup_aggregation, aggregation_ids)
 
     def setup_aggregation(self, aggregation_id):
 
@@ -354,6 +362,12 @@ class ProcessSetUp(object):
         if not script_contents:
             logging.critical("No script contents")
             return
+
+        if self.dry_run:
+            logging.info("Dry run, would have created: %s" % script_file)
+            return True
+
+            return True
 
         os.makedirs(aggregation_folder, exist_ok=True)
 
@@ -431,8 +445,7 @@ from the command line."""
 
     process = ProcessSetUp(poptions, api_url, token, aggregation_base_dir)
 
-    for aggregation_id in poptions.aggregation_ids:
-        process.setup_aggregation(aggregation_id)
+    process.setup_aggregations(poptions.aggregation_ids)
 
     if poptions.tag:
         process.setup_tag(poptions.tag)
