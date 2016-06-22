@@ -4,7 +4,10 @@ import sys
 import argparse
 import logging
 import requests
-import subprocess
+try:
+    from concurrent.futures import ThreadPoolExecutor
+except ImportError:
+    from futures import ThreadPoolExecutor
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
@@ -80,14 +83,17 @@ class ProcessSetUp(object):
         self.script_template = args.script_template
         self.dry_run = args.dry_run
         self.no_mask = args.no_mask
-        self.headers = {'Authorization': "Token %s" % self.token}
+        self.session = requests.Session()
+        self.session.headers.update({'Authorization': "Token %s" % self.token})
+
+        self.pool = ThreadPoolExecutor(max_workers=10)
 
     def api_single_result(self, url_addition=None, url=None):
 
         if url_addition:
            url = "%s/%s" % (self.api_url, url_addition)
 
-        request = requests.get(url, headers=self.headers)
+        request = self.session.get(url)
 
         if request.ok:
             logging.debug(request.json())
@@ -109,7 +115,7 @@ class ProcessSetUp(object):
 
             logging.debug("Fetching more results for query %s" % url)
 
-            request = requests.get(url, headers=self.headers)
+            request = self.session.get(url)
 
             if not request.ok:
                 logging.error(request)
@@ -125,8 +131,7 @@ class ProcessSetUp(object):
 
     def get_lane_process_info(self, lane_id):
 
-        info = requests.get("%s/flowcell_lane/%d/processing_information" % (self.api_url, lane_id),
-            headers=self.headers)
+        info = self.session.get("%s/flowcell_lane/%d/processing_information" % (self.api_url, lane_id))
 
         if info.ok:
             logging.debug(info.json())
@@ -142,8 +147,7 @@ class ProcessSetUp(object):
             logging.critical("No process template for alignment %d\n" % self.alignment_id)
             sys.exit(1)
 
-        info = requests.get("%s/process_template/%d" % (self.api_url, process_template_id),
-            headers=self.headers)
+        info = self.session.get("%s/process_template/%d" % (self.api_url, process_template_id))
 
         if info.ok:
             logging.debug(info.json())
@@ -156,13 +160,16 @@ class ProcessSetUp(object):
 
         lanes = self.api_list_result("flowcell_lane?flowcell__label=%s" % flowcell_label)
 
-        [self.setup_lane(lane["id"]) for lane in lanes]
+        self.setup_lanes([lane["id"] for lane in lanes])
 
     def setup_tag(self, tag_slug):
 
         lane_tags = self.api_list_result("tagged_object?content_type=40&tag__slug=%s" % tag_slug)
 
-        [self.setup_lane(lane_tag["object_id"]) for lane_tag in lane_tags]
+        self.setup_lanes([lane_tag["object_id"] for lane_tag in lane_tags])
+
+    def setup_lanes(self, lane_ids):
+        self.pool.map(self.setup_lane, lane_ids)
 
     def setup_lane(self, lane_id):
 
@@ -279,8 +286,7 @@ from the command line."""
 
     process = ProcessSetUp(poptions, api_url, token)
 
-    for lane_id in poptions.lane_ids:
-        process.setup_lane(lane_id)
+    process.setup_lanes(poptions.lane_ids)
 
     if poptions.flowcell_label:
         process.setup_flowcell(poptions.flowcell_label)

@@ -4,8 +4,11 @@ import sys
 import argparse
 import logging
 import requests
-import subprocess
 from collections import OrderedDict
+try:
+    from concurrent.futures import ThreadPoolExecutor
+except ImportError:
+    from futures import ThreadPoolExecutor
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
@@ -87,17 +90,21 @@ class ProcessSetUp(object):
         self.outfile = args.outfile
         self.dry_run = args.dry_run
         self.no_mask = args.no_mask
-        self.headers = {'Authorization': "Token %s" % self.token}
         self.redo_completed = args.redo_completed
         self.script_template = args.script_template
         self.qsub_priority = args.qsub_priority
+
+        self.session = requests.Session()
+        self.session.headers.update({'Authorization': "Token %s" % self.token})
+
+        self.pool = ThreadPoolExecutor(max_workers=10)
 
     def api_single_result(self, url_addition=None, url=None):
 
         if url_addition:
            url = "%s/%s" % (self.api_url, url_addition)
 
-        request = requests.get(url, headers=self.headers)
+        request = self.session.get(url)
 
         if request.ok:
             logging.debug(request.json())
@@ -119,7 +126,7 @@ class ProcessSetUp(object):
 
             logging.debug("Fetching more results for query %s" % url)
 
-            request = requests.get(url, headers=self.headers)
+            request = self.session.get(url)
 
             if not request.ok:
                 logging.error(request)
@@ -158,6 +165,10 @@ class ProcessSetUp(object):
 
         return info
 
+    # Run alignment setup in parallel
+    def setup_alignments(self, align_ids):
+        self.pool.map(self.setup_alignment, align_ids)
+
     def setup_alignment(self, align_id):
 
         processing_info = self.get_align_process_info(align_id)
@@ -182,14 +193,14 @@ class ProcessSetUp(object):
 
         align_tags = self.api_list_result("tagged_object/?content_type=47&tag__slug=%s" % tag_slug)
 
-        [self.setup_alignment(align_tag["object_id"]) for align_tag in align_tags]
+        self.setup_alignments([align_tag["object_id"] for align_tag in align_tags])
 
     def setup_flowcell(self, flowcell_label):
 
         logging.info("Setting up flowcell for %s" % flowcell_label)
         alignments = self.api_list_result("flowcell_lane_alignment/?lane__flowcell__label=%s" % flowcell_label)
 
-        [self.setup_alignment(alignment["id"]) for alignment in alignments]
+        self.setup_alignments([alignment["id"] for alignment in alignments])
 
     def add_script(self, align_id, processing_info, script_file, sample_name):
 
@@ -261,9 +272,6 @@ class ProcessSetUp(object):
         script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         logging.info(script_file)
 
-        if not os.path.exists(script_directory):
-            logging.info("Creating directory %s" % script_directory)
-            os.makedirs(script_directory)
 
         # Set up & add environment variables
         env_vars = OrderedDict()
@@ -332,6 +340,10 @@ class ProcessSetUp(object):
             logging.debug(env_vars)
             return True
 
+        if not os.path.exists(script_directory):
+            logging.info("Creating directory %s" % script_directory)
+            os.makedirs(script_directory)
+
         # Append to master script
         self.add_script(align_id, processing_info, script_file, alignment['sample_name'])
 
@@ -385,8 +397,7 @@ from the command line."""
 
     process = ProcessSetUp(poptions, api_url, token)
 
-    for align_id in poptions.align_ids:
-        process.setup_alignment(align_id)
+    process.setup_alignments(poptions.align_ids)
 
     if poptions.flowcell_label:
         process.setup_flowcell(poptions.flowcell_label)
