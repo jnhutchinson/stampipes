@@ -171,11 +171,8 @@ qsub -N "${JOB_BASENAME}_complete" -hold_jid "${PROCESSING}" -V -cwd -S /bin/bas
   echo "START: "
   date
 
-  #bash $STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash
-  #bash $STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash
-  $ATTACH_AGGREGATION --attach_directory `pwd` --attach_file_purpose aggregation-directory 
-  $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.${GENOME}.sorted.bam --attach_file_purpose all-alignments-bam --attach_file_type bam
-  $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.${GENOME}.sorted.bam.bai --attach_file_purpose bam-index --attach_file_type bam-index
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash
 
   #rm ${TEMP_UNIQUES_BAM} ${TEMP_UNIQUES_BAM}.bai
 
