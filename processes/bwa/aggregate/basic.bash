@@ -89,74 +89,74 @@ __SCRIPT__
 
 #fi
 
-#if [ ! -e $TAGCOUNTS_FILE ]; then
-#
-#PROCESSING="$PROCESSING,${COUNT_JOBNAME}"
-#
-#qsub -N "${COUNT_JOBNAME}" -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-#  set -x -e -o pipefail
-#
-#  echo "Hostname: "
-#  hostname
-#
-#  echo "START: "
-#  date
-#
-#  python3 $STAMPIPES/scripts/bwa/bamcounts.py $FINAL_BAM $TAGCOUNTS_FILE
-#
-#  echo "FINISH: "
-#  date
-#
-#__SCRIPT__
-#
-#fi
-#
-#if [ ! -e $DENSITY_BIGWIG ]; then
-#
-#PROCESSING="$PROCESSING,${DENSITY_JOBNAME}"
-#
-#qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-#  set -x -e -o pipefail
-#
-#  echo "Hostname: "
-#  hostname
-#
-#  echo "START: "
-#  date
-#
-#  make -f $STAMPIPES/makefiles/densities/density.mk FAI=${GENOME_INDEX}.fai SAMPLE_NAME=${LIBRARY_NAME} GENOME=${GENOME} \
-#     BAMFILE=${TEMP_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
-#  make -f "$STAMPIPES/makefiles/densities/normalize-density.mk" BAMFILE=${TEMP_UNIQUES_BAM} SAMPLE_NAME=${LIBRARY_NAME} FAI=${GENOME_INDEX}.fai
-#
-#  echo "FINISH: "
-#  date
-#
-#__SCRIPT__
-#
-#fi
-#
-#if [ ! -e $CUTCOUNTS_BIGWIG ]; then
-#
-#PROCESSING="$PROCESSING,${CUTCOUNTS_JOBNAME}"
-#
-#qsub -N "${CUTCOUNTS_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-#
-#  set -x -e -o pipefail
-#
-#  echo "Hostname: "
-#  hostname
-#
-#  echo "START: "
-#  date
-#
-#  bash $STAMPIPES/scripts/bwa/aggregate/basic/cutcounts.bash 
-#
-#  echo "FINISH: "
-#  date
-#
-#__SCRIPT__
-#
-#fi
+if [ ! -e $TAGCOUNTS_FILE ]; then
+
+PROCESSING="$PROCESSING,${COUNT_JOBNAME}"
+
+qsub -N "${COUNT_JOBNAME}" -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  set -x -e -o pipefail
+
+  echo "Hostname: "
+  hostname
+
+  echo "START: "
+  date
+
+  python3 $STAMPIPES/scripts/bwa/bamcounts.py $FINAL_BAM $TAGCOUNTS_FILE
+
+  echo "FINISH: "
+  date
+
+__SCRIPT__
+
+fi
+
+if [ ! -e $DENSITY_BIGWIG ]; then
+
+PROCESSING="$PROCESSING,${DENSITY_JOBNAME}"
+
+qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  set -x -e -o pipefail
+
+  echo "Hostname: "
+  hostname
+
+  echo "START: "
+  date
+
+  make -f $STAMPIPES/makefiles/densities/density.mk FAI=${GENOME_INDEX}.fai SAMPLE_NAME=${LIBRARY_NAME} GENOME=${GENOME} \
+     BAMFILE=${TEMP_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
+  make -f "$STAMPIPES/makefiles/densities/normalize-density.mk" BAMFILE=${TEMP_UNIQUES_BAM} SAMPLE_NAME=${LIBRARY_NAME} FAI=${GENOME_INDEX}.fai
+
+  echo "FINISH: "
+  date
+
+__SCRIPT__
+
+fi
+
+if [ ! -e $CUTCOUNTS_BIGWIG ]; then
+
+PROCESSING="$PROCESSING,${CUTCOUNTS_JOBNAME}"
+
+qsub -N "${CUTCOUNTS_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+
+  set -x -e -o pipefail
+
+  echo "Hostname: "
+  hostname
+
+  echo "START: "
+  date
+
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/cutcounts.bash
+
+  echo "FINISH: "
+  date
+
+__SCRIPT__
+
+fi
 
 if [ -n ${PROCESSING} ]; then
 
@@ -171,11 +171,8 @@ qsub -N "${JOB_BASENAME}_complete" -hold_jid "${PROCESSING}" -V -cwd -S /bin/bas
   echo "START: "
   date
 
-  #bash $STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash
-  #bash $STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash
-  $ATTACH_AGGREGATION --attach_directory `pwd` --attach_file_purpose aggregation-directory 
-  $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.${GENOME}.sorted.bam --attach_file_purpose all-alignments-bam --attach_file_type bam
-  $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.${GENOME}.sorted.bam.bai --attach_file_purpose bam-index --attach_file_type bam-index
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash
 
   #rm ${TEMP_UNIQUES_BAM} ${TEMP_UNIQUES_BAM}.bai
 
