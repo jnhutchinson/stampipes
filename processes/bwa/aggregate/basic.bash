@@ -28,7 +28,7 @@ export CUTCOUNTS_BIGWIG=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.$R
 
 # Hotspot hack
 export PATH="/home/nelsonjs/code/hotspot2/bin:$PATH"
-export HOTSPOTSCRIPT="/home/nelsonjs/code/hotspot2/scripts/hotspot2.sh"
+export HOTSPOT_SCRIPT="/home/nelsonjs/code/hotspot2/scripts/hotspot2.sh"
 export EXCLUDE_REGIONS="/home/nelsonjs/tmp/hg38/exclude_regions.bed"
 export CHROM_SIZES="/home/nelsonjs/tmp/hg38/chrom_sizes.bed"
 
@@ -46,7 +46,7 @@ CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 PROCESSING=""
 
-#if [ ! -e ${FINAL_BAM} ]; then
+if [[ ! -e ${FINAL_BAM} || -z "$(ls peaks/*peaks.starch)" ]]; then
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
@@ -79,8 +79,8 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
 
   echo "HOTSPOT: "
 
-  if [ -z \$(ls peaks/*peaks.starch) ] ;then
-    $HOTSPOT_SCRIPT  -F 0.2 -s 12345 -e $EXCLUDE_REGIONS -c $CHROM_SIZES "$TEMP_UNIQUES_BAM"  peaks
+  if [ -z "\$(ls peaks/*peaks.starch 2>/dev/null)" ] ;then
+    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -e "$EXCLUDE_REGIONS" -c "$CHROM_SIZES" "$TEMP_UNIQUES_BAM"  peaks
   fi
 
   echo "FINISH: "
@@ -88,7 +88,7 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
 
 __SCRIPT__
 
-#fi
+fi
 
 if [ ! -e $TAGCOUNTS_FILE ]; then
 
