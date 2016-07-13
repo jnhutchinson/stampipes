@@ -63,7 +63,7 @@ uniques : $(INBAM) $(OUTBAM)
 # Sometimes this will report errors about a read not mapping that should have a mapq of 0
 # See this for more info: http://seqanswers.com/forums/showthread.php?t=4246
 $(INSERTMETRICS) : $(OUTBAM) 
-	time java -Xmx1000m -jar `which CollectInsertSizeMetrics.jar` INPUT=$^ OUTPUT=$@ \
+	time java -Xmx1000m -jar $(PICARDPATH)/CollectInsertSizeMetrics.jar INPUT=$^ OUTPUT=$@ \
                 HISTOGRAM_FILE=$(INSERTMETRICS).pdf \
                 VALIDATION_STRINGENCY=LENIENT \
                 ASSUME_SORTED=true && echo Picard stats >&2

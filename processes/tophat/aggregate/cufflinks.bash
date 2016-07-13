@@ -56,7 +56,7 @@ if [ ! -e ${FINAL_BAM} ]; then
 
     $STAMPIPES/scripts/tophat/merge_or_copy_bam.sh \$TMPBAM  $BAM_FILES
 
-    java -Xmx24g -jar \$(which MarkDuplicates.jar) \
+    java -Xmx24g -jar $PICARDPATH/MarkDuplicates.jar \
       INPUT=\$TMPBAM \
       METRICS_FILE=$LIBRARY_NAME.dups.txt \
       OUTPUT=$FINAL_BAM \
