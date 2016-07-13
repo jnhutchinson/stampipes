@@ -62,7 +62,10 @@ $(SPOTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spot.out : $(RANDOM_SAMPLE_BAM)
 # from R1 on paired end data; converting back and forth with BED will
 # strip that information
 $(RANDOM_SAMPLE_BAM).bed : $(RANDOM_SAMPLE_BAM)
-	bamToBed -i $^ > $@
+	bam2bed -d \
+		< $^ \
+		cut -f1-6 \
+		> $@
 
 $(RANDOM_SAMPLE_BAM).bed.sorted.bam : $(RANDOM_SAMPLE_BAM).bed
 	bedToBam -i $^ -g $(FAI) > $(RANDOM_SAMPLE_BAM).bed.bam
