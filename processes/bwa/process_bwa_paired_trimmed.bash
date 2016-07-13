@@ -178,7 +178,7 @@ qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd
 #  
 #      make -f $STAMPIPES/makefiles/umi/mark_duplicates.mk INPUT_BAM_FILE=\$TMPDIR/${PRE_DUP_BAM} \
 #        OUTPUT_BAM_FILE=\$TMPDIR/${FINAL_BAM}.presort
-#      samtools sort \$TMPDIR/${FINAL_BAM}.presort $FINAL_BAM_PREFIX
+#      samtools sort \$TMPDIR/${FINAL_BAM}.presort > $FINAL_BAM_PREFIX.bam
 #  
 #      echo "FINISH UMI DUP: "
 #      date

@@ -86,7 +86,7 @@ $(OUTBAM) : $(TMPDIR)/align.sorted.bam
 # Note: samtools expects the output name without a .bam suffix and will
 # add it, so take it away to prevent .bam.bam
 $(TMPDIR)/align.sorted.bam : $(TMPDIR)/align.unsorted.bam
-	time $(SAMTOOLS) sort $^ $(basename $@) && echo made $(TMPDIR)/align.sorted.bam >&2
+	time $(SAMTOOLS) sort $^ > $@ && echo made $(TMPDIR)/align.sorted.bam >&2
 
 # Create unsorted raw BAM files
 $(TMPDIR)/align.unsorted.bam : $(TMPDIR)/align.sam

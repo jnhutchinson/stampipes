@@ -69,7 +69,7 @@ $(RANDOM_SAMPLE_BAM).bed : $(RANDOM_SAMPLE_BAM)
 
 $(RANDOM_SAMPLE_BAM).bed.sorted.bam : $(RANDOM_SAMPLE_BAM).bed
 	bedToBam -i $^ -g $(FAI) > $(RANDOM_SAMPLE_BAM).bed.bam
-	samtools sort $(RANDOM_SAMPLE_BAM).bed.bam $(RANDOM_SAMPLE_BAM).bed.sorted
+	samtools sort $(RANDOM_SAMPLE_BAM).bed.bam > $@
 
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM).bed.sorted.bam
