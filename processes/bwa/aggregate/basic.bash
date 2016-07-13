@@ -5,7 +5,7 @@ module load bedops #/2.4.15
 module load jdk
 module load gcc/4.7.2
 module load R #/3.1.0
-module load picard #/1.118
+module load picard/1.120
 module load samtools #/1.2
 module load git/2.3.3
 module load coreutils #/8.9

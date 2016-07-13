@@ -12,7 +12,7 @@ REF_FLAT=$4
 
 pushd `dirname $bam`
 bam=`basename $bam`
-picardfolder=$(dirname $(which MarkDuplicates.jar))
+picardfolder=$PICARDPATH
 
 opspecs=( "InsertSize?HISTOGRAM_FILE=histo_insert_size_$name.pdf"  \
          "AlignmentSummary?" )
