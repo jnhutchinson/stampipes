@@ -1,16 +1,16 @@
 # Dependencies
 source $MODULELOAD
-module load bedops/2.4.2
-module load bedtools/2.16.2
+module load bedops/2.4.19
+module load bedtools/2.25.0
 module load bwa/0.7.12
-module load java/jdk1.7.0_05
-module load picard/1.118
-module load samtools/0.1.19
+module load jdk/1.8.0_92
+module load picard/1.120
+module load samtools/1.3
 module load gcc/4.7.2
-module load R/3.1.0
+module load R/3.2.5
 
-# Activate Python3 virtualenv
-source $PYTHON3_ACTIVATE
+module load python/3.5.1
+module load pysam/0.9.0
 
 FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam

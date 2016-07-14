@@ -1,14 +1,13 @@
 
 source $MODULELOAD
-module load bedops #/2.4.15
-#module load java/jdk1.7.0_05
-module load jdk
+module load bedops/2.4.19
+module load jdk/1.8.0_92
 module load gcc/4.7.2
-module load R #/3.1.0
+module load R/3.2.5
 module load picard/1.120
-module load samtools #/1.2
+module load samtools/1.3
 module load git/2.3.3
-module load coreutils #/8.9
+module load coreutils/8.25
 
 WIN=75
 BINI=20

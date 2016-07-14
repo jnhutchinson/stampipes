@@ -1,23 +1,23 @@
 
 # Dependencies
 source $MODULELOAD
-module load bedops/2.4.15
-module load bedtools/2.16.2
+module load bedops/2.4.19
+module load bedtools/2.25.0
 module load bwa/0.7.12
-module load java/jdk1.7.0_05
-module load picard/1.118
-module load samtools/1.2
+module load jdk/1.8.0_92
+module load picard/1.120
+module load samtools/1.3
 module load gcc/4.7.2
-module load R/3.1.0
+module load R/3.2.5
 module load git/2.3.3
-module load coreutils/8.9
-module load FastQC/0.11.3
-module load pigz/2.3.1
+module load coreutils/8.25
+module load pigz/2.3.3
 
 # Load in this order specifically, currently the python3 activation
 # overwrites the default "python" call, against advice
-source $PYTHON3_ACTIVATE
-module load python/2.7.3
+module load python/3.5.1
+module load pysam/0.9.0
+module load python/2.7.11
 
 MAX_MISMATCHES=2
 MIN_MAPPING_QUALITY=10
