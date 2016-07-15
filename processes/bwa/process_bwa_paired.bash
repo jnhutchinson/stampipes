@@ -62,7 +62,7 @@ if [ -n "$FASTQ_PAIR_HOLDS" ]; then
     HOLD="-hold_jid $FASTQ_PAIR_HOLDS"
 fi
 
-if [ ! -e ${FINAL_BAM} -o ! -e ${UNIQUES_BAM} ]; then
+if [ ! -e ${FINAL_BAM}.bai -o ! -e ${UNIQUES_BAM}.bai ]; then
 
 PROCESS_HOLD="-hold_jid .pb${SAMPLE_NAME}_${FLOWCELL}"
     
