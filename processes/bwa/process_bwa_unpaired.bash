@@ -69,7 +69,7 @@ do
     
 if [ ! -e $BAMFILE -a ! -e ${FINAL_BAM} ]; then
 
-qsub -l h_data=5650M -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
