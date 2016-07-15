@@ -142,7 +142,7 @@ if [ -n "$FASTQ_PAIR_HOLDS" ]; then
     SPLIT_ALIGN_HOLD="-hold_jid $FASTQ_PAIR_HOLDS"
 fi
 
-if [ ! -e ${FINAL_BAM} -o ! -e ${UNIQUES_BAM} ]; then
+if [ ! -e ${FINAL_BAM}.bai -o ! -e ${UNIQUES_BAM}.bai ]; then
 
 # If we are redoing this part, then we should make sure
 # to redo all the other results as well
