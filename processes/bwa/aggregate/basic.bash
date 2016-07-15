@@ -25,6 +25,9 @@ export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.b
 export DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.bw
 export CUTCOUNTS_BIGWIG=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw
 
+export HOTSPOT_DIR=peaks
+export HOTSPOT_CALLS=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.hotspots.fdr0.05.starch
+
 # Hotspot hack
 export PATH="/home/nelsonjs/code/hotspot2/bin:$PATH"
 export HOTSPOT_SCRIPT="/home/nelsonjs/code/hotspot2/scripts/hotspot2.sh"
@@ -37,6 +40,7 @@ fi
 
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
 COUNT_JOBNAME=${JOB_BASENAME}_count
+HOTSPOT_JOBNAME=${JOB_BASENAME}_hotspot
 DENSITY_JOBNAME=${JOB_BASENAME}_density
 CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
@@ -45,14 +49,14 @@ CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 PROCESSING=""
 
-if [[ ! -e ${FINAL_BAM} || -z "$(ls peaks/*peaks.starch)" ]]; then
+if [[ ! -e ${FINAL_BAM} ]] ; then
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
 # If we are  UMI, we will need a lot of power for sorting!
 if [ "$UMI" = "True" ]; then
   echo "Processing with UMI"
-  #export SUBMIT_SLOTS="-pe threads 4"
+  export SUBMIT_SLOTS="-pe threads 4"
   echo "Excluding duplicates from uniques bam"
   export EXCLUDE_FLAG=1536
 fi
@@ -76,17 +80,19 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
     make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk SAMPLE_NAME=${LIBRARY_NAME} INBAM=${FINAL_BAM} OUTBAM=${TEMP_UNIQUES_BAM} info uniques
   fi
 
-  echo "HOTSPOT: "
-
-  if [ -z "\$(ls peaks/*peaks.starch 2>/dev/null)" ] ;then
-    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -e "$EXCLUDE_REGIONS" -c "$CHROM_SIZES" "$TEMP_UNIQUES_BAM"  peaks
-  fi
-
   echo "FINISH: "
   date
 
 __SCRIPT__
 
+fi
+
+# Run Hotspot2
+if [[ ! -s "$HOTSPOT_CALLS" ]]
+  PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
+  qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -e "$EXCLUDE_REGIONS" -c "$CHROM_SIZES" "$TEMP_UNIQUES_BAM"  "$HOTSPOT_DIR"
+__SCRIPT__
 fi
 
 if [ ! -e $TAGCOUNTS_FILE ]; then
