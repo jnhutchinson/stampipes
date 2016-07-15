@@ -87,6 +87,23 @@ qsub -p $ALN_PRIORITY -l h_data=5650M -N ${NAME} -V -cwd -S /bin/bash > /dev/std
   echo "START: "
   date
 
+  if [[ "$TRIM_READS_TO" -gt 0 && "$READLENGTH" -gt "$TRIM_READS_TO" ]] ; then
+
+    # Define trimming function
+    trim_to_length(){
+      echo "Trimming \$1 to \$2 bp..."
+      mv "\$1" "\$1.tmp"
+      zcat \$1.tmp \
+        | awk 'NR%2==0 {print substr(\$0, 1, $TRIM_TO)} NR%2!=0' \
+        | gzip -c \
+        > \$1
+      rm \$1.tmp
+    }
+
+    trim_to_length ${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz "$TRIM_READS_TO"
+    trim_to_length ${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz "$TRIM_READS_TO"
+  fi
+
   if [ "$UMI" = "True" ]; then
 
   make -f $STAMPIPES/makefiles/bwa/bwa_paired_trimmed_umi.mk \
