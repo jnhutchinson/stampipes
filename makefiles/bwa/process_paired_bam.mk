@@ -40,7 +40,7 @@ INBAM ?= $(OUTDIR)/$(SAMPLE_NAME).sorted.bam
 OUTBAM ?= $(OUTDIR)/$(SAMPLE_NAME).uniques.sorted.bam
 INSERTMETRICS ?= $(OUTDIR)/$(SAMPLE_NAME).CollectInsertSizeMetrics.picard
 
-all : info metrics uniques $(INSERTMETRICS)
+all : info metrics uniques indices
 
 info : 
 	@echo "------"
@@ -58,6 +58,8 @@ info :
 
 metrics : $(INSERTMETRICS)
 
+indices : $(INBAM).bai $(OUTBAM).bai
+
 uniques : $(INBAM) $(OUTBAM)
 
 # Sometimes this will report errors about a read not mapping that should have a mapq of 0
@@ -69,13 +71,9 @@ $(INSERTMETRICS) : $(OUTBAM)
                 ASSUME_SORTED=true && echo Picard stats >&2
 
 # Index uniquely mapping reads 
-$(OUTBAM).bai : $(OUTBAM)
+%.bam.bai : %.bam
 	time $(SAMTOOLS) index $^
                 
 # Sorted uniquely mapping reads BAM
 $(OUTBAM) : $(INBAM)
 	time $(SAMTOOLS) view $(SAMTOOL_OPTIONS) -b $(INBAM) > $@
-
-# Index sorted BAM file
-$(INBAM).bai : $(INBAM)
-	time $(SAMTOOLS) index $^	
