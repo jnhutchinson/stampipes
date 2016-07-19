@@ -208,7 +208,7 @@ _U_
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
-    bc_flag="--hiseq"
+    bc_flag="--hiseq4k"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1-8
 
