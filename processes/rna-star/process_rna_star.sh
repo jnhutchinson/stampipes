@@ -20,8 +20,9 @@ script="$scriptdir/STAR_RSEM.sh"
 
 REFDIR=$(dirname "$BWAINDEX")
 
-STARdir="$REFDIR/STARgenome-hg19-g19-combined/"
-RSEMdir="$REFDIR/RSEMgenome-hg19-g19-combined/"
+# $STAR_DIR and $RSEM_DIR are set by the process template, and are relative to the reference directory
+export STARdir="$REFDIR/$STAR_DIR"
+export RSEMdir="$REFDIR/$RSEM_DIR"
 
 TRIMDIR="trimmed/"
 TRIM_R1=$TRIMDIR/$(basename "$R1_FASTQ")
