@@ -695,7 +695,7 @@ class UploadLIMS(object):
             return
 
         # This may need to be revisited if we get a new sequencer
-        flowcell_label = re.search( '.*_[AB]([A-Z0-9]{5})[AB][NG]XX$', jsondata['BaseDir'] ).group(1)
+        flowcell_label = re.search( '.*_[AB]([A-Z0-9]{5})[AB][BNG]X[XY]$', jsondata['BaseDir'] ).group(1)
 
         flowcell_url = self.get_flowcell_url_by_label(flowcell_label)
 
