@@ -4,6 +4,7 @@ import sys
 import argparse
 import logging
 import requests
+from collections import OrderedDict
 try:
     from concurrent.futures import ThreadPoolExecutor
 except ImportError:
@@ -251,7 +252,7 @@ class ProcessSetUp(object):
 
         if script_template:
             logging.info("Using script template %s" % script_template)
-            return open(script_template, 'r').read()
+            return (open(script_template, 'r').read(), None)
 
         if not process_template_url:
             logging.critical("No process template for aggregation %d\n" % aggregation_id)
@@ -266,7 +267,7 @@ class ProcessSetUp(object):
             return None
 
         script_path = os.path.expandvars(process_template["process_version"]["script_location"])
-        return open(script_path, 'r').read()
+        return (open(script_path, 'r').read(), process_template)
 
     def get_example_flowcell(self, aggregation_id, aggregation_lanes):
         included = None
@@ -357,16 +358,54 @@ class ProcessSetUp(object):
 
         if missing: return False
 
-        script_contents = self.get_script_template(aggregation_id, aggregation["aggregation_process_template"], self.script_template)
+        (script_contents, process_template) = self.get_script_template(aggregation_id, aggregation["aggregation_process_template"], self.script_template)
 
         if not script_contents:
             logging.critical("No script contents")
             return
 
+        env_vars = OrderedDict()
+
+        env_vars["AGGREGATION_ID"] = aggregation_id
+        env_vars["LIBRARY"] = library_info["number"]
+        env_vars["LIBRARY_NAME"] = library_info["number"]
+        env_vars["BAM_FILES"] = " ".join([bamfile[0] for bamfile in files])
+        env_vars["GENOME"] = genome_index["label"]
+        env_vars["GENOME_INDEX"] = genome_index_location
+        env_vars["AGGREGATION_FOLDER"] = aggregation_folder
+        env_vars["READ_LENGTH"] = flowcell["read_length"]
+
+        if aggregation["umi"]:
+            env_vars["UMI"] = True
+        else:
+            env_vars["UMI"] = None
+        if flowcell["paired_end"]:
+            env_vars["PAIRED"] = True
+        else:
+            env_vars["PAIRED"] = None
+
+        # Set process template env var overrides
+        if 'process_variables' in process_template and process_template['process_variables']:
+            try:
+                process_template_variables = json.loads(process_template['process_variables'],
+                                                        object_pairs_hook=OrderedDict)
+                for var, value in process_template_variables.items():
+                    env_vars[var] = value
+            except ValueError as e:
+                logging.error("Could not parse process variables for aggregation %d (template %d): '%s'" %
+                              (
+                                  aggregation_id,
+                                  self.script_template['id'],
+                                  self.script_template['process_variables']
+                              ))
+                return False
+
+        logging.debug("Environment Variables:\n%s" %
+                      "\n".join([ "\t%s=%s" % (e,env_vars[e]) for e in  env_vars]))
+
+        script_file = os.path.join(aggregation_folder, self.qsub_scriptname)
         if self.dry_run:
             logging.info("Dry run, would have created: %s" % script_file)
-            return True
-
             return True
 
         os.makedirs(aggregation_folder, exist_ok=True)
@@ -375,26 +414,17 @@ class ProcessSetUp(object):
         file_record.write("\n".join(["\t".join(bamfile) for bamfile in files]))
         file_record.close()
 
-        script_file = os.path.join(aggregation_folder, self.qsub_scriptname)
         logging.info("Creating script file %s" % script_file)
 
         script = open(script_file, "w")
-        script.write("export AGGREGATION_ID=%d\n" % aggregation_id)
-        script.write("export LIBRARY=%d\n" % library_info["number"])
-        script.write("export LIBRARY_NAME=LN%d\n" % library_info["number"])
-        script.write("export BAM_FILES=\"%s\"\n" % " ".join([bamfile[0] for bamfile in files]))
-        script.write("export GENOME=%s\n" % genome_index["label"])
-        script.write("export GENOME_INDEX=%s\n" % genome_index_location)
-        script.write("export AGGREGATION_FOLDER=%s\n" % aggregation_folder)
-        script.write("export READ_LENGTH=%d\n" % flowcell["read_length"])
-        if aggregation["umi"]:
-            script.write("export UMI=True\n")
-        else:
-            script.write("unset UMI\n")
-        if flowcell["paired_end"]:
-            script.write("export PAIRED=True\n")
-        else:
-            script.write("unset PAIRED\n")
+
+        # Set env vars
+        for var, value in env_vars.items():
+            if value is not None:
+                script.write("export %s=%s\n" % (var, value))
+            else:
+                script.write("unset %s\n" % var)
+
         script.write("\n")
 
         script.write(script_contents)
@@ -402,6 +432,8 @@ class ProcessSetUp(object):
         script.close()
 
         self.add_script(aggregation_id, aggregation_folder, library_info["number"])
+
+        return True
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
