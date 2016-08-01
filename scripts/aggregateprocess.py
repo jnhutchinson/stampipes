@@ -367,7 +367,7 @@ class ProcessSetUp(object):
         env_vars = OrderedDict()
 
         env_vars["AGGREGATION_ID"] = aggregation_id
-        env_vars["LIBRARY"] = library_info["number"]
+        env_vars["LIBRARY"] = "LN%d" % library_info["number"]
         env_vars["LIBRARY_NAME"] = library_info["number"]
         env_vars["BAM_FILES"] = " ".join([bamfile[0] for bamfile in files])
         env_vars["GENOME"] = genome_index["label"]
