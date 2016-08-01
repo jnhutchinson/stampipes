@@ -88,7 +88,7 @@ __SCRIPT__
 fi
 
 # Run Hotspot2
-if [[ ! -s "$HOTSPOT_CALLS" ]]
+if [[ ! -s "$HOTSPOT_CALLS" ]] ; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
   qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
     "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -e "$EXCLUDE_REGIONS" -c "$CHROM_SIZES" "$TEMP_UNIQUES_BAM"  "$HOTSPOT_DIR"
