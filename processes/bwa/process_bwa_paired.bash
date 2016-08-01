@@ -92,7 +92,7 @@ qsub ${HOLD} -N ".pb${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stde
   
   if [ "$NUMBER_FASTQ_FILES" -gt "1" ]
   then
-    rm $FASTQ_PAIR_BAMS
+    rm -f $FASTQ_PAIR_BAMS
   fi
 __SCRIPT__
 
