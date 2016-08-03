@@ -300,17 +300,17 @@ module load bcl2fastq2/2.15.0.4
 source $PYTHON3_ACTIVATE
 
 
- # Register the file directory
- python3 "$STAMPIPES/scripts/lims/upload_data.py" \
-   --attach_directory "$analysis_dir" \
-   --attach_file_contenttype sequencingdata.flowcellrun \
-   --attach_file_purpose flowcell-directory \
-   --attach_file_objectid $flowcell_id
+# Register the file directory
+python3 "$STAMPIPES/scripts/lims/upload_data.py" \
+  --attach_directory "$analysis_dir" \
+  --attach_file_contenttype sequencingdata.flowcellrun \
+  --attach_file_purpose flowcell-directory \
+  --attach_file_objectid $flowcell_id
 
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
-# temporary path
+# Submit a barcode job for each mask
 for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
     qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
     GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.json
