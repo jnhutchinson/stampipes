@@ -300,21 +300,24 @@ module load bcl2fastq2/2.15.0.4
 source $PYTHON3_ACTIVATE
 
 
-# Register the file directory
-python3 "$STAMPIPES/scripts/lims/upload_data.py" \
-  --attach_directory "$analysis_dir" \
-  --attach_file_contenttype sequencingdata.flowcellrun \
-  --attach_file_purpose flowcell-directory \
-  --attach_file_objectid $flowcell_id
+ # Register the file directory
+ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
+   --attach_directory "$analysis_dir" \
+   --attach_file_contenttype sequencingdata.flowcellrun \
+   --attach_file_purpose flowcell-directory \
+   --attach_file_objectid $flowcell_id
 
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
-qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
-  GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=$mask $bc_flag > barcodes.json
+# temporary path
+for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
+    qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
+    GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.json
 
-  python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
+    python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
 __BARCODES__
+done
 
 qsub -cwd -N "u-$flowcell" $parallel_env  -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
 
