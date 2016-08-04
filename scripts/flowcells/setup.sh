@@ -312,6 +312,7 @@ while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
 # Submit a barcode job for each mask
 for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
+    export bcmask
     qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
     GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.$bcmask.json
 
