@@ -31,8 +31,8 @@ export HOTSPOT_CALLS=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.hotspots.
 # Hotspot hack
 export PATH="/home/nelsonjs/code/hotspot2/bin:$PATH"
 export HOTSPOT_SCRIPT="/home/nelsonjs/code/hotspot2/scripts/hotspot2.sh"
-export EXCLUDE_REGIONS="/home/nelsonjs/tmp/hg38/exclude_regions.bed"
-export CHROM_SIZES="/home/nelsonjs/tmp/hg38/chrom_sizes.bed"
+export EXCLUDE_REGIONS=${EXCLUDE_REGIONS:-$BWAINDEX.K${READ_LENGTH}.unmappable.bed}
+export CHROM_SIZES=${CHROM_SIZES:-$BWAINDEX.chrom_sizes.bed}
 
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
