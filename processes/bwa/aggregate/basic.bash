@@ -49,7 +49,7 @@ CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 PROCESSING=""
 
-if [[ ! -e ${FINAL_BAM} ]] ; then
+if [[ ! -e ${FINAL_BAM}.bai ]] ; then
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
@@ -76,8 +76,8 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
     bash $STAMPIPES/scripts/bwa/aggregate/merge.bash
   fi
 
-  if [ ! -s "$TEMP_UNIQUES_BAM" ] ; then
-    make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk SAMPLE_NAME=${LIBRARY_NAME} INBAM=${FINAL_BAM} OUTBAM=${TEMP_UNIQUES_BAM} info uniques
+  if [ ! -s "$TEMP_UNIQUES_BAM.bai" ] ; then
+    make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk SAMPLE_NAME=${LIBRARY_NAME} INBAM=${FINAL_BAM} OUTBAM=${TEMP_UNIQUES_BAM} info uniques metrics indices
   fi
 
   echo "FINISH: "
