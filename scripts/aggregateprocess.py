@@ -367,8 +367,8 @@ class ProcessSetUp(object):
         env_vars = OrderedDict()
 
         env_vars["AGGREGATION_ID"] = aggregation_id
-        env_vars["LIBRARY"] = "LN%d" % library_info["number"]
-        env_vars["LIBRARY_NAME"] = library_info["number"]
+        env_vars["LIBRARY"] = library_info["number"]
+        env_vars["LIBRARY_NAME"] = "LN%d" % library_info["number"]
         env_vars["BAM_FILES"] = " ".join([bamfile[0] for bamfile in files])
         env_vars["GENOME"] = genome_index["label"]
         env_vars["GENOME_INDEX"] = genome_index_location
@@ -421,7 +421,7 @@ class ProcessSetUp(object):
         # Set env vars
         for var, value in env_vars.items():
             if value is not None:
-                script.write("export %s=%s\n" % (var, value))
+                script.write("export %s=\"%s\"\n" % (var, value))
             else:
                 script.write("unset %s\n" % var)
 
