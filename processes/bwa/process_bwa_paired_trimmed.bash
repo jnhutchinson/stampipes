@@ -51,6 +51,11 @@ if [[ ( -n "$ADAPTER_P7" ) && ( -n "ADAPTER_P5" ) ]] ; then
   echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > $ADAPTER_FILE
 fi
 
+if [[ "$TRIM_READS_TO" -gt 0 && "$READLENGTH" -gt "$TRIM_READS_TO" ]] ; then
+  NEED_TRIMMING=TRUE
+  READLENGTH=$TRIM_READS_TO
+fi
+
 # Indicate we have started this alignment and upload pertinent information
 if [ ! -e ${FINAL_BAM} ]; then
 
@@ -87,7 +92,7 @@ qsub -p $ALN_PRIORITY -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT_
   echo "START: "
   date
 
-  if [[ "$TRIM_READS_TO" -gt 0 && "$READLENGTH" -gt "$TRIM_READS_TO" ]] ; then
+  if [[ -n "$NEED_TRIMMING" ]] ; then
 
     # Define trimming function
     trim_to_length(){
