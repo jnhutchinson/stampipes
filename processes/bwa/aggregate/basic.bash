@@ -31,8 +31,9 @@ export HOTSPOT_CALLS=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.hotspots.
 # Hotspot hack
 export PATH="/home/nelsonjs/code/hotspot2/bin:$PATH"
 export HOTSPOT_SCRIPT="/home/nelsonjs/code/hotspot2/scripts/hotspot2.sh"
-export EXCLUDE_REGIONS=${EXCLUDE_REGIONS:-$BWAINDEX.K${READ_LENGTH}.unmappable.bed}
-export CHROM_SIZES=${CHROM_SIZES:-$BWAINDEX.chrom_sizes.bed}
+export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
+export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
+export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.starch}
 
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
@@ -91,7 +92,7 @@ fi
 if [[ ! -s "$HOTSPOT_CALLS" ]] ; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
   qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -e "$EXCLUDE_REGIONS" -c "$CHROM_SIZES" "$TEMP_UNIQUES_BAM"  "$HOTSPOT_DIR"
+    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$TEMP_UNIQUES_BAM"  "$HOTSPOT_DIR"
 __SCRIPT__
 fi
 
