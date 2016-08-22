@@ -62,10 +62,13 @@ indices : $(INBAM).bai $(OUTBAM).bai
 
 uniques : $(INBAM) $(OUTBAM)
 
+NODE_RAM_GB ?= 8
+NSLOTS ?= 1
+JAVA_HEAP = $(shell echo "($(NODE_RAM_GB)*$(NSLOTS) - 2) * 1024" | bc)m
 # Sometimes this will report errors about a read not mapping that should have a mapq of 0
 # See this for more info: http://seqanswers.com/forums/showthread.php?t=4246
 $(INSERTMETRICS) : $(OUTBAM) 
-	time java -Xmx1000m -jar $(PICARDPATH)/CollectInsertSizeMetrics.jar INPUT=$^ OUTPUT=$@ \
+	time java -Xmx$(JAVA_HEAP) -jar $(PICARDPATH)/CollectInsertSizeMetrics.jar INPUT=$^ OUTPUT=$@ \
                 HISTOGRAM_FILE=$(INSERTMETRICS).pdf \
                 VALIDATION_STRINGENCY=LENIENT \
                 ASSUME_SORTED=true && echo Picard stats >&2
