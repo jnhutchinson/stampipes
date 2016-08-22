@@ -23,7 +23,10 @@ export TEMP_UNIQUES_BAM=${LIBRARY_NAME}.${GENOME}.uniques.sorted.bam
 export TAGCOUNTS_FILE=${LIBRARY_NAME}.tagcounts.txt
 export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.bed.starch
 export DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.bw
+export NORM_DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.normalized.${GENOME}.bw
 export CUTCOUNTS_BIGWIG=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw
+export INSERT_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard
+export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
 
 export HOTSPOT_DIR=peaks
 export HOTSPOT_CALLS=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.hotspots.fdr0.05.starch
@@ -50,7 +53,7 @@ CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 PROCESSING=""
 
-if [[ ! -e ${FINAL_BAM}.bai ]] ; then
+if [[ ! -s "$FINAL_BAM.bai" || ! -s "$TEMP_UNIQUES_BAM.bai" || ! -s "$INSERT_FILE" || ! -s "$DUPS_FILE" ]] ; then
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
@@ -73,13 +76,11 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
 
   export BAM_COUNT=$BAM_COUNT
 
-  if [ ! -s "$FINAL_BAM" ] ; then
+  if [[ ! -s "$FINAL_BAM" || ! -s "$DUPS_FILE" ]] ; then
     bash $STAMPIPES/scripts/bwa/aggregate/merge.bash
   fi
 
-  if [ ! -s "$TEMP_UNIQUES_BAM.bai" ] ; then
-    make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk SAMPLE_NAME=${LIBRARY_NAME} INBAM=${FINAL_BAM} OUTBAM=${TEMP_UNIQUES_BAM} info uniques metrics indices
-  fi
+  make -f "$STAMPIPES/makefiles/bwa/process_paired_bam.mk" "SAMPLE_NAME=${LIBRARY_NAME}" "INBAM=${FINAL_BAM}" "OUTBAM=${TEMP_UNIQUES_BAM}" info uniques metrics indices
 
   echo "FINISH: "
   date
@@ -118,7 +119,7 @@ __SCRIPT__
 
 fi
 
-if [ ! -e $DENSITY_BIGWIG ]; then
+if [[ ! -s "$DENSITY_BIGWIG" || ! -s "$NORM_DENSITY_BIGWIG" ]]; then
 
 PROCESSING="$PROCESSING,${DENSITY_JOBNAME}"
 
