@@ -28,7 +28,9 @@ qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
 
   cd $FASTQ_DIR
   make -f $STAMPIPES/makefiles/fastqc.mk FASTQ_FILE=$R1_FASTQ FASTQC_FILE=$R1_FASTQC
-  make -f $STAMPIPES/makefiles/fastqc.mk FASTQ_FILE=$R2_FASTQ FASTQC_FILE=$R2_FASTQC
+  if [ "$PAIRED" = "True" ]; then
+      make -f $STAMPIPES/makefiles/fastqc.mk FASTQ_FILE=$R2_FASTQ FASTQC_FILE=$R2_FASTQC
+  fi
 
   if [ "$UMI" = "True" ]; then
       echo "Tallying up top UMI tags seen in R1"
