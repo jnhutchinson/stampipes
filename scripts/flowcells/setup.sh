@@ -299,6 +299,7 @@ module load bcl2fastq/1.8.4
 module load bcl2fastq2/2.15.0.4
 source $PYTHON3_ACTIVATE
 
+source $STAMPIPES/scripts/lims/api_functions.sh
 
 # Register the file directory
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
@@ -307,8 +308,14 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   --attach_file_purpose flowcell-directory \
   --attach_file_objectid $flowcell_id
 
+# register as "Sequencing" in LIMS
+lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/2/"
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
+
+# register as "Processing" in LIMS
+lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/3/"
+lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
 
 # Submit a barcode job for each mask
 for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
