@@ -72,8 +72,8 @@ def get_barcode_lengths(json_data):
             tempbc1.append(n)
         else:
             tempbc2.append(n)
-
-    finalList.append(sorted(tempbc1)[0])
+    if tempbc1 != []:
+        finalList.append(sorted(tempbc1)[0])
     if tempbc2 != []:
         finalList.append(sorted(tempbc2)[0])
     
