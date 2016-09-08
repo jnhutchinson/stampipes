@@ -239,6 +239,30 @@ _U_
       --tiles s_\\\$SGE_TASK_ID
 _U_
   ;;
+"MiniSeq High Output Kit")
+    # Identical to nextseq processing
+    echo "High-output MiniSeq run detected"
+    parallel_env="-pe threads 4-8"
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--nextseq"
+    make_nextseq_samplesheet > SampleSheet.csv
+    bcl_tasks=1
+    set +e
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
+      --processing-threads     \\\$(( NSLOTS ))
+_U_
+    set -e
+    ;;
     #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
 "HISEQ V4")
     echo "Regular HiSeq 2500 run detected"
