@@ -149,7 +149,7 @@ run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 has_umi=$(      jq -r '.libraries | map(.barcode1.umi) | any' "$json")
 
 if [ -z "$demux" ] ; then
-  bcl_mask=mask
+  bcl_mask=$mask
   mismatches=$(python3 $STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes)
   if [ "$has_umi" == "true" ] ; then
     echo "---WARNING---"
