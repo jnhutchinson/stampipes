@@ -268,8 +268,8 @@ _U_
 _U_
     set -e
     ;;
-\?)
-    echo "Unrecognized sequencer $sequencer"
+*)
+    echo "Unrecognized run type '$run_type'"
     exit 1
     ;;
 esac
