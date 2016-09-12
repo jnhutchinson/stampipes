@@ -17,15 +17,6 @@ UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 
 bash $STAMPIPES/scripts/versions.bash &> ${SAMPLE_NAME}.versions.txt
 
-if [ ! -e ${SAMPLE_NAME}_R1_fastqc -o ! -e ${SAMPLE_NAME}_R2_fastqc -o -n "$FORCE_FASTQ" ]; then
-qsub -N ".fq${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-  set -x -e -o pipefail
-  echo "Hostname: " `hostname`
-  
-  make -f $STAMPIPES/makefiles/fastqc.mk
-__SCRIPT__
-fi
-
 NUMBER_FASTQ_FILES=`find . -maxdepth 1 -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l`
 FASTQ_PAIR_HOLDS=""
 FASTQ_PAIR_BAMS=""
