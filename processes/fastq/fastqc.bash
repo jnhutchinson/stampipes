@@ -1,8 +1,8 @@
 # Dependencies
 source $MODULELOAD
-module load java/jdk1.7.0_05
-module load picard/1.118
-module load FastQC/0.11.3
+module load jdk/1.8.0_92
+module load picard/1.120
+module load fastqc/0.11.5
 
 export FASTQ_NAME=${FLOWCELL}_${SAMPLE_NAME}
 export R1_FASTQ=${FASTQ_NAME}_R1.fastq.gz

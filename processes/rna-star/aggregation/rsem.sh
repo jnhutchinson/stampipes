@@ -1,12 +1,12 @@
 source $MODULELOAD
-module load samtools/1.2
+module load samtools/1.3
 module load gcc/4.7.2     # R dependent on this
-module load R/3.1.0
+module load R/3.2.5
 
-module load star/2.4.2a   # Just for densities
-module load bedops/2.4.14
+module load STAR/2.4.2a   # Just for densities
+module load bedops/2.4.19
 
-module load RSEM/1.2.22
+module load RSEM/1.2.30
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/STARgenome-hg19-g19-combined/"

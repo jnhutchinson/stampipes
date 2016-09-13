@@ -1,6 +1,6 @@
 # Dependencies
 source $MODULELOAD
-module load python/2.7.3
+module load python/2.7.11
 
 MAKEFILE="$STAMPIPES/makefiles/barcodes.mk"
 bash "$STAMPIPES/scripts/versions.bash" &> barcode.versions.txt
