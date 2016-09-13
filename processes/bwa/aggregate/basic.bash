@@ -30,6 +30,7 @@ export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
 
 export HOTSPOT_DIR=peaks
 export HOTSPOT_CALLS=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.hotspots.fdr0.05.starch
+export HOTSPOT_DENSITY=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.density.bw
 
 # Hotspot hack
 export PATH="/home/nelsonjs/code/hotspot2/bin:$PATH"
@@ -94,7 +95,7 @@ __SCRIPT__
 fi
 
 # Run Hotspot2
-if [[ ! -s "$HOTSPOT_CALLS" ]] ; then
+if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
   qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
     "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$TEMP_UNIQUES_BAM"  "$HOTSPOT_DIR"
