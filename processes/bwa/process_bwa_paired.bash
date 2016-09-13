@@ -65,14 +65,14 @@ if [[ ! -e "$FINAL_BAM" || ! -e "$UNIQUES_BAM" ]]; then
 
   PROCESS_HOLD="-hold_jid .pb${SAMPLE_NAME}_${FLOWCELL}"
 
-  qsub "$HOLD" -N ".pb${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub $HOLD -N ".pb${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: " \$(hostname)
 
   if [ ! -e "$FINAL_BAM" ]; then
     if [ "$NUMBER_FASTQ_FILES" -eq "1" ]
     then
-      mv "${SAMPLE_NAME}_001.sorted.bam" "${SAMPLE_NAME}.sorted.bam"
+      mv "${SAMPLE_NAME}_000.sorted.bam" "${SAMPLE_NAME}.sorted.bam"
     else
       samtools merge "${FINAL_BAM}" ${FASTQ_PAIR_BAMS}
     fi
@@ -99,7 +99,7 @@ fi
 
 if [[ ! -e "${SAMPLE_NAME}.tagcounts.txt" || -n "$FORCE_COUNTS" ]]; then
 
-  qsub "$PROCESS_HOLD" -N ".ct${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub $PROCESS_HOLD -N ".ct${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: " \$(hostname)
 
@@ -118,7 +118,7 @@ fi
 
 if [[ ! -e "${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out" || ! -e "${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt" ]]; then
 
-  qsub "$PROCESS_HOLD" -N ".sp${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub $PROCESS_HOLD -N ".sp${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: " \$(hostname)
 
@@ -142,7 +142,7 @@ fi
 
 if [ ! -e "${SAMPLE_NAME}.75_20.${GENOME}.bw" ]; then
 
-  qsub "$PROCESS_HOLD" -N ".den${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub $PROCESS_HOLD -N ".den${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: " \$(hostname)
 
