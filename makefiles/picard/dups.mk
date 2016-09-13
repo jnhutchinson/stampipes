@@ -14,7 +14,8 @@
 ###################
 # REQUIRED MODULES
 ###################
-# module load java
+# module load jdk
+# module load picard
 ###################
 
 BAMFILE ?= $(SAMPLE_NAME).uniques.sorted.bam

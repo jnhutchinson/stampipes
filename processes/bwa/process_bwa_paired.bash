@@ -125,7 +125,7 @@ qsub $PROCESS_HOLD -N ".sp${SAMPLE_NAME}_${FLOWCELL}" -V -cwd -S /bin/bash > /de
 
   # SPOT process requires python 2
   source $MODULELOAD
-  module load python/2.7.3
+  module load python/2.7.11
 
   make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
     READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME

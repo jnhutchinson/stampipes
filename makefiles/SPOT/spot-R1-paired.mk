@@ -11,7 +11,8 @@
 ###################
 # REQUIRED MODULES
 ###################
-# module load java
+# module load jdk
+# module load picard
 # module load samtools
 # module load python
 # module load bedops

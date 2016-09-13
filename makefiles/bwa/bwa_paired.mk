@@ -14,8 +14,7 @@
 ###################
 # REQUIRED MODULES
 ###################
-# module load java
-# module load bwa/0.7.0
+# module load bwa/0.7.12
 # module load samtools
 # module load python
 ###################

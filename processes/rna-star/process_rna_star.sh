@@ -1,11 +1,11 @@
 source "$MODULELOAD"
-module load samtools/1.2
+module load samtools/1.3
 module load gcc/4.7.2     # for adapter trimming
-module load R/3.1.0       # for RSEM
-module load coreutils/8.9 # parallel sort
+module load R/3.2.5       # for RSEM
+module load coreutils/8.25 # parallel sort
 
-module load star/2.4.2a
-module load RSEM/1.2.22
+module load STAR/2.4.2a
+module load RSEM/1.2.30
 
 source "$PYTHON3_ACTIVATE"
 
