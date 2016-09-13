@@ -53,7 +53,7 @@ CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 PROCESSING=""
 
-if [[ ! -s "$FINAL_BAM.bai" || ! -s "$TEMP_UNIQUES_BAM.bai" || ! -s "$INSERT_FILE" || ! -s "$DUPS_FILE" ]] ; then
+if [[ ! -s "$FINAL_BAM.bai" || ! -s "$TEMP_UNIQUES_BAM.bai" || ( ! -s "$INSERT_FILE" && -n "$PAIRED" ) || ( ! -s "$DUPS_FILE" && -z "$UMI" ) ]] ; then
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
@@ -80,7 +80,11 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
     bash $STAMPIPES/scripts/bwa/aggregate/merge.bash
   fi
 
-  make -f "$STAMPIPES/makefiles/bwa/process_paired_bam.mk" "SAMPLE_NAME=${LIBRARY_NAME}" "INBAM=${FINAL_BAM}" "OUTBAM=${TEMP_UNIQUES_BAM}" info uniques metrics indices
+  make_target="all"
+  if [[ -z "$PAIRED" ]] ; then # We don't need to run InsertSizeMetrics for single-end reads
+    make_target="single_ended"
+  fi
+  make -f "$STAMPIPES/makefiles/bwa/process_paired_bam.mk" "SAMPLE_NAME=${LIBRARY_NAME}" "INBAM=${FINAL_BAM}" "OUTBAM=${TEMP_UNIQUES_BAM}" "\$make_target"
 
   echo "FINISH: "
   date
