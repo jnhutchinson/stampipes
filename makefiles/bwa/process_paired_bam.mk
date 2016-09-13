@@ -43,6 +43,8 @@ INSERTMETRICS ?= $(OUTDIR)/$(SAMPLE_NAME).CollectInsertSizeMetrics.picard
 
 all : info metrics uniques indices
 
+single_ended : info uniques indices
+
 info : 
 	@echo "------"
 	@echo "PROGRAM VERSIONS"
