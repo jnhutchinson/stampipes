@@ -242,31 +242,33 @@ _U_
     #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
 "HISEQ V4")
     echo "Regular HiSeq 2500 run detected"
-    parallel_env=""
-    link_command='#no linking to do'
-    samplesheet=$(pwd)/Data/Intensities/BaseCalls/SampleSheet.csv
-    mkdir -p $(dirname "$samplesheet")
-    make_hiseq_samplesheet > "$samplesheet"
-    fastq_dir="$illumina_dir/Unaligned/"  # Trailing slash is important for rsync!
-    bc_flag="--hiseq"
-    bcl_tasks=1
+    echo "HiSeq 2500 processing not supported on the new cluster! (Does not have old version of bcl2fastq)"
+    exit 2
+    #parallel_env=""
+    #link_command='#no linking to do'
+    #samplesheet=$(pwd)/Data/Intensities/BaseCalls/SampleSheet.csv
+    #mkdir -p $(dirname "$samplesheet")
+    #make_hiseq_samplesheet > "$samplesheet"
+    #fastq_dir="$illumina_dir/Unaligned/"  # Trailing slash is important for rsync!
+    #bc_flag="--hiseq"
+    #bcl_tasks=1
 
-    set +e
-    read -d '' unaligned_command <<_U_
-    if [ ! -e "$fastq_dir" ] ; then
-            configureBclToFastq.pl \\\\
-              --mismatches "$mismatches" \\\\
-              --output-dir "$fastq_dir" \\\\
-              --fastq-cluster-count 16000000 \\\\
-              --with-failed-reads --sample-sheet $samplesheet \\\\
-              --use-bases-mask "$bcl_mask"  \\\\
-              --input-dir "$illumina_dir/Data/Intensities/BaseCalls"
-    fi
+    #set +e
+    #read -d '' unaligned_command <<_U_
+    #if [ ! -e "$fastq_dir" ] ; then
+    #        configureBclToFastq.pl \\\\
+    #          --mismatches "$mismatches" \\\\
+    #          --output-dir "$fastq_dir" \\\\
+    #          --fastq-cluster-count 16000000 \\\\
+    #          --with-failed-reads --sample-sheet $samplesheet \\\\
+    #          --use-bases-mask "$bcl_mask"  \\\\
+    #          --input-dir "$illumina_dir/Data/Intensities/BaseCalls"
+    #fi
 
-    cd "$fastq_dir"
-    qmake -now no -cwd -q all.q -V -- -j "$NODES"
-_U_
-    set -e
+    #cd "$fastq_dir"
+    #qmake -now no -cwd -q all.q -V -- -j "$NODES"
+#_U_
+    #set -e
     ;;
 \?)
     echo "Unrecognized sequencer $sequencer"
@@ -295,8 +297,7 @@ cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 #!/bin/bash
 
 source $MODULELOAD
-module load bcl2fastq/1.8.4
-module load bcl2fastq2/2.15.0.4
+module load bcl2fastq2/2.17.1.14
 source $PYTHON3_ACTIVATE
 
 
