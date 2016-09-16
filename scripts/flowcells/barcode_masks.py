@@ -86,10 +86,9 @@ def detect_collisions(json_data):
     num_lanes = max([ lib["lane"] for lib in json_data["libraries"] ])
     
     for i in range(num_lanes):
-        barcodes = [ lib["barcode_index"] for lib in json_data["libraries"] if lib["lane"] == i+1]
+        barcodes = sorted(lib["barcode_index"] for lib in json_data["libraries"] if lib["lane"] == i+1 and not lib["failed"])
         if (len(barcodes) != len(set(barcodes))):
-            collision = []
-            [collision.append(barcode) for i, barcode in sorted(enumerate(barcodes)) if barcode == barcodes[i-1]]
+            collision = [barcode for x, barcode in enumerate(barcodes) if barcode == barcodes[x-1]]
             logging.error("Collision on lane {}. Barcode(s): {}\n".format(i+1, collision))
             sys.exit(1)
             return True
