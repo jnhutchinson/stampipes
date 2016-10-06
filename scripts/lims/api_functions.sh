@@ -26,6 +26,16 @@ lims_get_all () {
   done
 }
 
+lims_put_by_url() {
+  /usr/bin/curl \
+    --request PUT \
+    --data "$2" \
+    "$1" \
+    -H "Authorization: Token $LIMS_API_TOKEN" \
+    -k \
+    2>/dev/null
+}
+
 lims_patch_by_url() {
   /usr/bin/curl \
   --request PATCH \
