@@ -8,6 +8,8 @@ module load picard/1.120
 module load samtools/1.3
 module load git/2.3.3
 module load coreutils/8.25
+module load modwt/1.0
+module load hotspot2/20161006
 
 WIN=75
 BINI=20
@@ -32,9 +34,7 @@ export HOTSPOT_DIR=peaks
 export HOTSPOT_CALLS=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.hotspots.fdr0.05.starch
 export HOTSPOT_DENSITY=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.density.bw
 
-# Hotspot hack
-export PATH="/home/nelsonjs/code/hotspot2/bin:$PATH"
-export HOTSPOT_SCRIPT="/home/nelsonjs/code/hotspot2/scripts/hotspot2.sh"
+export HOTSPOT_SCRIPT="hotspot.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.starch}
