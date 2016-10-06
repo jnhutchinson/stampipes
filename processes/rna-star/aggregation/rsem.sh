@@ -68,7 +68,7 @@ fi
 
 if [ ! -s "Quant.genes.results" ] ; then
 
-  qsub -cwd -V -N ".AGG#${AGGREGATION_ID}.rsem" -pe threads 2-4 -S /bin/bash <<'__RSEM__'
+  qsub -cwd -V -N ".AGG#${AGGREGATION_ID}.rsem" -pe threads 4 -S /bin/bash <<'__RSEM__'
     set -x
 
     nThreadsRSEM=$((NSLOTS * 2))
