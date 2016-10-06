@@ -111,7 +111,7 @@ do_cufflinks(){
     tmpbamlink="$LIBRARY_NAME.all.$GENOME.bam"
 
     export SAMPLE_NAME=$LIBRARY_NAME
-    qsub -N $jobname -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr -pe threads 2-4 << __CUFFLINKS__
+    qsub -N $jobname -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr -pe threads 4 << __CUFFLINKS__
     set -x -e -o pipefail
 
     echo "Hostname: "

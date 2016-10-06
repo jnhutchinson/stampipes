@@ -167,7 +167,7 @@ fi
 case $run_type in
 "NextSeq 500")
     echo "Regular NextSeq 500 run detected"
-    parallel_env="-pe threads 4-8"
+    parallel_env="-pe threads 8"
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
@@ -204,7 +204,7 @@ _U_
     ;;
 "HiSeq 4000")
     echo "Hiseq 4000 run detected"
-    parallel_env="-pe threads 4-8"
+    parallel_env="-pe threads 8"
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
@@ -311,7 +311,7 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
-qsub -cwd -N "bc-$flowcell" -pe threads 4-8 -V -S /bin/bash <<'__BARCODES__'
+qsub -cwd -N "bc-$flowcell" -pe threads 8 -V -S /bin/bash <<'__BARCODES__'
   GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=$mask $bc_flag > barcodes.json
 
   python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json

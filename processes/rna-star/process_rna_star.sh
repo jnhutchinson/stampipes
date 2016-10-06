@@ -11,7 +11,7 @@ source "$PYTHON3_ACTIVATE"
 
 PRIORITY=${PRIORITY:-0}
 
-SLOTS=${SLOTS:-4-8}
+SLOTS=${SLOTS:-8}
 
 outdir=$(pwd)
 
