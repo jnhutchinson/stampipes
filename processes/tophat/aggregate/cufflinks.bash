@@ -104,13 +104,13 @@ do_cufflinks(){
   targets="${LIBRARY_NAME}_cufflinks/finished.txt"
   makefile="$STAMPIPES/makefiles/tophat/tophat_and_cufflinks.mk"
 
+  export SAMPLE_NAME=$LIBRARY_NAME
   if ! make -q -f $makefile $targets ; then
 
     jobname="${MAKE_JOBNAME}-cufflinks" 
     PROCESSING="$PROCESSING,$jobname"
     tmpbamlink="$LIBRARY_NAME.all.$GENOME.bam"
 
-    export SAMPLE_NAME=$LIBRARY_NAME
     qsub -N $jobname -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr -pe threads 4 << __CUFFLINKS__
     set -x -e -o pipefail
 
