@@ -34,7 +34,7 @@ export HOTSPOT_DIR=peaks
 export HOTSPOT_CALLS=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.hotspots.fdr0.05.starch
 export HOTSPOT_DENSITY=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.density.bw
 
-export HOTSPOT_SCRIPT="hotspot.sh"
+export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.starch}
