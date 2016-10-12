@@ -61,5 +61,5 @@ $(SPOTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spot.out : $(RANDOM_SAMPLE_BAM)
 
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM)
-	java -jar $(PICARDPATH)/MarkDuplicates.jar INPUT=$(RANDOM_SAMPLE_BAM) OUTPUT=/dev/null \
+	picard MarkDuplicates INPUT=$(RANDOM_SAMPLE_BAM) OUTPUT=/dev/null \
 	  METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT

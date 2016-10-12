@@ -22,6 +22,8 @@ BAMFILE ?= $(SAMPLE_NAME).uniques.sorted.bam
 DUP_OUT ?= $(SAMPLE_NAME).MarkDuplicates.picard
 OUTBAM ?= /dev/null
 
+PICARD_JAR ?= $(shell which picard).jar
+
 all : $(DUP_OUT)
 
 NODE_RAM_GB ?= 8
@@ -30,6 +32,6 @@ JAVA_HEAP = $(shell echo "($(NODE_RAM_GB)*$(NSLOTS) - 2) * 1024" | bc)m
 
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(BAMFILE)
-	time java -Xmx$(JAVA_HEAP) -jar $(PICARDPATH)/MarkDuplicates.jar INPUT=$(BAMFILE) OUTPUT=$(OUTBAM) \
+	time java -Xmx$(JAVA_HEAP) -jar $(PICARD_JAR) MarkDuplicates INPUT=$(BAMFILE) OUTPUT=$(OUTBAM) \
 	  METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
 		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'

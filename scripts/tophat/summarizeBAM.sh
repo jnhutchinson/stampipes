@@ -27,8 +27,8 @@ do
     params=`echo $opspec | cut -f2- -d'?'`
     output=picard.$name.$op.txt
     if ! [ -f  "$output" ] ; then
-        operationjar=$picardfolder/Collect${op}Metrics.jar
-        java -Xmx1000m -jar $operationjar INPUT=$bam OUTPUT=$output $params VALIDATION_STRINGENCY=SILENT
+        operation=$picardfolder/Collect${op}Metrics
+        java -Xmx1000m -jar "$(which picard).jar" "$operation" INPUT=$bam OUTPUT=$output $params VALIDATION_STRINGENCY=SILENT
     fi
     if [ -s "$output" ] ; then
         cat $output | grep -v '^#' | grep -A4 _ | $SCRIPT_DIR/transposeTable.pl | $SCRIPT_DIR/encomma.pl  > xp.$output

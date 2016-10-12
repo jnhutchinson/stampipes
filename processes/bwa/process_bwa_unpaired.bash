@@ -6,7 +6,7 @@ module load bedops/2.4.19
 module load bedtools/2.25.0
 module load bwa/0.7.12
 module load jdk/1.8.0_92
-module load picard/1.120
+module load picard/2.1.1
 module load samtools/1.3
 module load gcc/4.7.2
 module load R/3.2.5
