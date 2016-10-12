@@ -92,6 +92,9 @@ qsub -p $ALN_PRIORITY -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT_
   echo "START: "
   date
 
+  FASTQ1_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz
+  FASTQ2_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz
+
   if [[ -n "$NEED_TRIMMING" ]] ; then
 
     # Define trimming function
@@ -105,23 +108,22 @@ qsub -p $ALN_PRIORITY -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT_
       rm \$1.tmp
     }
 
-    trim_to_length ${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz "$TRIM_READS_TO"
-    trim_to_length ${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz "$TRIM_READS_TO"
+    trim_to_length "$FASTQ1_FILE" "$TRIM_READS_TO"
+    trim_to_length "$FASTQ2_FILE" "$TRIM_READS_TO"
   fi
 
   if [ "$UMI" = "True" ]; then
-
-  make -f $STAMPIPES/makefiles/bwa/bwa_paired_trimmed_umi.mk \
-    FASTQ1_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
-    FASTQ2_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
-    OUTBAM=${BAMFILE} \
-    TRIMSTATS=${SAMPLE_NAME}_${filenum}.trimstats.txt
-
-  else
+    TMP_FASTQ1=$TMPDIR/umi.R1.fastq.gz
+    TMP_FASTQ2=$TMPDIR/umi.R2.fastq.gz
+    time python "$STAMPIPES/scripts/umi/fastq_umi_add.py" "$FASTQ1_FILE" "$TMP_FASTQ1"
+    time python "$STAMPIPES/scripts/umi/fastq_umi_add.py" "$FASTQ2_FILE" "$TMP_FASTQ2"
+    FASTQ1_FILE=$TMP_FASTQ1
+    FASTQ2_FILE=$TMP_FASTQ2
+  fi
 
   make -f $STAMPIPES/makefiles/bwa/bwa_paired_trimmed.mk \
-    FASTQ1_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz \
-    FASTQ2_FILE=${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz \
+    FASTQ1_FILE=$FASTQ1_FILE \
+    FASTQ2_FILE=$FASTQ2_FILE \
     OUTBAM=${BAMFILE} \
     TRIMSTATS=${SAMPLE_NAME}_${filenum}.trimstats.txt
 
@@ -159,10 +161,6 @@ PROCESS_HOLD="-hold_jid .pb${JOB_BASENAME}"
 JOBNAME=".pb${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME"
 
-# If we are processing UMI, we will need a lot of power for sorting!
-if [ "$UMI" = "True" ]; then
-  export SUBMIT_SLOTS="-pe threads 1"
-fi
 
 export PRE_DUP_BAM=${SAMPLE_NAME}.predup.sorted.bam
 export PRE_DUP_BAM_PREFIX=${PRE_DUP_BAM%.*}
@@ -180,30 +178,11 @@ qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd
   if [ ! -e ${FINAL_BAM} ]; then
     echo "START MERGE: "
     date
-  
+
     if [ "$NUMBER_FASTQ_FILES" -eq "1" ]; then
       mv ${SAMPLE_NAME}_000.sorted.bam ${FINAL_BAM}
     else
       samtools merge ${FINAL_BAM} ${FASTQ_PAIR_BAMS}
-    fi
-  
-# Skip Dup marking
-
-    # If we are working with a UMI, we can create the duplicate score and replace
-    # the final BAM with one marked with duplicates
-    if [ "$UMI" = "True" ]; then
-      echo "START UMI DUP: "
-      date
-  
-      rsync $FINAL_BAM \$TMPDIR/${PRE_DUP_BAM}
-      rm -f $FINAL_BAM
-  
-      make -f $STAMPIPES/makefiles/umi/mark_duplicates.mk INPUT_BAM_FILE=\$TMPDIR/${PRE_DUP_BAM} \
-        OUTPUT_BAM_FILE=\$TMPDIR/${FINAL_BAM}.presort
-      samtools sort \$TMPDIR/${FINAL_BAM}.presort > $FINAL_BAM_PREFIX.bam
-  
-      echo "FINISH UMI DUP: "
-      date
     fi
 
     echo "FINISH MERGE: "
@@ -211,7 +190,7 @@ qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd
   else
     echo "$FINAL_BAM exists already"
   fi
-  
+
 # Skip dup marking and inserts and uniquely-mapping steps.
   echo "START PROCESS BAM: "
   date
@@ -224,7 +203,13 @@ qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd
   echo "START PICARD DUP: "
   date
 
-  make -f $STAMPIPES/makefiles/picard/dups.mk
+  # If UMI, make dup file and retain result
+  if [[ -n "$UMI" ]] ; then
+    make -f $STAMPIPES/makefiles/picard/dups.mk OUTBAM=$FINAL_BAM.tmp
+    mv $FINAL_BAM.tmp $FINAL_BAM
+  else
+    make -f $STAMPIPES/makefiles/picard/dups.mk
+  fi
 
   echo "FINISH PICARD DUP: " date
 
@@ -235,7 +220,7 @@ qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd
     --flowcell_lane_id ${FLOWCELL_LANE_ID} \
     --insertsfile ${SAMPLE_NAME}.CollectInsertSizeMetrics.picard \
     --dupsfile ${SAMPLE_NAME}.MarkDuplicates.picard
-  
+
   if [ "$NUMBER_FASTQ_FILES" -gt "1" ]
   then
     rm -f $FASTQ_PAIR_BAMS

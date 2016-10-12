@@ -67,4 +67,5 @@ $(SPOTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spot.out : $(RANDOM_SAMPLE_BAM_
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM)
 	picard MarkDuplicates INPUT=$(RANDOM_SAMPLE_BAM) OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.dup \
 		METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).R1.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
-		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
+		BARCODE_TAG=XD

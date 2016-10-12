@@ -22,6 +22,7 @@ files=(
     "$LIBRARY_NAME.$GENOME.cuts.sorted.bed.starch" 
     "$LIBRARY_NAME.$GENOME.cutcounts.sorted.bed.starch" 
     "$LIBRARY_NAME.$GENOME.cutcounts.$READ_LENGTH.bw" 
+    "${LIBRARY_NAME}.MarkDuplicates.picard"
     )
 paired_files=(
     "$LIBRARY_NAME.CollectInsertSizeMetrics.picard"
@@ -31,11 +32,6 @@ paired_files=(
 for FILE in "${files[@]}"; do
     checkfile "$FILE"
 done
-
-# Only check for MarkDuplicates report if this is not a UMI sample
-if [[ "$UMI" != "True" ]]; then
-    checkfile "${LIBRARY_NAME}.MarkDuplicates.picard"
-fi
 
 # Only check for InsertSizeMetrics on paired-end data
 if [[ -n "$PAIRED" ]]; then
