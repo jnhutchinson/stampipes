@@ -208,25 +208,6 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
         samtools merge ${FINAL_BAM} ${FASTQ_PAIR_BAMS}
       fi
 
-  # Skip Dup marking
-
-      # If we are working with a UMI, we can create the duplicate score and replace
-      # the final BAM with one marked with duplicates
-      if [[ "$UMI" = "True" ]]; then
-        echo "START UMI DUP: "
-        date
-
-        rsync $FINAL_BAM \$TMPDIR/${PRE_DUP_BAM}
-        rm -f $FINAL_BAM
-
-        make -f $STAMPIPES/makefiles/umi/mark_duplicates.mk INPUT_BAM_FILE=\$TMPDIR/${PRE_DUP_BAM} \
-          OUTPUT_BAM_FILE=\$TMPDIR/${FINAL_BAM}.presort
-        samtools sort \$TMPDIR/${FINAL_BAM}.presort > $FINAL_BAM_PREFIX.bam
-
-        echo "FINISH UMI DUP: "
-        date
-      fi
-
       echo "FINISH MERGE: "
       date
     else
@@ -245,7 +226,13 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
     echo "START PICARD DUP: "
     date
 
-    make -f $STAMPIPES/makefiles/picard/dups.mk
+    # If UMI, make dup file and retain result
+    if [[ -n "$UMI" ]] ; then
+      make -f $STAMPIPES/makefiles/picard/dups.mk OUTBAM=$FINAL_BAM.tmp
+      mv $FINAL_BAM.tmp $FINAL_BAM
+    else
+      make -f $STAMPIPES/makefiles/picard/dups.mk
+    fi
 
     echo "FINISH PICARD DUP: " date
 

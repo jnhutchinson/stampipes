@@ -1,4 +1,3 @@
-
 source $MODULELOAD
 module load bedops/2.4.19
 module load jdk/1.8.0_92
@@ -44,7 +43,7 @@ export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.starch}
 
 if [ -n "$REDO_AGGREGATION" ]; then
-    bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
+  bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
 fi
 
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
@@ -58,19 +57,15 @@ CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 PROCESSING=""
 
-if [[ ! -s "$FINAL_BAM.bai" || ! -s "$TEMP_UNIQUES_BAM.bai" || ( ! -s "$INSERT_FILE" && -n "$PAIRED" ) || ( ! -s "$DUPS_FILE" && -z "$UMI" ) ]] ; then
+if [[ ! -s "$FINAL_BAM.bai" || ! -s "$TEMP_UNIQUES_BAM.bai" || ! -s "$DUPS_FILE" || (! -s "$INSERT_FILE" && -n "$PAIRED") ]]; then
 
-PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
+  PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
-# If we are  UMI, we will need a lot of power for sorting!
-if [ "$UMI" = "True" ]; then
-  echo "Processing with UMI"
-  export SUBMIT_SLOTS="-pe threads 4"
-  echo "Excluding duplicates from uniques bam"
-  export EXCLUDE_FLAG=1536
-fi
+  if [ "$UMI" = "True" ]; then
+    export EXCLUDE_FLAG=1536
+  fi
 
-qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -99,7 +94,7 @@ __SCRIPT__
 fi
 
 # Run Hotspot2
-if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
+if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]]; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
   HOTSPOT_SPOT=$HOTSPOT_DIR/$HOTSPOT_PREFIX.SPOT.txt
   qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
@@ -110,9 +105,9 @@ fi
 
 if [ ! -e $TAGCOUNTS_FILE ]; then
 
-PROCESSING="$PROCESSING,${COUNT_JOBNAME}"
+  PROCESSING="$PROCESSING,${COUNT_JOBNAME}"
 
-qsub -N "${COUNT_JOBNAME}" -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  qsub -N "${COUNT_JOBNAME}" -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -132,9 +127,9 @@ fi
 
 if [[ ! -s "$DENSITY_BIGWIG" || ! -s "$NORM_DENSITY_BIGWIG" ]]; then
 
-PROCESSING="$PROCESSING,${DENSITY_JOBNAME}"
+  PROCESSING="$PROCESSING,${DENSITY_JOBNAME}"
 
-qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -144,7 +139,7 @@ qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/ba
   date
 
   make -f $STAMPIPES/makefiles/densities/density.mk FAI=${GENOME_INDEX}.fai SAMPLE_NAME=${LIBRARY_NAME} GENOME=${GENOME} \
-     BAMFILE=${TEMP_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
+    BAMFILE=${TEMP_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
   make -f "$STAMPIPES/makefiles/densities/normalize-density.mk" BAMFILE=${TEMP_UNIQUES_BAM} SAMPLE_NAME=${LIBRARY_NAME} FAI=${GENOME_INDEX}.fai
 
   echo "FINISH: "
@@ -156,9 +151,9 @@ fi
 
 if [ ! -e $CUTCOUNTS_BIGWIG ]; then
 
-PROCESSING="$PROCESSING,${CUTCOUNTS_JOBNAME}"
+  PROCESSING="$PROCESSING,${CUTCOUNTS_JOBNAME}"
 
-qsub -N "${CUTCOUNTS_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  qsub -N "${CUTCOUNTS_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
 
   set -x -e -o pipefail
 
@@ -179,9 +174,9 @@ fi
 
 if [ -n ${PROCESSING} ]; then
 
-UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
-ATTACH_AGGREGATION="python3 $UPLOAD_SCRIPT --attach_file_contenttype AggregationData.aggregation --attach_file_objectid ${AGGREGATION_ID}"
-qsub -N "${JOB_BASENAME}_complete" -hold_jid "${PROCESSING}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
+  ATTACH_AGGREGATION="python3 $UPLOAD_SCRIPT --attach_file_contenttype AggregationData.aggregation --attach_file_objectid ${AGGREGATION_ID}"
+  qsub -N "${JOB_BASENAME}_complete" -hold_jid "${PROCESSING}" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "

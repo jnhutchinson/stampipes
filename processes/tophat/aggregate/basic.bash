@@ -60,7 +60,8 @@ if [ ! -e ${FINAL_BAM} ]; then
       OUTPUT=$FINAL_BAM \
       REMOVE_DUPLICATES=false \
       ASSUME_SORTED=true \
-      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
+      BARCODE_TAG=XD
 
     echo "FINISH: "
     date
