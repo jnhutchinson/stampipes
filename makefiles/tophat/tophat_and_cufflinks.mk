@@ -20,7 +20,7 @@ SAMTOOLS ?= samtools
 JAVA ?= java
 
 # This might not work in qmake??
-MARK_DUPS ?= $(PICARDPATH)/MarkDuplicates.jar
+PICARD_JAR ?= $(shell which picard).jar
 
 SCRIPT_DIR ?= $(STAMPIPES)/scripts/tophat
 
@@ -156,7 +156,7 @@ $(control_txt) : $(control_file)
 
 # Final (all) BAM
 $(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(tophat_file)
-	$(JAVA) -Xmx24g -jar $(MARK_DUPS) \
+	$(JAVA) -Xmx24g -jar $(PICARD_JAR) MarkDuplicates \
 		INPUT=$< \
 		METRICS_FILE=$(SAMPLE_NAME).spotdups.txt \
 		OUTPUT=$(marked_bam) \
