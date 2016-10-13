@@ -141,7 +141,7 @@ illumina_dir=$(pwd)
 link_command="#no linking to do"
 
 source "$STAMPIPES/scripts/lims/api_functions.sh"
-lims_put_by_url "$(lims_get_all "flowcell_run/?label=$flowcell" | jq -r .url)prepare_for_processing"
+lims_put_by_url "$(lims_get_all "flowcell_run/?label=$flowcell" | jq -r .url)prepare_for_processing/"
 
 # Get and read the processing script
 python3 "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
