@@ -11,6 +11,9 @@ module load coreutils/8.25
 module load modwt/1.0
 module load hotspot2/20161006
 
+module load python/3.5.1
+module load pysam/0.9.0
+
 WIN=75
 BINI=20
 
