@@ -112,13 +112,18 @@ for filenum in $(seq -f "%03g" 0 $((NUMBER_FASTQ_FILES - 1))); do
         trim_to_length \$fastq2 "$TRIM_READS_TO"
       fi
 
+      # If we have UMI info, create new FASTQ files with the UMI info
+      # and use those as input to the makefile
       if [[ -n "$UMI" ]]; then
-        makefile=$STAMPIPES/makefiles/bwa/bwa_paired_trimmed_umi.mk
-      else
-        makefile=$STAMPIPES/makefiles/bwa/bwa_paired_trimmed.mk
+        new1=\$(mktemp)
+        new1=\$(mktemp)
+        time python $STAMPIPES/scripts/umi/fastq_umi_add.py \$fastq1 \$new1
+        time python $STAMPIPES/scripts/umi/fastq_umi_add.py \$fastq2 \$new2
+        fastq1=\$new1
+        fastq2=\$new2
       fi
 
-      make -f "\$makefile" \
+      make -f "$STAMPIPES/makefiles/bwa/bwa_paired_trimmed.mk" \
         "FASTQ1_FILE=\$fastq1" \
         "FASTQ2_FILE=\$fastq2" \
         "OUTBAM=$BAMFILE" \
