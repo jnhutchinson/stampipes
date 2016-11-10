@@ -116,9 +116,22 @@ for filenum in $(seq -f "%03g" 0 $((NUMBER_FASTQ_FILES - 1))); do
       # and use those as input to the makefile
       if [[ -n "$UMI" ]]; then
         new1=\$(mktemp)
-        new1=\$(mktemp)
-        time python $STAMPIPES/scripts/umi/fastq_umi_add.py \$fastq1 \$new1
-        time python $STAMPIPES/scripts/umi/fastq_umi_add.py \$fastq2 \$new2
+        new2=\$(mktemp)
+
+        case "$UMI_METHOD" in
+        thruplex)
+          time python3 $STAMPIPES/scripts/umi/extract_umt.py \
+            <(zcat \$fastq1) \
+            <(zcat \$fastq2) \
+            >(gzip -c -1 > \$new1) \
+            >(gzip -c -1 > \$new2)
+          ;;
+        *)
+          time python3 $STAMPIPES/scripts/umi/fastq_umi_add.py \$fastq1 \$new1
+          time python3 $STAMPIPES/scripts/umi/fastq_umi_add.py \$fastq2 \$new2
+          ;;
+        esac
+
         fastq1=\$new1
         fastq2=\$new2
       fi
