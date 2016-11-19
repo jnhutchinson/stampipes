@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 
-# TODO: Doesn't work quite yet!!!!!
-
 import argparse
 import sys
 import pysam
 from collections import defaultdict
 
-# Some bad globals
-read_histo = defaultdict(int)
-pair_map = {}
+UMI_TAG = "XD:Z"
 
 
 def parser_setup():
@@ -37,9 +33,9 @@ def parser_setup():
 
 
 # Takes a list of reads, returns one sorted such that the "best" read is at the
-# top.  Currently, that means highest mapping quality, with ties broken by
-# query_name
-def read_sort_key(x):
+# top.  That means highest mapping quality, with ties broken by query_name (in
+# lexicographic order)
+def sortQuality(x):
     return (-1 * x.mapping_quality, x.query_name)
 
 
@@ -53,15 +49,14 @@ def find_dups(reads):
         return [reads]
 
     lists = defaultdict(list)
-    lists2 = defaultdict(list)
     for r in reads:
-        try:
-            key = (r.template_length, r.get_tag("XD:Z"))
-        except KeyError:
+        if r.has_tag(UMI_TAG):
+            key = (r.template_length, r.get_tag(UMI_TAG))
+        else:
             key = r.template_length
         lists[key].append(r)
 
-    return [sorted(l, key=read_sort_key) for l in lists.values()]
+    return [sorted(l, key=sortQuality) for l in lists.values()]
 
 
 # Sets a read's duplicate flag, returns it
@@ -73,37 +68,70 @@ def set_dup(read, is_dup):
     return read
 
 
-def process_chunk(chunk, output):
-    new_reads = []
-    already_seen_reads = []
-    for r in chunk:
-        if r.query_name in pair_map:
-            already_seen_reads.append(r)
-        else:
-            pair_map[r.query_name] = None
-            new_reads.append(r)
+class DupMarker():
 
-    read_sets = find_dups(new_reads)
+    read_histo = defaultdict(int)
+    pair_map = {}
+    input = None
+    output = None
+    histo = None
 
-    for l in read_sets:
-        # Add to the histogram
-        read_histo[len(l)] += 1
-        # Mark all but the highest-quality read as duplicates
-        l[0] = set_dup(l[0], False)
-        pair_map[l[0].query_name] = False
-        for r in l[1:]:
-            r = set_dup(r, True)
-            pair_map[r.query_name] = True
+    def __init__(self, input, output=None, histo=None):
+        self.input = input
+        self.output = output
+        self.histo = histo
 
-        # Print the read set
-        for r in l:
-            output.write(r)
+    def process_chunk(self, chunk):
+        new_reads = []
+        already_seen_reads = []
+        for r in chunk:
+            if r.query_name in self.pair_map:
+                already_seen_reads.append(r)
+            else:
+                self.pair_map[r.query_name] = None
+                new_reads.append(r)
 
-    # Print out already seen reads
-    for r in already_seen_reads:
-        r = set_dup(r, pair_map[r.query_name])
-        del pair_map[r.query_name]
-        output.write(r)
+        read_sets = find_dups(new_reads)
+
+        for l in read_sets:
+            if self.histo is not None:
+                self.read_histo[len(l)] += 1
+            # Mark all but the highest-quality read as duplicates
+            l[0] = set_dup(l[0], False)
+            self.pair_map[l[0].query_name] = False
+            for r in l[1:]:
+                r = set_dup(r, True)
+                self.pair_map[r.query_name] = True
+
+            # Print the read set
+            if self.output is not None:
+                for r in l:
+                    self.output.write(r)
+
+        # Print out already seen reads
+        for r in already_seen_reads:
+            r = set_dup(r, self.pair_map[r.query_name])
+            del self.pair_map[r.query_name]
+            if self.output is not None:
+                self.output.write(r)
+
+    def run(self):
+        chr = None
+        pos = None
+        current_chunk = []
+        for read in self.input:
+            if read.reference_id != chr or read.reference_start != pos:
+                self.process_chunk(current_chunk)
+                current_chunk = []
+                chr = read.reference_id
+                pos = read.reference_start
+            current_chunk.append(read)
+
+        self.process_chunk(current_chunk)
+
+        if self.histo is not None:
+            for k in sorted(self.read_histo.keys()):
+                self.histo.write("%s\t%s\n" % (k, self.read_histo[k]))
 
 
 def main(args=sys.argv):
@@ -112,23 +140,15 @@ def main(args=sys.argv):
 
     input = pysam.AlignmentFile(poptions.infile, 'r')
     output = pysam.AlignmentFile(poptions.outfile, 'wb0', template=input)
+    histo = open(poptions.histfile, 'w') if poptions.histfile else None
 
-    chr = None
-    pos = None
-    current_chunk = []
-    for read in input:
-        if read.reference_id != chr or read.reference_start != pos:
-            process_chunk(current_chunk, output)
-            current_chunk = []
-            chr = read.reference_id
-            pos = read.reference_start
-        current_chunk.append(read)
-    process_chunk(current_chunk, output)
-
-    if poptions.histfile:
-        with open(poptions.histfile, 'w') as h:
-            for k in sorted(read_histo.keys()):
-                h.write("%s\t%s\n" % (k, read_histo[k]))
+    try:
+        dupmarker = DupMarker(input=input, output=output, histo=histo)
+        dupmarker.run()
+    finally:
+        input.close()
+        output.close()
+        histo.close()
 
 
 # This is the main body of the program that only runs when running this script
