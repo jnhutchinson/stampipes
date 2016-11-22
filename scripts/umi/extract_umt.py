@@ -16,6 +16,7 @@ stem_lengths = [11, 10, 9, 8]
 
 mismatched_stems = set()
 
+umtstats = {'trimmed': 0, 'no_stem': 0}
 
 def parseArgs():
     parser = argparse.ArgumentParser(
@@ -91,7 +92,7 @@ def setup_mismatches(num_mismatches):
 
 def main(argv):
     args = parseArgs()
-    logging.basicConfig(level=logging.WARN, format=log_format)
+    logging.basicConfig(level=logging.INFO, format=log_format)
     setup_mismatches(args.mismatches)
 
     with open(args.r1_fastq) as r1_in, \
@@ -106,11 +107,20 @@ def main(argv):
                 (r1, r2) = attach_umt(r1_seqIO.__next__(), r2_seqIO.__next__())
                 # Only write Fastq records for which we find stems
                 if r1 is not None and r2 is not None:
+                    umtstats['trimmed'] += 1
                     r1_out.write(r1.format("fastq"))
                     r2_out.write(r2.format("fastq"))
+                else:
+                    umtstats['no_stem'] += 1
+
         except StopIteration:
             logging.info("EOF reached")
 
+    logging.info("Trimmed: %d" % umtstats['trimmed'])
+    logging.info("No stem: %d" % umtstats['no_stem'])
+
 if __name__ == "__main__":
     main(sys.argv)
+
+
 
