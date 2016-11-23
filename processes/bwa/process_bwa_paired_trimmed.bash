@@ -40,6 +40,7 @@ export VERSION_FILE=${SAMPLE_NAME}.versions.txt
 
 export FASTQ_TMP=$ALIGN_DIR/fastq
 
+
 cd "$ALIGN_DIR"
 
 if [[ -n "$REDO_ALIGNMENT" ]]; then
@@ -73,6 +74,7 @@ if [[ ! -e "$FINAL_BAM" ]]; then
 
 fi
 
+mkdir -p "$FASTQ_TMP"
 NUMBER_FASTQ_FILES=$(find "$FASTQ_TMP" -maxdepth 1 -name "${SAMPLE_NAME}_R1_???.fastq.gz" | wc -l)
 FASTQ_PAIR_HOLDS=""
 FASTQ_PAIR_BAMS=""
@@ -261,6 +263,38 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
 
 __SCRIPT__
 
+fi
+
+# Preseq duplicate estimation
+if [[ ! -s "$SAMPLE_NAME.preseq.targets.txt" ]]; then
+  JOBNAME=".ps${JOB_BASENAME}"
+  PROCESSING="$PROCESSING,$JOBNAME"
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<'__SCRIPT__'
+    set -x
+    hist=$SAMPLE_NAME.uniques.duphist.txt
+    preseq=$SAMPLE_NAME.uniques.preseq.txt
+    targets=$SAMPLE_NAME.uniques.preseq.targets.txt
+
+    READ_TARGETS=(
+      20000000
+      30000000
+      40000000
+      100000000
+     150000000
+     250000000
+  )
+
+    python3 "$STAMPIPES/scripts/bam/mark_dups.py" -i "$UNIQUES_BAM" -o /dev/null --hist "$hist"
+    preseq lc_extrap -hist "$hist" -extrap 1.001e9 -s 1e6 -v > "$preseq"
+    rm -f "$targets"
+    for target in "${READ_TARGETS[@]}" ; do
+      reads_needed=$(awk -v "target=$target" 'NR>1 && $2 > target {printf "%d", $1; exit}' "$preseq")
+      if [ -n "$reads_needed" ]; then
+        echo -e "preseq-est-for-$target\t$reads_needed" >> "$targets"
+      fi
+    done
+    python3 "$STAMPIPES/scripts/lims/upload_data.py" -a "$LIMS_API_URL" -t "$LIMS_API_TOKEN" --alignment_id "$ALIGNMENT_ID" --countsfile "$targets"
+__SCRIPT__
 fi
 
 # Skip a bunch of stuff
