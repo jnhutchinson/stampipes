@@ -2,8 +2,9 @@
 
 set -e -o pipefail
 
-flowcell_name=${1:(-5)}
-priority=$2
+flowcell_name=$1
+priority='400' # the concept of priority is somewhat depreciated with trackhubs
+config=$STAMPIPES/config/ucsc_browser/trackhub.config	# only one config file for the foreseeable future
 
 flowcell_dir=$(ls $FLOWCELLS/FC${flowcell_name}_*tag -d)
 
@@ -29,9 +30,5 @@ source "$PYTHON3_ACTIVATE"
 cd "$flowcell_dir"
 
 python "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell_name" --quiet
-
-python "$STAMPIPES/scripts/browser/make_trackhubs.py" -p "$priority" --quiet
-
-for makedoc in browser-*/tracksetup.*.doc ; do
-  bash "$makedoc"
-done
+python "$STAMPIPES/scripts/browser/make_trackhubs.py" -p "$priority" -c "$config" --quiet
+bash "$STAMPIPES/scripts/browser/make_flowcell_hub.sh" "$flowcell_name"
