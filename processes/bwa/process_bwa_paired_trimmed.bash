@@ -14,6 +14,9 @@ module load git/2.3.3
 module load coreutils/8.25
 module load pigz/2.3.3
 
+module load modwt/1.0
+module load hotspot2/20161006
+
 # Load in this order specifically, currently the python3 activation
 # overwrites the default "python" call, against advice
 module load python/3.5.1
@@ -295,6 +298,35 @@ if [[ ! -s "$SAMPLE_NAME.preseq.targets.txt" ]]; then
     done
     python3 "$STAMPIPES/scripts/lims/upload_data.py" -a "$LIMS_API_URL" -t "$LIMS_API_TOKEN" --alignment_id "$ALIGNMENT_ID" --countsfile "$targets"
 __SCRIPT__
+fi
+
+if [[ ! -e "$SAMPLE_NAME.uniques.spot2.out" ]]; then
+  JOBNAME=".sp2$JOB_BASENAME"
+  PROCESSING="$PROCESSING,$JOBNAME"
+
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+    set -e -u -o errexit
+    num_fragments=\$(samtools idxstats "$UNIQUES_BAM" | awk '{x+=\$3}END{print x/2}')
+    if [[ \$num_fragments -lt 10000000 ]]; then
+      echo "Not enough fragments to get a reliable SPOT2 score, skipping"
+      exit
+    fi
+
+    hotspot2.sh \
+      -c "$BWAINDEX.chrom_sizes.bed" \
+      -C "$BWAINDEX.K$READLENGTH.center_sites.n100.starch" \
+      -M "$BWAINDEX.K$READLENGTH.mappable_only.bed" \
+      -s 12345 \
+      -F 0.1 \
+      -f 0.05 \
+      "$UNIQUES_BAM" \
+      "$ALIGN_DIR/hotspot2"
+
+      cd "$ALIGN_DIR"
+      cp "hotspot2/$(basename "$UNIQUES_BAM" .bam).hotspots.fdr0.05.starch" "$SAMPLE_NAME.uniques.spot2.out"
+
+__SCRIPT__
+
 fi
 
 # Skip a bunch of stuff
