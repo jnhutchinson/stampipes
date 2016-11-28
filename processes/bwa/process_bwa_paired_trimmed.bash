@@ -323,7 +323,7 @@ if [[ ! -e "$SAMPLE_NAME.uniques.spot2.out" ]]; then
       "$ALIGN_DIR/hotspot2"
 
       cd "$ALIGN_DIR"
-      cp "hotspot2/$(basename "$UNIQUES_BAM" .bam).hotspots.fdr0.05.starch" "$SAMPLE_NAME.uniques.spot2.out"
+      cp "hotspot2/$(basename "$UNIQUES_BAM" .bam).SPOT.txt" "$SAMPLE_NAME.uniques.spot2.out"
 
 __SCRIPT__
 
