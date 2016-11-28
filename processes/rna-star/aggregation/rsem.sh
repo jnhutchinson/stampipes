@@ -9,8 +9,9 @@ module load bedops/2.4.19
 module load RSEM/1.2.30
 
 export REFDIR="$(dirname $GENOME_INDEX)"
-export STARrefDir="$REFDIR/STARgenome-hg19-g19-combined/"
-export RSEMrefDir="$REFDIR/RSEMgenome-hg19-g19-combined/"
+# $STAR_DIR and $RSEM_DIR are set by the process template, and are relative to the reference directory
+export STARrefDir="$REFDIR/$STAR_DIR"
+export RSEMrefDir="$REFDIR/$RSEM_DIR"
 
 export TARGET_BAM=Aligned.toTranscriptome.out.bam
 export GENOME_BAM=Aligned.toGenome.out.bam

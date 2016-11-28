@@ -25,3 +25,28 @@ lims_get_all () {
     next=$(jq -r .next <<< $response )
   done
 }
+
+lims_put_by_url() {
+  /usr/bin/curl \
+    --request PUT \
+    --data "$2" \
+    "$1" \
+    -H "Authorization: Token $LIMS_API_TOKEN" \
+    -k \
+    2>/dev/null
+}
+
+lims_patch_by_url() {
+  /usr/bin/curl \
+  --request PATCH \
+  --data "$2" \
+  "$1" \
+  -H "Authorization: Token $LIMS_API_TOKEN" \
+  -k \
+  2>/dev/null
+}
+
+# $1: url, $2: field=val
+lims_patch () {
+  lims_patch_by_url "$LIMS_API_URL/$1" "$2"
+}
