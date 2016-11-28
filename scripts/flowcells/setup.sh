@@ -140,6 +140,9 @@ illumina_dir=$(pwd)
 
 link_command="#no linking to do"
 
+source "$STAMPIPES/scripts/lims/api_functions.sh"
+lims_put_by_url "$(lims_get_all "flowcell_run/?label=$flowcell" | jq -r .url)prepare_for_processing/"
+
 # Get and read the processing script
 python3 "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
@@ -149,7 +152,7 @@ run_type=$(     jq -r '.flowcell.run_type'          "$json" )
 has_umi=$(      jq -r '.libraries | map(.barcode1.umi) | any' "$json")
 
 if [ -z "$demux" ] ; then
-  bcl_mask=mask
+  bcl_mask=$mask
   mismatches=$(python3 $STAMPIPES/scripts/flowcells/max_mismatch.py --ignore_failed_lanes)
   if [ "$has_umi" == "true" ] ; then
     echo "---WARNING---"
@@ -208,7 +211,7 @@ _U_
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
-    bc_flag="--hiseq"
+    bc_flag="--hiseq4k"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1-8
 
@@ -239,6 +242,30 @@ _U_
       --tiles s_\\\$SGE_TASK_ID
 _U_
   ;;
+"MiniSeq High Output Kit")
+    # Identical to nextseq processing
+    echo "High-output MiniSeq run detected"
+    parallel_env="-pe threads 4-8"
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--nextseq"
+    make_nextseq_samplesheet > SampleSheet.csv
+    bcl_tasks=1
+    set +e
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
+      --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
+      --processing-threads     \\\$(( NSLOTS ))
+_U_
+    set -e
+    ;;
     #TODO: Add HISEQ V3 on hiseq 2500 (rapid run mode)
 "HISEQ V4")
     echo "Regular HiSeq 2500 run detected"
@@ -270,8 +297,8 @@ _U_
 #_U_
     #set -e
     ;;
-\?)
-    echo "Unrecognized sequencer $sequencer"
+*)
+    echo "Unrecognized run type '$run_type'"
     exit 1
     ;;
 esac
@@ -300,6 +327,7 @@ source $MODULELOAD
 module load bcl2fastq2/2.17.1.14
 source $PYTHON3_ACTIVATE
 
+source $STAMPIPES/scripts/lims/api_functions.sh
 
 # Register the file directory
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
@@ -308,14 +336,24 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   --attach_file_purpose flowcell-directory \
   --attach_file_objectid $flowcell_id
 
+# register as "Sequencing" in LIMS
+lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/2/"
 
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
-qsub -cwd -N "bc-$flowcell" -pe threads 8 -V -S /bin/bash <<'__BARCODES__'
-  GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=$mask $bc_flag > barcodes.json
+# register as "Processing" in LIMS
+lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/3/"
+lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
 
-  python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.json
+# Submit a barcode job for each mask
+for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
+    export bcmask
+    qsub -cwd -N "bc-$flowcell" -pe threads 8 -V -S /bin/bash <<'__BARCODES__'
+    GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
+
+    python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
 __BARCODES__
+done
 
 qsub -cwd -N "u-$flowcell" $parallel_env  -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
 

@@ -16,6 +16,7 @@ options = {
     "quiet": False,
     "debug": False,
     "process_config": "processing.json",
+    "trackhub_config": None,
     "priority": None,
     "api_url": os.getenv('LIMS_API_URL'),
     "api_token": os.getenv('LIMS_API_TOKEN'),
@@ -24,7 +25,6 @@ options = {
 util_log = logging.getLogger("StamPy.util")
 def foldercheck(*args):
     """Checks to see if the folders exist, creates them if they are not."""
-
     for folder in args:
         if not os.path.isdir(folder):
             try:
@@ -44,22 +44,20 @@ def mysql_clean(input):
 
 def parser_setup():
     parser = argparse.ArgumentParser()
-
     parser.add_argument("-q", "--quiet", dest="quiet", action="store_true",
         help="Don't print info messages to standard out.")
     parser.add_argument("-d", "--debug", dest="debug", action="store_true",
         help="Print all debug messages to standard out.")
-
     parser.add_argument("-j", "--json-config", dest="process_config",
         help="The process config to work off of.")
+    parser.add_argument("-c", "--trackhub-config", dest="trackhub_config",
+        help="The trackhub config to work off of.")
     parser.add_argument("-p", "--priority", dest="priority", required=True,
         help="The priority of this flowcell")
     parser.add_argument("--pre-align-dir", dest="pre_align_dir", action="store_true",
         help="This flowcell was made before per-alignment directories")
-
     parser.set_defaults( **options )
     parser.set_defaults( quiet=False, debug=False )
-
     return parser
 
 class MakeBrowserload(object):
@@ -86,15 +84,7 @@ class MakeBrowserload(object):
 
     rna_strands = [ "all", "pos", "neg" ]
 
-    #def __init__(self, browserconfig, browsersheet, basedir, outdir, priority, paired_end, project, project_dir = "",
-        #maintrackname = None, bigwig = True, date = None):
-    def __init__(self, group_data, browserconfig, basedir, outdir, mersize, priority, paired_end, project, label, date):
-
-		# anishida: web URL, output location for trackhub data, and script locations
-        self.trackhubURL = "http://stampipe0.altiusinstitute.org/flowcells/"
-        self.trackhubLOC = "/home/anishida/trackhub_test/"
-        self.trackhubLOC = "/net/seq/data/flowcells/trackhubs/"
-        self.scriptsLOC = "$STAMPIPES/scripts/browser/"
+    def __init__(self, group_data, trackhubconfig, basedir, outdir, mersize, priority, paired_end, project, label, date):
 
         self.basedir = basedir
         self.flowcell_date = date
@@ -104,6 +94,7 @@ class MakeBrowserload(object):
         self.binI=20
         self.priority = priority
         self.paired_end = paired_end
+        self.project = project
         self.bigwig = True
         self.projects = project.split(",")
         self.label = label
@@ -119,28 +110,21 @@ class MakeBrowserload(object):
             for project in self.projects:
                 self.project_dirs[project] = os.path.join(self.basedir, "Project_" + project)
 
-        self.load_config(browserconfig)
+        self.load_config(trackhubconfig)
 
-    def load_config(self, browserconfig):
+    def load_config(self, trackhubconfig):
        import configparser
        Config = configparser.ConfigParser()
-       Config.read(browserconfig)
-       self.server = Config.get("browser", "server")
-       self.browser_url = Config.get("browser", "browser_url")
-       self.flowcell_link_folder = Config.get("browser", "flowcell_link_folder")
-       self.track_basedir = Config.get("browser", "track_basedir")
-       self.browser_excludes_file = Config.get("browser", "browser_excludes_file")
-       self.group = Config.get('browser', 'browser_group')
-       self.file_label = Config.get('browser', 'file_label')
+       Config.read(trackhubconfig)
+       self.trackhubURL = Config.get('browser','trackhub_url')
+       self.flowcell_link_folder = Config.get('browser', 'flowcell_link_folder')
 
     def load(self):
-        #self.browsersheet = SampleSheet(file=self.browsersheet_file)
         self.basedir_name = os.path.basename(self.basedir)
         foldercheck(self.outdir)
 
-        #if self.maintrackname:
         if False:
-           self.main_label = "%s%son%s" % (self.file_label, self.maintrackname, self.date)
+           self.main_label = "%s%son%s" % (self.project, self.maintrackname, self.date)
            self.flowcell_name = self.maintrackname
            self.flowcell_date = self.date
         else:
@@ -156,7 +140,7 @@ class MakeBrowserload(object):
 
             logging.info("FLOWCELL DATE: %s" % self.flowcell_date)
 
-            self.main_label = "%s%son%s" % (self.file_label, self.flowcell_name, self.flowcell_date)
+            self.main_label = "%s%son%s" % (self.project, self.flowcell_name, self.flowcell_date)
 
         logging.info("Main track name: %s" % self.main_label)
 
@@ -167,17 +151,22 @@ class MakeBrowserload(object):
             self.link_dir = os.path.join(self.flowcell_link_folder, self.basedir_name)
         else:
             self.link_dir = ""
-
+        
         self.prepare_tracks()
         logging.info("Main label: %s" % self.main_label)
 
-        self.create_ras()
-        self.create_hubtxt()		# anishida: calls function to create hub.txt file describing trackhub
-        self.create_genomestxt()	# anishida: calls function to create genomes.txt file describing genomes used
-        self.create_htmls()
-        self.create_commands()
+        # LIMS records early mm10 alignments as 'mm10-encode3-male'
+        # change it back to just 'mm10'
+        for key in self.subtrack_sets.keys():
+            if key == "mm10-encode3-male":
+                self.subtrack_sets["mm10"] = self.subtrack_sets.pop("mm10-encode3-male")
 
-	# anishida: added function for creating hub.txt for just the flowcell specifically
+        self.create_ras()
+        self.create_hubtxt()
+        self.create_genomestxt()
+        self.create_htmls()
+
+	# function for creating hub.txt
     def create_hubtxt(self):
         hubfile = os.path.join(self.outdir, "hub.txt")
         logging.info("Creating hub.txt file: %s" % hubfile)
@@ -186,22 +175,22 @@ class MakeBrowserload(object):
         hub.write("shortLabel %s\n" % self.flowcell_name)
         hub.write("longLabel Tag sequencing, aligned %s\n" % (self.flowcell_date))
         hub.write("genomesFile genomes.txt\n")
-        hub.write("email placeholder@altiusinstitute.org\n")
+        hub.write("email anishida@altiusinstitute.org\n")
         hub.write("descriptionUrl description.html\n")
         hub.close()
 
-    # anishida: added function for creating genomes.txt for just the flowcell specifically
+    # function for creating genome.txt
     def create_genomestxt(self):
         genomefile = os.path.join(self.outdir, "genomes.txt")
         logging.info("Creating genome.txt file: %s" % genomefile)
         genomes = open( genomefile, 'w')
         for hgdb, subtracks in self.subtrack_sets.items():
             genomes.write("genome %s\n" % hgdb)
-            genomes.write("trackDb %s/trackDb.%s.%s.txt\n" % (hgdb,self.file_label,self.main_label))
+            genomes.write("trackDb %s/trackDb.%s.%s.txt\n" % (hgdb,self.project,self.main_label))
         genomes.close()
 
+    # splits tracks up and prepares them writing
     def prepare_tracks(self):
-        """Splits the tracks up and makes changes to the data to make it easier for later on."""
 
         self.subtrack_sets = {}
         self.tracks = []
@@ -232,13 +221,15 @@ class MakeBrowserload(object):
 
         for track in self.tracks:
             hgdb = track["hgdb"]
-
+            
             trackname_suffix = "L%s%s%s%sm%d" % (track["Lane"], track["Index"], track["SampleID"].lower(), track["strand"], self.mersize)
             track["tagtrackname"] = mysql_clean("%stag%s" % (self.main_label, trackname_suffix))
             track["dentrackname"] = mysql_clean("%sden%s" % (self.main_label, trackname_suffix))
+            track["cutcountstrackname"] = mysql_clean("%scutcounts%s" % (self.main_label, trackname_suffix))
 
             logging.debug("tag track name: " + track["tagtrackname"])
             logging.debug("den track name: " + track["dentrackname"])
+            logging.debug("cutcounts track name: " + track["cutcountstrackname"])
 
             project = track["SampleProject"]
 
@@ -254,15 +245,15 @@ class MakeBrowserload(object):
                 track["pathPrefix"] = track["sampleDir"]
 
             if track["aligner"] == "bwa":
-                track["wigfilename"]    = "%s.75_20.%s.wig"       % (track["SampleName"], hgdb)
-                track["bigwigfilename"] = "%s.75_20.%s.bw"        % (track["SampleName"], hgdb)
-                track["bamfilename"]    = "%s.uniques.sorted.bam" % (track["SampleName"])
+                track["wigfilename"]        = "%s.75_20.%s.wig"       % (track["SampleName"], hgdb)
+                track["bigwigfilename"]     = "%s.75_20.%s.bw"        % (track["SampleName"], hgdb)
+                track["bamfilename"]        = "%s.uniques.sorted.bam" % (track["SampleName"])
+                track["cutcountsfilename"]  = "%s.cutcounts.bw"      % (track["SampleName"])
             elif track["aligner"] == "tophat":
                 filename_prefix = "%s.%s.%s"     % (track["SampleName"], track["strand"], hgdb)
                 track["wigfilename"]    = "%s.wig" % filename_prefix  # NYI
                 track["bigwigfilename"] = "%s.bw"  % filename_prefix
                 track["bamfilename"]    = "%s.bam" % filename_prefix
-
 
             # TODO: Make the RNA pipeline aware of this
             # this is to deal with the mouse with human hg19 chr11
@@ -274,6 +265,7 @@ class MakeBrowserload(object):
 
             track["hasTags"] = False
             track["hasDensities"] = False
+            track["hasCutCounts"] = False
 
             if "Extra" in track and track["Extra"] is not None:
                 track["Extra"] = track["Extra"].strip()
@@ -284,8 +276,10 @@ class MakeBrowserload(object):
                 track["hasDensities"] = True
             if os.path.exists(os.path.join(track["sampleDir"], track["bamfilename"])):
                 track["hasTags"] = True
+            if os.path.exists(os.path.join(track["sampleDir"], track["cutcountsfilename"])):
+                track["hasCutCounts"] = True
 
-            if not track["hasDensities"] or not track["hasTags"]:
+            if not track["hasDensities"] or not track["hasTags"] or not track["hasCutCounts"]:
                 logging.error("%s does not have all files" % track["SampleID"])
                 if not track["hasDensities"]:
                     logging.error( "Missing densities" )
@@ -296,12 +290,15 @@ class MakeBrowserload(object):
                 if not track["hasTags"]:
                     logging.error("Missing tags")
                     logging.error("Wanted: " + os.path.join(track["sampleDir"], track["bamfilename"]))
+                if not track["hasCutCounts"]:
+                    logging.error("Missing cut counts")
+                    logging.error("Wanted: " + os.path.join(track["sampleDir"], track["cutcountsfilename"]))
                 logging.info("%s" % str(track))
 
-            if track["hasDensities"] or track["hasTags"]:
+            if track["hasDensities"] or track["hasTags"] or track["hasCutCounts"]:
                 self.subtrack_sets[hgdb].append(track)
 
-	# anishida: writes html files for individual genomes and a concatenated version with all genomes
+    # writes html files for individual genomes and a concatenated version with all genomes (we don't really use these)
     def create_htmls(self):
         self.html_files = {}
         masterhtmlloc = os.path.join(self.outdir, "description.html")
@@ -312,9 +309,9 @@ class MakeBrowserload(object):
             self.create_html(hgdb, html)
             self.create_html(hgdb, masterhtml)
             html.close()
-        masterhtml.close()    
+        masterhtml.close()
 
-	# anishida: writes the genome HTML output to file
+    # writes the genome HTML output to file (we don't really use these)
     def create_html(self, hgdb, file):
         columns = ["Lane", "Index", "SampleID", "SampleRef", "CellType", "Assay", "Factors", "Extra",
             "wellmapping", "wellmapping-no-mito", "SPOT"]
@@ -331,37 +328,20 @@ class MakeBrowserload(object):
         file.write("</tbody>\n")
         file.write("</table>\n")
         
-    # anishida: create commands for maintaining and copying tracks into master track list
-    def create_commands(self):
-        makefile = os.path.join(self.outdir, "tracksetup.%s.doc" % self.main_label)
-        logging.info("Track Setup Make File: %s" % makefile)
-        commands = open( makefile, 'w')
-        commands.write("# %s\n" % makefile)
-        commands.write("# %s\n\n" % ", ".join(self.subtrack_sets.keys()))
-        project_folder_name = re.search("browser-load.*",self.outdir)
-        include_name = "trackDb.%s.%s.txt" % (self.file_label, self.main_label)
-        for hgdb, subtracks in self.subtrack_sets.items():
-        	# call script to test if 'project/genome' exists
-        	commands.write("sh \"%supdate_projects_genomes.sh\" %s %s\n" % (self.scriptsLOC, project_folder_name.group(0), hgdb))
-        	# copy track files to destination
-        	commands.write("cp %s/%s/%s %s%s/%s/tracks_by_flowcell/\n" % (self.outdir,hgdb,include_name,self.trackhubLOC,project_folder_name.group(0),hgdb))
-        	# call script to update lists for 'project/genome' with new track file
-        	commands.write("sh \"%supdate_tracks.sh\" %s %s \n\n" % (self.scriptsLOC, project_folder_name.group(0), hgdb))
-        commands.close()
-
     def create_ras(self):
         self.ra_files = {}
 
         for hgdb, subtracks in self.subtrack_sets.items():
             self.create_ra(hgdb)
 
+    # write RA / track file
     def create_ra(self, hgdb):
         logging.info("CREATING RA FOR %s" % hgdb)
         subtracks = self.subtrack_sets[hgdb]
 
         foldercheck(os.path.join(self.outdir, hgdb))
 
-        self.ra_files[hgdb] = os.path.join(self.outdir, hgdb, "trackDb.%s.%s.txt" % (self.file_label, self.main_label))
+        self.ra_files[hgdb] = os.path.join(self.outdir, hgdb, "trackDb.%s.%s.txt" % (self.project, self.main_label))
         ra = open( self.ra_files[hgdb], 'w' )
 
         samples = set([subtrack["SampleID"] for subtrack in subtracks])
@@ -376,9 +356,9 @@ class MakeBrowserload(object):
         ra.write("compositeTrack on\n")
         ra.write("shortLabel %s\n" % self.flowcell_name)
         ra.write("longLabel Tag sequencing, aligned %s\n" % (self.flowcell_date,))
-        ra.write("group %s\n" % self.group)
+        ra.write("group %s\n" % self.project)
         ra.write("priority %s\n" % self.priority)
-        ra.write("subGroup1 view Views TAG=Tags DEN=Density\n")
+        ra.write("subGroup1 view Views TAG=Tags DEN=Density CC=CutCounts\n")
         ra.write("subGroup2 sample Sample %s\n" % " ".join(sorted(['%s=%s' % (id, display) for id, display in samples.items()])))
         ra.write("dimensions dimensionX=view dimensionY=sample\n")
         ra.write("sortOrder view=+ sample=+\n")
@@ -403,17 +383,9 @@ class MakeBrowserload(object):
                 logging.warn("%s has no SPOT score" % subtrack["dentrackname"] )
                 subtrack["SPOT"] = "N/A";
 
-        #track STAM_FC630D3_110711_IT_TAG_L5_DS18900_36_
-        #       subTrack STAM_FC630D3_110711_IT_TAG
-        #       subGroups view=TAG
-        #       shortLabel DS18900 5 tags
-        #       longLabel D_GM12864_DS18900_I_FC630D3_5_36m | GM12864  [Expansion] DS18900 110711 FC630D3 L5 - n tags = 19112570 (19108346) : ptih: 0.5589
-        #       group illumina-raw
-        #       type bed 6
-
         for subtrack in subtracks:
             ra.write("\t\ttrack %s\n" % subtrack["tagtrackname"])
-            ra.write("\t\tbigDataUrl %s%s/%s/%s\n" % (self.trackhubURL,self.label,subtrack["sampleDir"],subtrack["bamfilename"]))	# anishida: ADDED URL FOR TRACKHUBS
+            ra.write("\t\tbigDataUrl %s%s/%s/%s\n" % (self.trackhubURL,self.label,subtrack["sampleDir"],subtrack["bamfilename"]))
             ra.write("\t\tsubTrack %stag\n" % self.main_label)
             ra.write("\t\tshortLabel %s %s:%s %s tags\n" % (subtrack["SampleID"], subtrack["Lane"], subtrack["Index"], subtrack["strand"]))
             ra.write("\t\tsubGroups view=TAG sample=%s\n" % subtrack["SampleID"])
@@ -428,11 +400,8 @@ class MakeBrowserload(object):
 
         logging.info("DEN SUBTRACK GROUP")
 
-        ra.write( "\ttrack %sden\n" % self.main_label)
-        ra.write( "\tsubTrack %s\n" % self.main_label)
-#        track STAM_FC630D3_110711_IT_DEN
- #       subTrack STAM_FC630D3_110711_IT
-
+        ra.write("\ttrack %sden\n" % self.main_label)
+        ra.write("\tsubTrack %s\n" % self.main_label)
         ra.write("\tview DEN\n")
         ra.write("\tshortLabel Density\n")
         ra.write("\tvisibility full\n")
@@ -440,17 +409,9 @@ class MakeBrowserload(object):
         ra.write("\tautoScale off\n")
         ra.write("\tmaxHeightPixels 100:32:16\n\n")
 
-        #  track STAM_FC62J4G_101107_IT_DEN_L5_DS13475_36_DNaseI
-        #        subTrack STAM_FC62J4G_101107_IT_DEN
-        #        subGroups view=DEN
-        #        shortLabel DS13475 5 density
-        #        longLabel D_HUVEC_DS13475_I_FC62J4G_5_36m | HUVEC DNaseI [Expansion] DS13475 101107 FC62J4G L5 - n tags = 22137427 (20360302) : ptih: 0.2946 density
-        #        group illumina-raw
-        #        type wig 1.00 10000
-
         for subtrack in subtracks:
             ra.write("\t\ttrack %s\n" % subtrack["dentrackname"])
-            ra.write("\t\tbigDataUrl %s%s/%s/%s\n" % (self.trackhubURL,self.label,subtrack["sampleDir"],subtrack["bigwigfilename"]))	# anishida: ADDED URL FOR TRACKHUBS
+            ra.write("\t\tbigDataUrl %s%s/%s/%s\n" % (self.trackhubURL,self.label,subtrack["sampleDir"],subtrack["bigwigfilename"]))
             ra.write("\t\tsubTrack %sden\n" % self.main_label)
             ra.write("\t\tsubGroups view=DEN sample=%s\n" % subtrack["SampleID"])
             ra.write("\t\tshortLabel %s %s:%s density\n" % (subtrack["SampleID"], subtrack["Lane"], subtrack["Index"],))
@@ -458,20 +419,37 @@ class MakeBrowserload(object):
                 subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"],
                 subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack["strand"], subtrack["wellmapping"],
                 subtrack["wellmapping-no-mito"], subtrack["SPOT"]))
-            ra.write("\t\tgroup %s\n" % self.group)
+            ra.write("\t\tgroup %s\n" % self.project)
             if self.bigwig:
                 ra.write("\t\ttype bigWig\n\n")
             else:
                 ra.write("\t\ttype wig 1.00 10000\n\n")
 
+        ra.write("\ttrack %scutcounts\n" % self.main_label)
+        ra.write("\tsubTrack %s\n" % self.main_label)
+        ra.write("\tview CC\n")
+        ra.write("\tshortLabel CutCounts\n")
+        ra.write("\tvisibility hide\n\n")
+        
+        for subtrack in subtracks:
+            ra.write("\t\ttrack %s\n" % subtrack["cutcountstrackname"])
+            ra.write("\t\tbigDataUrl %s%s/%s/%s\n" % (self.trackhubURL,self.label,subtrack["sampleDir"],subtrack["cutcountsfilename"]))
+            ra.write("\t\tsubTrack %scutcounts\n" % self.main_label)
+            ra.write("\t\tsubGroups view=CC sample=%s\n" % subtrack["SampleID"])
+            ra.write("\t\tshortLabel %s %s:%s cutcounts\n" % (subtrack["SampleID"], subtrack["Lane"], subtrack["Index"],))
+            ra.write("\t\tlongLabel %s %s %s %s:%s %dm %s %s %s %s tags: %s (%s), spot: %s\n" % (
+                subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"],
+                subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack["strand"], subtrack["wellmapping"],
+                subtrack["wellmapping-no-mito"], subtrack["SPOT"]))
+            ra.write("\t\tgroup %s\n" % self.project)
+            ra.write("\t\ttype bigWig\n\n")
+            
         ra.close()
 
     def get_sample_dir(self, lane):
         sample = lane["SampleID"]
         project = lane["SampleProject"]
-
         return os.path.join(self.project_dir[project], "Sample_" + sample)
-
 
 class LimsQuery(object):
     def __init__(self, api_url, api_token):
@@ -487,7 +465,6 @@ class LimsQuery(object):
 
     def get_by_url(self, url):
         if not url in self.cache:
-            #print url
             self.cache[url] = requests.get(url, headers={'Authorization': "Token %s" % self.api_token}).json()
         return self.cache[url]
 
@@ -514,7 +491,7 @@ class LimsQuery(object):
         for count in self.count_types:
             if count not in counts:
                 logging.warn("Could not fetch count %s for alignment: %s" % (count, alignment))
-
+                
         return counts
 
     def get_rna_metrics_for_alignment(self, alignment):
@@ -533,7 +510,6 @@ class LimsQuery(object):
         if not results['results']:
             return None
         return results['results'][0]
-
 
 def get_alignment_data(library, alignment, lims):
     # This is mainly a shim.
@@ -556,7 +532,6 @@ def get_alignment_data(library, alignment, lims):
 
     lims_lane = lims.get("flowcell_lane/%s" % library['id'])
     lims_sample = lims.get_by_url( lims_lane['sample'] )
-    #lims_library = lims.get_by_url( lims_lane['library'] )
 
     d['failed_lane'] = lims_lane['failed']
     if d['failed_lane']:
@@ -568,8 +543,7 @@ def get_alignment_data(library, alignment, lims):
         d['wellmapping']         = lims_counts.get('u-pf-n-mm2', None)
         d['wellmapping-no-mito'] = lims_counts.get('u-pf-n-mm2-mito', None)
 
-    # RNA doesn't have u-pf-no-mito counts
-    # So we set those properties from the rna metrics
+    # RNA doesn't have u-pf-no-mito counts, so we set those properties from the rna metrics
     elif d['aligner'] == 'tophat':
         r = lims.get_rna_metrics_for_alignment(alignment['id'])
         if r is not None:
@@ -584,13 +558,13 @@ def get_alignment_data(library, alignment, lims):
     else:
         d['Factors'] = None
 
-
     lims_spot = lims.get_spot_for_alignment(alignment['id'])
     d['SPOT'] = lims_spot['spot_score'] if lims_spot else "N/A"
 
     return d
 
 def main(args = sys.argv):
+
     parser = parser_setup()
     global poptions
     poptions = parser.parse_args()
@@ -604,55 +578,47 @@ def main(args = sys.argv):
         logging.basicConfig(level=logging.INFO, format=log_format)
 
     data = json.loads(open(poptions.process_config, 'r').read())
+    trackhubconfig = poptions.trackhub_config
 
     projects = [ d['code_name'] for d in data['projects'] ]
 
     # get basedir
     basedir = data['alignment_group']['directory']
-    # Fetch paired endedness?
+    
+    # for old flowcells where the LIMS hasn't been updated, update old file prefix to new prefix
+    # (this might be fixed now?)
+    if re.search("monarch",basedir):
+        fc_loc = "/net/seq/data/flowcells/"
+        fc_dirname = basedir.replace("/net/monarch/vol2/tag/stamlab/flowcells/","")
+        basedir = fc_loc+fc_dirname
+    
+    # fetch paired endedness
     paired_end = data['flowcell']['paired_end']
-    label = data['alignment_group']['label']	# anishida: added label
-    mersize = data['flowcell']['read_length']	# anishida: fetches read length
+    label = data['alignment_group']['label']	
+    mersize = data['flowcell']['read_length']
     date = data['alignment_group']['label'].split('_')[1]
 
-    # get browsersheet information!
-
+    # get browsersheet information
     lims = LimsQuery( poptions.api_url, poptions.api_token )
 
-    browsers = set()
     load_groups = dict()
+
+    # find projects    
     for l in data['libraries']:
         for a in l['alignments']:
-            if a['browsers']:    # Only process alignments that map to a browser
-                align_data = get_alignment_data(l, a, lims)
-                if not align_data['failed_lane']:
-                    for b in a['browsers']:
-                        browsers.add(b)
-                        key = ( align_data['project'], b )
-                        if not key in load_groups:
-                            load_groups[key] = []
-                        load_groups[key].append( align_data )
-
-    for group_key in load_groups.keys():
-        (project, browser) = group_key
-
-        lane_group = load_groups[group_key]
-
-        browserconfig = os.path.join( os.getenv("STAMPIPES"), "config", "ucsc_browser", "%s-%s.config" % (browser, project) )
-
-        if not os.path.isfile(browserconfig):
-            logging.error("No configuration file '%s' exists, don't know how to load project %s into browser %s"
-                          % (browserconfig, project, browser ))
-            sys.exit(1)
-
-
-        logging.info("Reading browser configuration from %s" % browserconfig)
-
-        outdir = os.path.join( basedir, "browser-load-%s-%s" % (project, browser))
-
-        loader = MakeBrowserload(lane_group, browserconfig, basedir, outdir, mersize, poptions.priority, paired_end, project, label, date)
+            align_data = get_alignment_data(l, a, lims)
+            if not align_data['failed_lane']:
+                p = align_data['project']
+                if not p in load_groups:
+                    load_groups[p] = []
+                load_groups[p].append( align_data )
+    
+    for project in load_groups.keys():
+        lane_group = load_groups[project]
+        logging.info("the basedirectory is: %s" % basedir)
+        outdir = os.path.join( basedir, "browser-load-%s" % project)
+        loader = MakeBrowserload(lane_group, trackhubconfig, basedir, outdir, mersize, poptions.priority, paired_end, project, label, date)
         loader.load()
-
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
