@@ -121,6 +121,7 @@ Workflow,GenerateFASTQ
 
 [Data]
 SampleID,SampleName,index,index2
+none,none,GGGGGGGG,GGGGGGGG
 __SHEET__
 
 if [ -z "$demux" ] ; then
@@ -368,7 +369,7 @@ __FASTQ__
 qsub -cwd -N "dmx-$flowcell" -hold_jid "u-$flowcell" -V -S /bin/bash <<__DMX__
   $demux_cmd
   # Wait for jobs to finish
-  while ( qstat -xml | grep -q '<JB_name>.dmx' ) ; do
+  while ( qstat -xml | grep -q '<JB_name>.dmx' || squeue -o "%j" | grep -q '^.dmx') ; do
     sleep 60
   done
 __DMX__
