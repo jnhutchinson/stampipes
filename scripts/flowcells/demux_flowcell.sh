@@ -100,7 +100,7 @@ for i in "${inputfiles[@]}" ; do
 
   # If dryrun; we want the output on stdout, not qsubbed.
   if [ -z "$dryrun" ] ; then
-    submitjob="qsub -cwd -V -q all.q -N .dmx$(basename "$i")"
+    submitjob="qsub -cwd -V -N .dmx$(basename "$i")"
   else
     submitjob="bash"
   fi
