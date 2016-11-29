@@ -33,7 +33,7 @@ fi
 
 bash "$STAMPIPES/scripts/versions.bash" &> "$VERSION_FILE"
 
-qsub -cwd -V -q all.q -N ".th${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}" -now no -pe threads "$SLOTS" -S /bin/bash <<__MAKE__
+qsub -cwd -V -N ".th${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}" -now no -pe threads "$SLOTS" -S /bin/bash <<__MAKE__
   set -x -e -o pipefail
   echo "Hostname: "
   hostname
