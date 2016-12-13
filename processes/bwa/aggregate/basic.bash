@@ -34,8 +34,9 @@ export INSERT_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard
 export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
 
 export HOTSPOT_DIR=peaks
-export HOTSPOT_CALLS=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.hotspots.fdr0.05.starch
-export HOTSPOT_DENSITY=$HOTSPOT_DIR/$LIBRARY_NAME.$GENOME.uniques.sorted.density.bw
+HOTSPOT_PREFIX=$(basename "$TEMP_UNIQUES_BAM" .bam)
+export HOTSPOT_CALLS=$HOTSPOT_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.05.starch
+export HOTSPOT_DENSITY=$HOTSPOT_DIR/$HOTSPOT_PREFIX.sorted.density.bw
 
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
@@ -100,8 +101,10 @@ fi
 # Run Hotspot2
 if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
+  HOTSPOT_SPOT=$HOTSPOT_DIR/$HOTSPOT_PREFIX.SPOT.txt
   qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
     "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$TEMP_UNIQUES_BAM"  "$HOTSPOT_DIR"
+    "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.txt"
 __SCRIPT__
 fi
 
