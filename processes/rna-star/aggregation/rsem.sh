@@ -39,8 +39,10 @@ if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
     function convertBedGraph(){
       in="$1"
       base="$2"
+
+
       chrom="$in.onlyChr.bg"
-      grep '^chr' "$in" > $chrom
+      grep '^chr' "$in" | sort -k1,1 -k2,2n > $chrom
       bedGraphToBigWig "$chrom" chrNL.txt "$base.bw.tmp"
       starch "$chrom" > "$base.starch.tmp"
     }
