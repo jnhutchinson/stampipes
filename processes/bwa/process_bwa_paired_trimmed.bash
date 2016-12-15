@@ -269,7 +269,7 @@ __SCRIPT__
 fi
 
 # Preseq duplicate estimation
-if [[ ! -s "$SAMPLE_NAME.preseq.targets.txt" ]]; then
+if [[ ! -s "$SAMPLE_NAME.uniques.preseq.targets.txt" || ! -s "$SAMPLE_NAME.uniques.dup.lorentz.txt" ]]; then
   JOBNAME=".ps${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
   qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<'__SCRIPT__'
@@ -277,6 +277,7 @@ if [[ ! -s "$SAMPLE_NAME.preseq.targets.txt" ]]; then
     hist=$SAMPLE_NAME.uniques.duphist.txt
     preseq=$SAMPLE_NAME.uniques.preseq.txt
     targets=$SAMPLE_NAME.uniques.preseq.targets.txt
+    lorentz=$SAMPLE_NAME.uniques.dup.lorentz.txt
 
     FRAGMENT_TARGETS=(
       20000000
@@ -288,7 +289,15 @@ if [[ ! -s "$SAMPLE_NAME.preseq.targets.txt" ]]; then
   )
 
     python3 "$STAMPIPES/scripts/bam/mark_dups.py" -i "$UNIQUES_BAM" -o /dev/null --hist "$hist"
+
+    # Get gini / robinhood metrics
+    python3 "$STAMPIPES/scripts/utility/lorentz.py" < "$hist" > "$lorentz"
+    python3 "$STAMPIPES/scripts/lims/upload_data.py" -a "$LIMS_API_URL" -t "$LIMS_API_TOKEN" --alignment_id "$ALIGNMENT_ID" --countsfile "$lorentz"
+
+    # Get preseq metrics
     preseq lc_extrap -hist "$hist" -extrap 1.001e9 -s 1e6 -v > "$preseq"
+
+    # Write preseq targets out
     rm -f "$targets"
     for target in "${FRAGMENT_TARGETS[@]}" ; do
       fragments_needed=$(awk -v "target=$target" 'NR>1 && $2 > target {printf "%d", $1; exit}' "$preseq")
