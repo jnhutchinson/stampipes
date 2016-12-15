@@ -5,6 +5,7 @@ module load R/3.2.5       # for RSEM
 module load coreutils/8.25 # parallel sort
 
 module load STAR/2.4.2a
+module load perl/5.16.3
 module load RSEM/1.2.30
 
 source "$PYTHON3_ACTIVATE"
