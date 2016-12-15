@@ -100,7 +100,7 @@ str_SE|str_PE)
       do
       for imult in Unique UniqueMultiple
       do
-          grep ^chr Signal.$imult.str$istr.out.bg > sig.tmp
+          grep ^chr Signal.$imult.str$istr.out.bg | sort -k1,1 -k2,2n > sig.tmp
           $bedGraphToBigWig sig.tmp  chrNL.txt Signal.$imult.strand${str[istr]}.bw
       done
       done
@@ -109,7 +109,7 @@ unstr_SE|unstr_PE)
       # unstranded data
       for imult in Unique UniqueMultiple
       do
-          grep ^chr Signal.$imult.str1.out.bg > sig.tmp
+          grep ^chr Signal.$imult.str1.out.bg | sort -k1,1 -k2,2n > sig.tmp
           $bedGraphToBigWig sig.tmp chrNL.txt  Signal.$imult.unstranded.bw
       done
       ;;
