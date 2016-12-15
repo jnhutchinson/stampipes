@@ -6,6 +6,7 @@ module load R/3.2.5
 module load STAR/2.4.2a   # Just for densities
 module load bedops/2.4.19
 
+module load perl/5.16.3
 module load RSEM/1.2.30
 
 export REFDIR="$(dirname $GENOME_INDEX)"
