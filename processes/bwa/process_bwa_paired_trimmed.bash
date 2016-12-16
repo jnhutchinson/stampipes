@@ -2,6 +2,7 @@
 
 # Dependencies
 source "$MODULELOAD"
+module load zlib/1.2.8
 module load bedops/2.4.19
 module load bedtools/2.25.0
 module load bwa/0.7.12
