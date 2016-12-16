@@ -305,6 +305,8 @@ if [[ ! -s "$SAMPLE_NAME.uniques.preseq.targets.txt" || ! -s "$SAMPLE_NAME.uniqu
         echo -e "preseq-est-for-$target\t$fragments_needed" >> "$targets"
       fi
     done
+    maximum=$(awk 'END{print int($2)}' "$preseq")
+    echo -e "preseq-est-max\t$maximum" >> "$targets"
     python3 "$STAMPIPES/scripts/lims/upload_data.py" -a "$LIMS_API_URL" -t "$LIMS_API_TOKEN" --alignment_id "$ALIGNMENT_ID" --countsfile "$targets"
 __SCRIPT__
 fi
