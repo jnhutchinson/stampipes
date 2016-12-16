@@ -298,6 +298,14 @@ if [[ ! -s "$SAMPLE_NAME.uniques.preseq.targets.txt" || ! -s "$SAMPLE_NAME.uniqu
     # Get preseq metrics
     preseq lc_extrap -hist "$hist" -extrap 1.001e9 -s 1e6 -v > "$preseq"
 
+    python3 "$STAMPIPES/scripts/lims/upload_data.py" -a "$LIMS_API_URL" -t "$LIMS_API_TOKEN" \
+      --attach_file "$preseq" \
+      --attach_file_purpose preseq-estimation \
+      --attach_file_type plaintext \
+      --attach_file_objectid "$ALIGNMENT_ID" \
+      --attach_file_contenttype SequencingData.flowcelllanealignment
+
+
     # Write preseq targets out
     rm -f "$targets"
     for target in "${FRAGMENT_TARGETS[@]}" ; do
