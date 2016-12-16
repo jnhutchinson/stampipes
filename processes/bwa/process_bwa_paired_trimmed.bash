@@ -324,6 +324,7 @@ if [[ ! -e "$SAMPLE_NAME.uniques.spot2.out" ]]; then
   JOBNAME=".sp2$JOB_BASENAME"
   PROCESSING="$PROCESSING,$JOBNAME"
 
+  HOTSPOT_PREFIX=$(basename "$UNIQUES_BAM" .bam)
   qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -e -u -o errexit
     num_fragments=\$(samtools idxstats "$UNIQUES_BAM" | awk '{x+=\$3}END{print x/2}')
@@ -343,7 +344,11 @@ if [[ ! -e "$SAMPLE_NAME.uniques.spot2.out" ]]; then
       "$ALIGN_DIR/hotspot2"
 
       cd "$ALIGN_DIR"
-      cp "hotspot2/$(basename "$UNIQUES_BAM" .bam).SPOT.txt" "$SAMPLE_NAME.uniques.spot2.out"
+      cp "hotspot2/$HOTSPOT_PREFIX.SPOT.txt" "$SAMPLE_NAME.uniques.spot2.out"
+      "$STAMPIPES/scripts/SPOT/info.sh" \
+        "hotspot2/$HOTSPOT_PREFIX.hotspots.fdr0.05.starch" \
+        hotspot2 \
+        hotspot2/$HOTSPOT_PREFIX.SPOT.txt > "$HOTSPOT_PREFIX.hotspot2.info"
 
 __SCRIPT__
 
