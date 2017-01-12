@@ -171,7 +171,7 @@ fi
 case $run_type in
 "NextSeq 500")
     echo "Regular NextSeq 500 run detected"
-    parallel_env="-pe threads 8"
+    parallel_env="-pe threads 6"
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
@@ -208,7 +208,7 @@ _U_
     ;;
 "HiSeq 4000")
     echo "Hiseq 4000 run detected"
-    parallel_env="-pe threads 8"
+    parallel_env="-pe threads 6"
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
@@ -246,7 +246,7 @@ _U_
 "MiniSeq High Output Kit")
     # Identical to nextseq processing
     echo "High-output MiniSeq run detected"
-    parallel_env="-pe threads 4-8"
+    parallel_env="-pe threads 6"
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
@@ -349,14 +349,14 @@ lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
 # Submit a barcode job for each mask
 for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
     export bcmask
-    qsub -cwd -N "bc-$flowcell" -q queue2 -pe threads 8 -V -S /bin/bash <<'__BARCODES__'
+    qsub -cwd -N "bc-$flowcell" -q queue2 $parallel_env -V -S /bin/bash <<'__BARCODES__'
     GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
 
     python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
 __BARCODES__
 done
 
-qsub -cwd -N "u-$flowcell" -q queue2 $parallel_env  -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
+qsub -cwd -N "u-$flowcell" -q queue2 $parallel_env -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
 
 set -x -e -o pipefail
 
