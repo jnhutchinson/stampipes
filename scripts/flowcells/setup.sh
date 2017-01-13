@@ -368,6 +368,10 @@ __FASTQ__
 
 qsub -cwd -N "dmx-$flowcell" -q queue2 -hold_jid "u-$flowcell" -V -S /bin/bash <<__DMX__
   $demux_cmd
+  # Wait for jobs to finish
+  while ( squeue -o "%j" | grep -q '^.dmx') ; do
+    sleep 60
+  done
 __DMX__
 
 qsub -cwd -N "c-$flowcell" -q queue2 -hold_jid "dmx-$flowcell" -V -S /bin/bash <<__COPY__
@@ -396,14 +400,14 @@ python3 "$STAMPIPES/scripts/laneprocess.py" \
 # Create collation scripts
 python3 "$STAMPIPES/scripts/laneprocess.py" \
   --script_template "$STAMPIPES/processes/fastq/collate_fastq.bash" \
-  --qsub-prefix .cl \
+  --qsub-prefix .collatefq \
   --sample-script-basename "collate.bash" \
   --flowcell_label "$flowcell" \
   --outfile collate.bash
 
 bash collate.bash
 
-qsub -N .run$flowcell -q queue2 -hold_jid '.clDS*' -cwd -V -S /bin/bash <<__ALIGN__
+qsub -N .run$flowcell -q queue2 -hold_jid '.collatefq*' -cwd -V -S /bin/bash <<__ALIGN__
   bash fastqc.bash
 
   # Create alignment scripts
