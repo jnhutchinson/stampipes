@@ -712,8 +712,13 @@ class UploadLIMS(object):
             log.error("Barcode report %s is not valid JSON" % barcode_file)
             return
 
-        # This may need to be revisited if we get a new sequencer
-        flowcell_label = re.search( '.*_[AB]([A-Z0-9]{5})[AB][BNG]X[XY2]$', jsondata['BaseDir'] ).group(1)
+        if jsondata['Sequencer'] == 'MiniSeq':
+            print(jsondata['BaseDir'])
+            flowcell_label = re.search( '.*_[AB]000([A-Z0-9]{6}).*$', jsondata['BaseDir'] ).group(1)
+            print(flowcell_label)
+
+        else:
+            flowcell_label = re.search( '.*_[AB]([A-Z0-9]{5})[AB][BNG]X[XY2]$', jsondata['BaseDir'] ).group(1)
 
         flowcell_url = self.get_flowcell_url_by_label(flowcell_label)
 
