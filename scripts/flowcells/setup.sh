@@ -176,6 +176,7 @@ case $run_type in
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
+    queue="queue2"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1
 
@@ -213,6 +214,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--hiseq4k"
+    queue="queue2"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1-8
 
@@ -251,6 +253,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--miniseq"
+    queue="queue2"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1
     set +e
@@ -349,14 +352,14 @@ lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
 # Submit a barcode job for each mask
 for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
     export bcmask
-    qsub -cwd -N "bc-$flowcell" -q queue2 $parallel_env -V -S /bin/bash <<'__BARCODES__'
+    qsub -cwd -N "bc-$flowcell" -q $queue $parallel_env -V -S /bin/bash <<'__BARCODES__'
     GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
 
     python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
 __BARCODES__
 done
 
-qsub -cwd -N "u-$flowcell" -q queue2 $parallel_env -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
+qsub -cwd -N "u-$flowcell" -q $queue $parallel_env -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
 
 set -x -e -o pipefail
 
@@ -366,7 +369,7 @@ $unaligned_command
 
 __FASTQ__
 
-qsub -cwd -N "dmx-$flowcell" -q queue2 -hold_jid "u-$flowcell" -V -S /bin/bash <<__DMX__
+qsub -cwd -N "dmx-$flowcell" -q $queue -hold_jid "u-$flowcell" -V -S /bin/bash <<__DMX__
   $demux_cmd
   # Wait for jobs to finish
   while ( squeue -o "%j" | grep -q '^.dmx') ; do
@@ -374,7 +377,7 @@ qsub -cwd -N "dmx-$flowcell" -q queue2 -hold_jid "u-$flowcell" -V -S /bin/bash <
   done
 __DMX__
 
-qsub -cwd -N "c-$flowcell" -q queue2 -hold_jid "dmx-$flowcell" -V -S /bin/bash <<__COPY__
+qsub -cwd -N "c-$flowcell" -q $queue -hold_jid "dmx-$flowcell" -V -S /bin/bash <<__COPY__
 mkdir -p "$analysis_dir"
 
 rsync -avP "$copy_from_dir" "$analysis_dir/"
@@ -393,6 +396,7 @@ rm -f fastqc.bash collate.bash run.bash
 python3 "$STAMPIPES/scripts/laneprocess.py" \
   --script_template "$STAMPIPES/processes/fastq/fastqc.bash" \
   --qsub-prefix .fq \
+  --queue $queue \
   --sample-script-basename fastqc.bash \
   --flowcell_label "$flowcell" \
   --outfile fastqc.bash
@@ -401,13 +405,14 @@ python3 "$STAMPIPES/scripts/laneprocess.py" \
 python3 "$STAMPIPES/scripts/laneprocess.py" \
   --script_template "$STAMPIPES/processes/fastq/collate_fastq.bash" \
   --qsub-prefix .collatefq \
+  --queue $queue \
   --sample-script-basename "collate.bash" \
   --flowcell_label "$flowcell" \
   --outfile collate.bash
 
 bash collate.bash
 
-qsub -N .run$flowcell -q queue2 -hold_jid '.collatefq*' -cwd -V -S /bin/bash <<__ALIGN__
+qsub -N .run$flowcell -q $queue -hold_jid '.collatefq*$flowcell*' -cwd -V -S /bin/bash <<__ALIGN__
   bash fastqc.bash
 
   # Create alignment scripts
