@@ -31,7 +31,7 @@ The current modules to load for working the pipeline are:
 * `gcc/4.7.2`
 * `git/2.3.3`
 * `jdk/1.8.0_92`
-* `picard/1.120`
+* `picard/2.8.1`
 * `pigz/2.3.3`
 * `pysam/0.9.0`
 * `python/2.7.11`

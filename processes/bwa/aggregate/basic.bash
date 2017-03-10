@@ -1,10 +1,9 @@
-
 source $MODULELOAD
 module load bedops/2.4.19
 module load jdk/1.8.0_92
 module load gcc/4.7.2
 module load R/3.2.5
-module load picard/1.120
+module load picard/2.8.1
 module load samtools/1.3
 module load git/2.3.3
 module load coreutils/8.25
@@ -19,12 +18,10 @@ BINI=20
 
 cd $AGGREGATION_FOLDER
 
-BAM_COUNT=`ls $BAM_FILES | wc -l`
-
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 
 export FINAL_BAM=${LIBRARY_NAME}.${GENOME}.sorted.bam
-export TEMP_UNIQUES_BAM=${LIBRARY_NAME}.${GENOME}.uniques.sorted.bam
+export FINAL_UNIQUES_BAM=${LIBRARY_NAME}.${GENOME}.uniques.sorted.bam
 export TAGCOUNTS_FILE=${LIBRARY_NAME}.tagcounts.txt
 export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.bed.starch
 export DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.bw
@@ -34,7 +31,7 @@ export INSERT_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard
 export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
 
 export HOTSPOT_DIR=peaks
-HOTSPOT_PREFIX=$(basename "$TEMP_UNIQUES_BAM" .bam)
+HOTSPOT_PREFIX=$(basename "$FINAL_UNIQUES_BAM" .bam)
 export HOTSPOT_CALLS=$HOTSPOT_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.05.starch
 export HOTSPOT_DENSITY=$HOTSPOT_DIR/$HOTSPOT_PREFIX.sorted.density.bw
 
@@ -58,17 +55,9 @@ CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
 PROCESSING=""
 
-if [[ ! -s "$FINAL_BAM.bai" || ! -s "$TEMP_UNIQUES_BAM.bai" || ( ! -s "$INSERT_FILE" && -n "$PAIRED" ) || ( ! -s "$DUPS_FILE" && -z "$UMI" ) ]] ; then
+if [[ ! -s "$FINAL_BAM.bai" || ! -s "$FINAL_UNIQUES_BAM.bai" || ! -s "$DUPS_FILE" || (! -s "$INSERT_FILE" && -n "$PAIRED") ]]; then
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
-
-# If we are  UMI, we will need a lot of power for sorting!
-if [ "$UMI" = "True" ]; then
-  echo "Processing with UMI"
-  export SUBMIT_SLOTS="-pe threads 4"
-  echo "Excluding duplicates from uniques bam"
-  export EXCLUDE_FLAG=1536
-fi
 
 qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
@@ -76,22 +65,38 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
   echo "Hostname: "
   hostname
 
-  echo "START: "
+  echo "START: processing BAMs"
   date
 
-  export BAM_COUNT=$BAM_COUNT
+  # merge BAMs
+  if [[ ! -s "$FINAL_BAM" ]] ; then
+    
+    BAM_COUNT=`ls $BAM_FILES | wc -l`
+    if [[ $BAM_COUNT -eq 1 ]]; then
+      rsync ${BAM_FILES} ${FINAL_BAM}
+    else
+      samtools merge ${FINAL_BAM} ${BAM_FILES}
+    fi
 
-  if [[ ! -s "$FINAL_BAM" || ! -s "$DUPS_FILE" ]] ; then
-    bash $STAMPIPES/scripts/bwa/aggregate/merge.bash
   fi
 
-  make_target="all"
-  if [[ -z "$PAIRED" ]] ; then # We don't need to run InsertSizeMetrics for single-end reads
-    make_target="single_ended"
-  fi
-  make -f "$STAMPIPES/makefiles/bwa/process_paired_bam.mk" "SAMPLE_NAME=${LIBRARY_NAME}" "INBAM=${FINAL_BAM}" "OUTBAM=${TEMP_UNIQUES_BAM}" "\$make_target"
+  # process BAM
+  if [[ ! -s $DUPS_FILE || $FINAL_UNIQUES_BAM ]] ; then
 
-  echo "FINISH: "
+    if [[ "$UMI" == "True" ]]; then
+      make -f "/home/anishida/scripts/pipe/dups_cigarumi.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
+    else
+      make -f "/home/anishida/scripts/pipe/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
+    fi
+
+  fi
+  
+  # calculate insert sizes
+  if [[ ! -s $INSERT_FILE ]]; then
+    make -f "$STAMPIPES/makefiles/picard/insert_size_metrics.mk" "SAMPLE_NAME=${LIBRARY_NAME}" "BAMFILE=${FINAL_UNIQUES_BAM}" "INSERTMETRICS=${INSERT_FILE}"
+  fi
+
+  echo "FINISH: processing BAMs"
   date
 
 __SCRIPT__
@@ -103,7 +108,7 @@ if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
   HOTSPOT_SPOT=$HOTSPOT_DIR/$HOTSPOT_PREFIX.SPOT.txt
   qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$TEMP_UNIQUES_BAM"  "$HOTSPOT_DIR"
+    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT_DIR"
     "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.info"
 __SCRIPT__
 fi
@@ -144,8 +149,8 @@ qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/ba
   date
 
   make -f $STAMPIPES/makefiles/densities/density.mk FAI=${GENOME_INDEX}.fai SAMPLE_NAME=${LIBRARY_NAME} GENOME=${GENOME} \
-     BAMFILE=${TEMP_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
-  make -f "$STAMPIPES/makefiles/densities/normalize-density.mk" BAMFILE=${TEMP_UNIQUES_BAM} SAMPLE_NAME=${LIBRARY_NAME} FAI=${GENOME_INDEX}.fai
+     BAMFILE=${FINAL_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
+  make -f "$STAMPIPES/makefiles/densities/normalize-density.mk" BAMFILE=${FINAL_UNIQUES_BAM} SAMPLE_NAME=${LIBRARY_NAME} FAI=${GENOME_INDEX}.fai
 
   echo "FINISH: "
   date
@@ -192,8 +197,6 @@ qsub -N "${JOB_BASENAME}_complete" -hold_jid "${PROCESSING}" -V -cwd -S /bin/bas
 
   bash $STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash
   bash $STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash
-
-  #rm ${TEMP_UNIQUES_BAM} ${TEMP_UNIQUES_BAM}.bai
 
   echo "FINISH: "
   date

@@ -19,14 +19,10 @@ TMPDIR ?= $(shell pwd)
 SAMTOOLS ?= samtools
 JAVA ?= java
 
-# This might not work in qmake??
-MARK_DUPS ?= $(PICARDPATH)/MarkDuplicates.jar
-
 SCRIPT_DIR ?= $(STAMPIPES)/scripts/tophat
 
 RIBOSOMAL_REF ?= $(REF_DIR)/contamination/hg_rRNA
 CONTROL_REF   ?= $(REF_DIR)/spikeInControlRNA/ERCC92
-
 
 ADAPTER_FILE ?= $(SAMPLE_NAME).adapters.txt
 
@@ -156,7 +152,7 @@ $(control_txt) : $(control_file)
 
 # Final (all) BAM
 $(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(tophat_file)
-	$(JAVA) -Xmx24g -jar $(MARK_DUPS) \
+	picard MarkDuplicates \
 		INPUT=$< \
 		METRICS_FILE=$(SAMPLE_NAME).spotdups.txt \
 		OUTPUT=$(marked_bam) \

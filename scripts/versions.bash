@@ -40,24 +40,9 @@ fastqc --version
 echo "---"
 fi
 
-CollectInsertSizeMetrics=$PICARDPATH/CollectInsertSizeMetrics.jar
-MarkDuplicates=$PICARDPATH/MarkDuplicates.jar
-
-if [[ $CollectInsertSizeMetrics || $MarkDuplicates ]]; then
-echo "PICARD APPS: "
-fi
-
-if [[ $CollectInsertSizeMetrics ]]; then
-echo "CollectInsertSizeMetrics"
-java -jar $CollectInsertSizeMetrics  --version
-fi
-
-if [[ $MarkDuplicates ]]; then
-echo "MarkDuplicates"
-java -jar $MarkDuplicates --version
-fi
-
-if [[ $CollectInsertSizeMetrics || $MarkDuplicates ]]; then
+if [[ `command -v picard` ]]; then
+echo "Picard: "
+picard MarkDuplicates  --version
 echo "---"
 fi
 
