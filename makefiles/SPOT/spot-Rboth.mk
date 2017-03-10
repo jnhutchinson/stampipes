@@ -23,7 +23,6 @@ FAI ?= $(BWAINDEX).fai
 SAMPLE_SIZE ?= 5000000
 BAMFILE ?= $(SAMPLE_NAME).uniques.sorted.bam
 STAMPIPES ?= ~/stampipes
-PICARD_DIR ?= ~/picard-tools-1.114
 HOTSPOT_DIR ?= ~/hotspot/hotspot-distr
 
 SAMTOOLS ?= samtools
@@ -74,6 +73,6 @@ $(RANDOM_SAMPLE_BAM).bed.sorted.bam : $(RANDOM_SAMPLE_BAM).bed
 
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM).bed.sorted.bam
-	java -jar $(PICARDPATH)/MarkDuplicates.jar INPUT=$(RANDOM_SAMPLE_BAM).bed.sorted.bam OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).Rboth.rand.uniques.dup \
-	  METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).Rboth.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
+	picard MarkDuplicates INPUT=$(RANDOM_SAMPLE_BAM).bed.sorted.bam OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).Rboth.rand.uniques.dup \
+		METRICS_FILE=$(OUTDIR)/$(SAMPLE_NAME).Rboth.rand.uniques.sorted.spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
 		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'

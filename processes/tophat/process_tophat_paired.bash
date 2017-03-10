@@ -4,7 +4,7 @@ module load bowtie/1.0.0
 module load cufflinks/2.2.1
 module load gcc/4.7.2
 module load jdk/1.8.0_92
-module load picard/1.120
+module load picard/2.8.1
 module load samtools/1.3
 module load tophat/2.0.13
 
