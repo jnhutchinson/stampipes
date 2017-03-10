@@ -213,15 +213,15 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
     if [[ ! -s $UNIQUES_BAM ]] ; then
 
       if [[ "$UMI" == "True" ]]; then
-         make -f "/home/anishida/scripts/pipe/dups_cigarumi.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
+         make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
        else
-         make -f "/home/anishida/scripts/pipe/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
+         make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
       fi
 
     fi
 
     # calculate insert size
-    make -f "/home/anishida/scripts/pipe/insert_size_metrics.mk" "SAMPLE_NAME=${SAMPLE_NAME}" "BAMFILE=${UNIQUES_BAM}"
+    make -f "$STAMPIPES/makefiles/picard/insert_size_metrics.mk" "SAMPLE_NAME=${SAMPLE_NAME}" "BAMFILE=${UNIQUES_BAM}"
 
     echo "FINISH: "
     date

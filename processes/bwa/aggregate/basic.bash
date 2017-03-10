@@ -84,9 +84,9 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
   if [[ ! -s $DUPS_FILE || $FINAL_UNIQUES_BAM ]] ; then
 
     if [[ "$UMI" == "True" ]]; then
-      make -f "/home/anishida/scripts/pipe/dups_cigarumi.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
+      make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
     else
-      make -f "/home/anishida/scripts/pipe/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
+      make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
     fi
 
   fi
