@@ -81,8 +81,8 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
   fi
 
   # no UMI options
-  make -f "/home/anishida/scripts/pipe/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
-  make -f "/home/anishida/scripts/pipe/insert_size_metrics.mk" "SAMPLE_NAME=${SAMPLE_NAME}" "BAMFILE=${UNIQUES_BAM}"
+  make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
+  make -f "$STAMPIPES/makefiles/picard/insert_size_metrics.mk" "SAMPLE_NAME=${SAMPLE_NAME}" "BAMFILE=${UNIQUES_BAM}"
 
   python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
     -t ${LIMS_API_TOKEN} \
