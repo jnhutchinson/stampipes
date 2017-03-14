@@ -17,6 +17,8 @@ WIN=75
 BINI=20
 
 cd $AGGREGATION_FOLDER
+BAM_COUNT=`ls $BAM_FILES | wc -l`
+QUEUE=queue0
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 
@@ -59,7 +61,7 @@ if [[ ! -s "$FINAL_BAM.bai" || ! -s "$FINAL_UNIQUES_BAM.bai" || ! -s "$DUPS_FILE
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
-qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -q ${QUEUE} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -71,17 +73,20 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
   # merge BAMs
   if [[ ! -s "$FINAL_BAM" ]] ; then
     
-    BAM_COUNT=`ls $BAM_FILES | wc -l`
     if [[ $BAM_COUNT -eq 1 ]]; then
       rsync ${BAM_FILES} ${FINAL_BAM}
     else
       samtools merge ${FINAL_BAM} ${BAM_FILES}
     fi
+    samtools index ${FINAL_BAM}
 
   fi
 
+  echo "PROCESSING: merged BAMs"
+  date
+
   # process BAM
-  if [[ ! -s $DUPS_FILE || $FINAL_UNIQUES_BAM ]] ; then
+  if [[ ! -s $FINAL_UNIQUES_BAM ]] ; then
 
     if [[ "$UMI" == "True" ]]; then
       make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
@@ -90,6 +95,9 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stder
     fi
 
   fi
+
+  echo "PROCESSING: marked duplicates"
+  date
   
   # calculate insert sizes
   if [[ ! -s $INSERT_FILE ]]; then
@@ -107,7 +115,7 @@ fi
 if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
   HOTSPOT_SPOT=$HOTSPOT_DIR/$HOTSPOT_PREFIX.SPOT.txt
-  qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -q ${QUEUE} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
     "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT_DIR"
     "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.info"
 __SCRIPT__
@@ -117,7 +125,7 @@ if [ ! -e $TAGCOUNTS_FILE ]; then
 
 PROCESSING="$PROCESSING,${COUNT_JOBNAME}"
 
-qsub -N "${COUNT_JOBNAME}" -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N "${COUNT_JOBNAME}" -q ${QUEUE} -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -139,7 +147,7 @@ if [[ ! -s "$DENSITY_BIGWIG" || ! -s "$NORM_DENSITY_BIGWIG" ]]; then
 
 PROCESSING="$PROCESSING,${DENSITY_JOBNAME}"
 
-qsub -N "${DENSITY_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N "${DENSITY_JOBNAME}" -q ${QUEUE} -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -163,7 +171,7 @@ if [ ! -e $CUTCOUNTS_BIGWIG ]; then
 
 PROCESSING="$PROCESSING,${CUTCOUNTS_JOBNAME}"
 
-qsub -N "${CUTCOUNTS_JOBNAME}" -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N "${CUTCOUNTS_JOBNAME}" -q ${QUEUE} -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
 
   set -x -e -o pipefail
 
@@ -186,7 +194,7 @@ if [ -n ${PROCESSING} ]; then
 
 UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
 ATTACH_AGGREGATION="python3 $UPLOAD_SCRIPT --attach_file_contenttype AggregationData.aggregation --attach_file_objectid ${AGGREGATION_ID}"
-qsub -N "${JOB_BASENAME}_complete" -hold_jid "${PROCESSING}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N "${JOB_BASENAME}_complete" -q ${QUEUE} -hold_jid "${PROCESSING}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "

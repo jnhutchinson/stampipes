@@ -176,7 +176,7 @@ case $run_type in
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
-    queue="queue2"
+    queue="queue0"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1
 
@@ -214,7 +214,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--hiseq4k"
-    queue="queue2"
+    queue="queue0"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1-8
 
@@ -253,7 +253,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--miniseq"
-    queue="queue2"
+    queue="queue0"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1
     set +e
