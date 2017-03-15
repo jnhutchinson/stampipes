@@ -205,6 +205,9 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
 
       echo "FINISH MERGE: "
       date
+
+      samtools index ${FINAL_BAM}
+
     else
       echo "$FINAL_BAM exists already"
     fi
