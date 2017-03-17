@@ -5,7 +5,7 @@ module load bedops/2.4.19
 module load jdk/1.8.0_92
 module load gcc/4.7.2
 module load R/3.2.5
-module load picard/1.120
+module load picard/2.8.1
 module load samtools/1.3
 module load git/2.3.3
 module load coreutils/8.25
@@ -56,14 +56,13 @@ if [ ! -e ${FINAL_BAM} ]; then
 
     $STAMPIPES/scripts/tophat/merge_or_copy_bam.sh \$TMPBAM  $BAM_FILES
 
-    java -Xmx24g -jar $PICARDPATH/MarkDuplicates.jar \
+    picard MarkDuplicates \
       INPUT=\$TMPBAM \
       METRICS_FILE=$LIBRARY_NAME.dups.txt \
       OUTPUT=$FINAL_BAM \
       REMOVE_DUPLICATES=false \
       ASSUME_SORTED=true \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
-
 
     echo "FINISH: "
     date
