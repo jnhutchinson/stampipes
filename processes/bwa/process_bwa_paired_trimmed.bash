@@ -7,7 +7,7 @@ module load bedops/2.4.19
 module load bedtools/2.25.0
 module load bwa/0.7.12
 module load jdk/1.8.0_92
-module load picard/1.120
+module load picard/2.8.1
 module load samtools/1.3
 module load gcc/4.7.2
 module load R/3.2.5
@@ -23,6 +23,8 @@ module load hotspot2/20161006
 module load python/3.5.1
 module load pysam/0.9.0
 module load python/2.7.11
+
+export QUEUE=queue0
 
 export MAX_MISMATCHES=2
 export MIN_MAPPING_QUALITY=10
@@ -89,7 +91,7 @@ for filenum in $(seq -f "%03g" 0 $((NUMBER_FASTQ_FILES - 1))); do
 
   if [[ ! -e "$BAMFILE" && ! -e "$FINAL_BAM" ]]; then
 
-    qsub -p "$ALN_PRIORITY" -N "$NAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+    qsub -p "$ALN_PRIORITY" -N "$NAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
       set -x -e -o pipefail
 
       echo "Hostname: "
@@ -180,16 +182,9 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
   JOBNAME=".pb${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  # If we are processing UMI, we will need a lot of power for sorting!
-  if [[ "$UMI_METHOD" = "single-strand" ]]; then
-    export SUBMIT_SLOTS="-pe threads 1"
-  fi
-
-  export PRE_DUP_BAM=${SAMPLE_NAME}.predup.sorted.bam
-  export PRE_DUP_BAM_PREFIX=${PRE_DUP_BAM%.*}
   export FINAL_BAM_PREFIX=${FINAL_BAM%.*}
 
-  qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd -S /bin/bash <<__SCRIPT__
+  qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash <<__SCRIPT__
     set -x -e -o pipefail
 
     echo "Hostname: "
@@ -208,46 +203,31 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
         samtools merge ${FINAL_BAM} ${FASTQ_PAIR_BAMS}
       fi
 
-  # Skip Dup marking
-
-      # If we are working with a UMI, we can create the duplicate score and replace
-      # the final BAM with one marked with duplicates
-      if [[ "$UMI" = "True" ]]; then
-        echo "START UMI DUP: "
-        date
-
-        rsync $FINAL_BAM \$TMPDIR/${PRE_DUP_BAM}
-        rm -f $FINAL_BAM
-
-        make -f $STAMPIPES/makefiles/umi/mark_duplicates.mk INPUT_BAM_FILE=\$TMPDIR/${PRE_DUP_BAM} \
-          OUTPUT_BAM_FILE=\$TMPDIR/${FINAL_BAM}.presort
-        samtools sort \$TMPDIR/${FINAL_BAM}.presort > $FINAL_BAM_PREFIX.bam
-
-        echo "FINISH UMI DUP: "
-        date
-      fi
-
       echo "FINISH MERGE: "
       date
+
+      samtools index ${FINAL_BAM}
+
     else
       echo "$FINAL_BAM exists already"
     fi
 
-  # Skip dup marking and inserts and uniquely-mapping steps.
-    echo "START PROCESS BAM: "
+    # filter full BAM and mark duplicates
+    if [[ ! -s $UNIQUES_BAM ]] ; then
+
+      if [[ "$UMI" == "True" ]]; then
+         make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
+       else
+         make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
+      fi
+
+    fi
+
+    # calculate insert size
+    make -f "$STAMPIPES/makefiles/picard/insert_size_metrics.mk" "SAMPLE_NAME=${SAMPLE_NAME}" "BAMFILE=${UNIQUES_BAM}"
+
+    echo "FINISH: "
     date
-
-    make -f $STAMPIPES/makefiles/bwa/process_paired_bam.mk
-
-    echo "FINISH PROCESS BAM: "
-    date
-
-    echo "START PICARD DUP: "
-    date
-
-    make -f $STAMPIPES/makefiles/picard/dups.mk
-
-    echo "FINISH PICARD DUP: " date
 
     python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
@@ -273,7 +253,7 @@ fi
 if [[ ! -s "$SAMPLE_NAME.uniques.preseq.targets.txt" || ! -s "$SAMPLE_NAME.uniques.dup.lorentz.txt" ]]; then
   JOBNAME=".ps${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
-  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<'__SCRIPT__'
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<'__SCRIPT__'
     set -x
     hist=$SAMPLE_NAME.uniques.duphist.txt
     preseq=$SAMPLE_NAME.uniques.preseq.txt
@@ -325,7 +305,7 @@ if [[ ! -e "$SAMPLE_NAME.uniques.spot2.out" ]]; then
   PROCESSING="$PROCESSING,$JOBNAME"
 
   HOTSPOT_PREFIX=$(basename "$UNIQUES_BAM" .bam)
-  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -e -u -o errexit
     num_fragments=\$(samtools idxstats "$UNIQUES_BAM" | awk '{x+=\$3}END{print x/2}')
     if [[ \$num_fragments -lt 10000000 ]]; then
@@ -360,7 +340,7 @@ if [[ ! -e "$SAMPLE_NAME.tagcounts.txt" || -n "$FORCE_COUNTS" ]]; then
   JOBNAME=".ct${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
     echo "Hostname: "
     hostname
@@ -389,7 +369,7 @@ if [[ ! -e "$SAMPLE_NAME.R1.rand.uniques.sorted.spot.out" || ! -e "$SAMPLE_NAME.
   JOBNAME=".sp${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
 
     echo "Hostname: "
@@ -421,7 +401,7 @@ if [[ ! -e "$SAMPLE_NAME.75_20.$GENOME.bw" ]]; then
   JOBNAME=".den${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
 
     echo "Hostname: "
@@ -442,7 +422,7 @@ fi
 
 if [[ -n "$PROCESSING" ]]; then
 
-  qsub -p "$BASE_PRIORITY" -hold_jid "$PROCESSING" -N ".com$JOB_BASENAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p "$BASE_PRIORITY" -hold_jid "$PROCESSING" -N ".com$JOB_BASENAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
     echo "Hostname: "
     hostname

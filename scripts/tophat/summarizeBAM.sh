@@ -9,10 +9,8 @@ bam=$2
 strandSpecificity=$3
 REF_FLAT=$4
 
-
 pushd `dirname $bam`
 bam=`basename $bam`
-picardfolder=$PICARDPATH
 
 opspecs=( "InsertSize?HISTOGRAM_FILE=histo_insert_size_$name.pdf"  \
          "AlignmentSummary?" )
@@ -27,8 +25,7 @@ do
     params=`echo $opspec | cut -f2- -d'?'`
     output=picard.$name.$op.txt
     if ! [ -f  "$output" ] ; then
-        operationjar=$picardfolder/Collect${op}Metrics.jar
-        java -Xmx1000m -jar $operationjar INPUT=$bam OUTPUT=$output $params VALIDATION_STRINGENCY=SILENT
+        picard Collect${op}Metrics INPUT=$bam OUTPUT=$output $params VALIDATION_STRINGENCY=SILENT
     fi
     if [ -s "$output" ] ; then
         cat $output | grep -v '^#' | grep -A4 _ | $SCRIPT_DIR/transposeTable.pl | $SCRIPT_DIR/encomma.pl  > xp.$output

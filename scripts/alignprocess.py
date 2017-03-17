@@ -24,6 +24,7 @@ script_options = {
     "tag": None,
     "outfile": os.path.join(os.getcwd(), "run.bash"),
     "sample_script_basename": "run.bash",
+    "qsub_queue": "queue0",
     "qsub_prefix": ".proc",
     "dry_run": False,
     "no_mask": False,
@@ -64,6 +65,8 @@ def parser_setup():
         help="Name of the script that goes after the sample name.")
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
+    parser.add_argument("--qsub-queue", dest="qsub_queue",
+        help="Name of the SLURM queue")
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
         help="Take no action, only print messages.")
     parser.add_argument("--no-mask", dest="no_mask", action="store_true",
@@ -93,6 +96,7 @@ class ProcessSetUp(object):
         self.redo_completed = args.redo_completed
         self.script_template = args.script_template
         self.qsub_priority = args.qsub_priority
+        self.qsub_queue = args.qsub_queue
 
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
@@ -212,7 +216,7 @@ class ProcessSetUp(object):
             outfile = open(self.outfile, 'a')
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
-        outfile.write("qsub -p %d -N \"%s%s-%s-ALIGN#%d\" -cwd -V -S /bin/bash %s\n\n" % (self.qsub_priority, self.qsub_prefix, sample_name, processing_info['flowcell']['label'], align_id, script_file))
+        outfile.write("qsub -p %d -N \"%s%s-%s-ALIGN#%d\" -q %s -cwd -V -S /bin/bash %s\n\n" % (self.qsub_priority, self.qsub_prefix, sample_name, processing_info['flowcell']['label'], align_id, self.qsub_queue, script_file))
 
         outfile.close()
 

@@ -6,7 +6,7 @@ module load bedops/2.4.19
 module load bedtools/2.25.0
 module load bwa/0.7.12
 module load jdk/1.8.0_92
-module load picard/1.120
+module load picard/2.8.1
 module load samtools/1.3
 module load gcc/4.7.2
 module load R/3.2.5
@@ -19,6 +19,8 @@ module load pigz/2.3.3
 module load python/3.5.1
 module load pysam/0.9.0
 module load python/2.7.11
+
+export QUEUE=queue2
 
 MAX_MISMATCHES=2
 MIN_MAPPING_QUALITY=10
@@ -69,7 +71,7 @@ do
     
 if [ ! -e $BAMFILE -a ! -e ${FINAL_BAM} ]; then
 
-qsub -N ${NAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N ${NAME} -q $QUEUE -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -113,7 +115,7 @@ PROCESS_HOLD="-hold_jid .pb${JOB_BASENAME}"
 JOBNAME=".pb${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME"
 
-qsub ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -V -cwd -S /bin/bash << __SCRIPT__
+qsub ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -177,7 +179,7 @@ if [ ! -e ${SAMPLE_NAME}.tagcounts.txt -o -n "$FORCE_COUNTS" ]; then
   JOBNAME=".ct${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: "
   hostname
@@ -206,7 +208,7 @@ if [ ! -e ${SAMPLE_NAME}.rand.uniques.sorted.spot.out -o ! -e ${SAMPLE_NAME}.ran
 JOBNAME=".sp${JOB_BASENAME}"
 PROCESSING="$PROCESSING,$JOBNAME" 
     
-qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -238,7 +240,7 @@ if [ ! -e ${SAMPLE_NAME}.75_20.${GENOME}.bw ]; then
   JOBNAME=".den${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  qsub $PROCESS_HOLD -N "$JOBNAME" -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -259,7 +261,7 @@ fi
 
 if [ -n "$PROCESSING" ]; then
 
-qsub -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -hold_jid ${PROCESSING} -N ".com${JOB_BASENAME}" -q $QUEUE -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
   echo "Hostname: "
   hostname
