@@ -14,6 +14,10 @@ export GENOME_BAM=Aligned.toGenome.out.bam
 
 export QUEUE=queue0
 
+if [ -n "$REDO_AGGREGATION" ]; then
+    bash $STAMPIPES/scripts/rna-star/aggregate/reset.bash
+fi
+
 numbam=$(wc -w <<< $BAM_FILES)
 # Temporary
 if [ ! -s "$TARGET_BAM" ] ; then
