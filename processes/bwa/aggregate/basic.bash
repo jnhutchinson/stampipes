@@ -44,6 +44,7 @@ export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n
 
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
+    rm -r $HOTSPOT_DIR
 fi
 
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup

@@ -29,18 +29,5 @@ for FILE in "${files[@]}"; do
     fi
 done
 
-# Delete old job file logs
-
-prefixes=( \
-     ".AGG#${AGGREGATION_ID}" \
-     ".agg" \
-)
-
-for PREFIX in "${prefixes[@]}"; do
-    for FILE in `find . -name "$PREFIX${LIBRARY_NAME}*${FLOWCELL}.*"`; do
-        echo "Removing $FILE"
-        rm $FILE
-    done
-done
 
 python3 $STAMPIPES/scripts/lims/upload_data.py --clear_aggregation_stats --aggregation_id ${AGGREGATION_ID}
