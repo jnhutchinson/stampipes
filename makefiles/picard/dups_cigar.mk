@@ -43,9 +43,9 @@ $(DUP_OUT) : $(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.bam
 		METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
 		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
 
-# Get rid of optical/PCR dupes
+# placeholder for further processing
 $(OUTBAM) : $(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.dupe.bam
-	samtools view -b -F 1024 $(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.dupe.bam > $(OUTBAM)
+	mv $(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.dupe.bam $(OUTBAM)
 
 # Index
 $(OUTBAMIND) : $(OUTBAM)
