@@ -219,11 +219,11 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
       if [[ "$UMI" == "True" ]]; then
          make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
          mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
-         samtools view -b -f 1536 ${FINAL_BAM} > ${UNIQUES_BAM}
+         samtools view -b -F 1536 ${FINAL_BAM} > ${UNIQUES_BAM}
        else
          make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
          mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
-         samtools view -b -f 512 ${FINAL_BAM} > ${UNIQUES_BAM}
+         samtools view -b -F 512 ${FINAL_BAM} > ${UNIQUES_BAM}
       fi
 
       samtools index ${FINAL_BAM}
