@@ -170,7 +170,7 @@ def get_dup_score(spotdup_file):
     try:
         for line in infile:
             if line.startswith("LIBRARY"):
-                percent_duplication = float(next(infile).strip().split("\t")[7])
+                percent_duplication = float(next(infile).strip().split("\t")[8])
 
         return percent_duplication
     except UnboundLocalError as e:
