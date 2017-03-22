@@ -23,6 +23,7 @@ QUEUE=queue0
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 
 export FINAL_BAM=${LIBRARY_NAME}.${GENOME}.sorted.bam
+export FINAL_BAM_MARKED=${LIBRARY_NAME}.${GENOME}.sorted.marked.bam
 export FINAL_UNIQUES_BAM=${LIBRARY_NAME}.${GENOME}.uniques.sorted.bam
 export TAGCOUNTS_FILE=${LIBRARY_NAME}.tagcounts.txt
 export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.bed.starch
@@ -90,10 +91,17 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -q ${QUEUE} -V -cwd -S /bin/bash 
   if [[ ! -s $FINAL_UNIQUES_BAM ]] ; then
 
     if [[ "$UMI" == "True" ]]; then
-      make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
+      make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
+      mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
+      samtools view -b -F 1536 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
     else
-      make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_UNIQUES_BAM}"
+      make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
+      mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
+      samtools view -b -F 512 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
     fi
+
+    samtools index ${FINAL_BAM}
+    samtools index ${FINAL_UNIQUES_BAM}
 
   fi
 
@@ -104,6 +112,8 @@ qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -q ${QUEUE} -V -cwd -S /bin/bash 
   if [[ ! -s $INSERT_FILE ]]; then
     make -f "$STAMPIPES/makefiles/picard/insert_size_metrics.mk" "SAMPLE_NAME=${LIBRARY_NAME}" "BAMFILE=${FINAL_UNIQUES_BAM}" "INSERTMETRICS=${INSERT_FILE}"
   fi
+
+  # placeholder for QC metric script
 
   echo "FINISH: processing BAMs"
   date
