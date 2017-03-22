@@ -87,12 +87,12 @@ $(HOTSPOT_WIG) : $(HOTSPOT_SPOT)
 # Remove existing duplication marks
 $(TMPDIR)/$(RANDOM_SAMPLE_BAM).clear.bam : $(RANDOM_SAMPLE_BAM)
 	picard RevertSam \
-		INPUT=$(RANDOM_SAMPLE_BAM) OUTPUT=$(TMPDIR)/$(RANDOM_SAMPLE_BAM).clear.bam \
+		INPUT=$(RANDOM_SAMPLE_BAM) OUTPUT=$(RANDOM_SAMPLE_BAM).clear.bam \
 		VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATE_INFORMATION=true SORT_ORDER=coordinate \
 		RESTORE_ORIGINAL_QUALITIES=false REMOVE_ALIGNMENT_INFORMATION=false
 
 # Calculate the duplication score of the random sample
-$(DUP_OUT) : $(TMPDIR)/$(RANDOM_SAMPLE_BAM).clear.bam
-	picard MarkDuplicatesWithMateCigar INPUT=$(TMPDIR)/$(RANDOM_SAMPLE_BAM).clear.bam OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.dup \
+$(DUP_OUT) : $(RANDOM_SAMPLE_BAM).clear.bam
+	picard MarkDuplicatesWithMateCigar INPUT=$(RANDOM_SAMPLE_BAM).clear.bam OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).R1.rand.uniques.dup \
 		METRICS_FILE=$(OUTDIR)/$(SPOTPREFIX).spotdups.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
 		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
