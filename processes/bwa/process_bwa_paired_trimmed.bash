@@ -39,6 +39,7 @@ fi
 JOB_BASENAME=${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}
 
 export FINAL_BAM=${SAMPLE_NAME}.sorted.bam
+export FINAL_BAM_MARKED=${SAMPLE_NAME}.sorted.marked.bam
 export UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 
 export ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
@@ -216,15 +217,24 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
     if [[ ! -s $UNIQUES_BAM ]] ; then
 
       if [[ "$UMI" == "True" ]]; then
-         make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
+         make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
+         mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
+         samtools view -b -f 1536 ${FINAL_BAM} > ${UNIQUES_BAM}
        else
-         make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${UNIQUES_BAM}"
+         make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
+         mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
+         samtools view -b -f 512 ${FINAL_BAM} > ${UNIQUES_BAM}
       fi
+
+      samtools index ${FINAL_BAM}
+      samtools index ${UNIQUES_BAM}
 
     fi
 
     # calculate insert size
     make -f "$STAMPIPES/makefiles/picard/insert_size_metrics.mk" "SAMPLE_NAME=${SAMPLE_NAME}" "BAMFILE=${UNIQUES_BAM}"
+
+    # placeholder for running metrics script on ${FINAL_BAM}
 
     echo "FINISH: "
     date

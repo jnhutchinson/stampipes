@@ -1,5 +1,5 @@
 ###################
-# Creates a duplication score from a sorted BAM file.
+# Creates marked BAM file
 ###################
 # REQUIRED VARIABLES
 ###################
@@ -20,33 +20,19 @@
 
 BAMFILE ?= $(SAMPLE_NAME).uniques.sorted.bam
 DUP_OUT ?= $(SAMPLE_NAME).MarkDuplicates.picard
-OUTBAM ?= /dev/null
-OUTBAMIND ?= $(OUTBAM).bai
+OUTBAM ?= $(SAMPLE_NAME).uniques.sorted.marked.bam
 TMPDIR ?= $(shell pwd)
 
-all : $(DUP_OUT) $(OUTBAM) $(OUTBAMIND)
-
-# Get rid of multi-mapping, low quality, and chrM alignments
-$(TMPDIR)/$(SAMPLE_NAME).nochrM.bam : $(BAMFILE)
-	samtools view -F 512 -b $(BAMFILE) chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr1 chr20 chr21 chr22 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chrX chrY > \
-$(TMPDIR)/$(SAMPLE_NAME).nochrM.bam
+all : $(OUTBAM)
 
 # Add mate cigar information
-$(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.bam : $(TMPDIR)/$(SAMPLE_NAME).nochrM.bam
+$(TMPDIR)/$(SAMPLE_NAME).cigar.bam : $(BAMFILE)
 	time picard RevertOriginalBaseQualitiesAndAddMateCigar \
-		INPUT=$(TMPDIR)/$(SAMPLE_NAME).nochrM.bam OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.bam \
+		INPUT=$(BAMFILE) OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).cigar.bam \
 		VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate
 
 # Calculate the duplication score of the random sample
-$(DUP_OUT) : $(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.bam
-	time picard MarkDuplicatesWithMateCigar INPUT=$(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.bam OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.dupe.bam \
+$(OUTBAM) : $(TMPDIR)/$(SAMPLE_NAME).cigar.bam
+	time picard MarkDuplicatesWithMateCigar INPUT=$(TMPDIR)/$(SAMPLE_NAME).cigar.bam OUTPUT=$(OUTBAM) \
 		METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
 		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
-
-# placeholder for further processing
-$(OUTBAM) : $(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.dupe.bam
-	mv $(TMPDIR)/$(SAMPLE_NAME).nochrM.cigar.dupe.bam $(OUTBAM)
-
-# Index
-$(OUTBAMIND) : $(OUTBAM)
-	samtools index $(OUTBAM)
