@@ -8,7 +8,7 @@ module load samtools/1.3
 module load git/2.3.3
 module load coreutils/8.25
 module load modwt/1.0
-module load hotspot2/20161006
+module load hotspot2/2.0
 
 module load python/3.5.1
 module load pysam/0.9.0

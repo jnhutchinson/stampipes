@@ -16,7 +16,7 @@ module load coreutils/8.25
 module load pigz/2.3.3
 
 module load modwt/1.0
-module load hotspot2/20161006
+module load hotspot2/2.0
 
 # Load in this order specifically, currently the python3 activation
 # overwrites the default "python" call, against advice
