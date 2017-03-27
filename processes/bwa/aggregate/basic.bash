@@ -214,8 +214,9 @@ qsub -N "${JOB_BASENAME}_complete" -q ${QUEUE} -hold_jid "${PROCESSING}" -V -cwd
   echo "START: "
   date
 
-  bash $STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash
-  bash $STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash
+  bash "$STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash"
+  bash "$STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash"
+  bash "$STAMPIPES/scripts/bwa/aggregate/basic/uploadcounts.bash"
 
   echo "FINISH: "
   date

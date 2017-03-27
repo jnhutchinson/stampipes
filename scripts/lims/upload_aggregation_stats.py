@@ -1,0 +1,97 @@
+import sys
+import json
+import argparse
+
+import logging
+# Change to logging.DEBUG to see all messages
+logging.basicConfig(level=logging.WARN)
+
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log = logging.getLogger(__name__)
+
+from stamlims_api.rest import setup_api
+from stamlims_api.lims import aggregations, metrics
+
+def parser_setup():
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-q", "--quiet", dest="quiet", action="store_true",
+        help="Don't print info messages to standard out.")
+    parser.add_argument("-d", "--debug", dest="debug", action="store_true",
+        help="Print all debug messages to standard out.")
+
+    parser.add_argument("--aggregation", dest="aggregation_id", type=int)
+    parser.add_argument("-f", "--counts_file", nargs="+", help="Tab delimited file of count\tvalue")
+    parser.add_argument("--spot", dest="spot_file")
+
+    parser.set_defaults( quiet=False, debug=False )
+
+    return parser
+
+def upload_stat(api, aggregation, stat_type_slug, value):
+    stat_type = metrics.stat_type_from_slug(api, stat_type_slug)
+    if not stat_type:
+        log.error("Cannot find stat type %s" % stat_type_slug)
+        return
+    metrics.upload_count(api, stat_type, aggregation, value)
+
+def upload_spot(api, aggregation, spot_file):
+    if not os.path.exists(spot_file):
+        log.error("Cannot find spot file %s" % spot_file)
+        return
+    spot = open(spot_file, 'r').read().strip()
+    try:
+        spot = Decimal(spot)
+        upload_stat(api, aggregation, 'hotspot2-SPOT', spot)
+    except ValueError:
+        log.error("Could not turn %s into decimal" % spot)
+
+def upload_file(api, aggregation, counts_file):
+    count_content = open(counts_file, 'r')
+
+    for line in count_content:
+        values = line.split()
+
+        if len(values) < 2:
+            continue
+
+        stat_type_name = values[0]
+        value = values[1]
+
+        if not stat_type_name:
+            continue
+
+        upload_stat(api, aggregation, stat_type_name, value)
+
+    count_content.close()
+
+def main(args = sys.argv):
+    """This is the main body of the program that by default uses the arguments
+from the command line."""
+
+    parser = parser_setup()
+    poptions = parser.parse_args()
+
+    if poptions.quiet:
+        logging.basicConfig(level=logging.WARNING, format=log_format)
+    elif poptions.debug:
+        logging.basicConfig(level=logging.DEBUG, format=log_format)
+    else:
+        # Set up the default logging levels
+        logging.basicConfig(level=logging.INFO, format=log_format)
+        # Make this a little less noisy by default
+        requests_log = logging.getLogger("requests.packages.urllib3.connectionpool")
+        requests_log.setLevel(logging.WARN)
+
+    api = setup_api()
+    aggregation = aggregations.get_aggregation(api, poptions.aggregation_id)
+    if poptions.counts_file:
+        for count_file in poptions.counts_file:
+            upload_file(api, aggregation, count_file)
+
+# This is the main body of the program that only runs when running this script
+# doesn't run when imported, so you can use the functions above in the shell after importing
+# without automatically running it
+if __name__ == "__main__":
+    main()
