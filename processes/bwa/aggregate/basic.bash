@@ -9,7 +9,7 @@ module load git/2.3.3
 module load coreutils/8.25
 module load modwt/1.0
 module load hotspot2/2.0
-
+module load bedtools/2.25.0
 module load python/3.5.1
 module load pysam/0.9.0
 
@@ -19,6 +19,7 @@ BINI=20
 cd $AGGREGATION_FOLDER
 BAM_COUNT=`ls $BAM_FILES | wc -l`
 QUEUE=queue0
+ASSAY=DNAse1
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 
@@ -33,10 +34,10 @@ export CUTCOUNTS_BIGWIG=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.$R
 export INSERT_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard
 export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
 
-export HOTSPOT_DIR=peaks
+export HOTSPOT2_DIR=peaks
 HOTSPOT_PREFIX=$(basename "$FINAL_UNIQUES_BAM" .bam)
-export HOTSPOT_CALLS=$HOTSPOT_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.05.starch
-export HOTSPOT_DENSITY=$HOTSPOT_DIR/$HOTSPOT_PREFIX.sorted.density.bw
+export HOTSPOT_CALLS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.05.starch
+export HOTSPOT_DENSITY=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.sorted.density.bw
 
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
@@ -45,12 +46,13 @@ export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n
 
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
-    rm -r $HOTSPOT_DIR
+    #rm -r $HOTSPOT2_DIR
 fi
 
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
 COUNT_JOBNAME=${JOB_BASENAME}_count
 HOTSPOT_JOBNAME=${JOB_BASENAME}_hotspot
+SPOTSCORE_JOBNAME=${JOB_BASENAME}_spotscore
 DENSITY_JOBNAME=${JOB_BASENAME}_density
 CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
@@ -125,12 +127,31 @@ fi
 # Run Hotspot2
 if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
-  HOTSPOT_SPOT=$HOTSPOT_DIR/$HOTSPOT_PREFIX.SPOT.txt
+  HOTSPOT_SPOT=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.SPOT.txt
   qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -q ${QUEUE} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
-    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT_DIR"
+    "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT2_DIR"
     "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.info"
 __SCRIPT__
 fi
+
+if [[ ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.out" || ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spotdups.txt" ]]; then
+  PROCESSING="$PROCESSING,${SPOTSCORE_JOBNAME}"
+  qsub -N "${SPOTSCORE_JOBNAME}" -q ${QUEUE} -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr <<__SCRIPT__
+    set -x -e -o pipefail
+    echo "Hostname: "
+    hostname
+
+    echo "START HOTSPOT1 SPOT SCORE: "
+    date
+
+    make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$GENOME_INDEX ASSAY=$ASSAY GENOME=$GENOME READLENGTH=$READ_LENGTH SAMPLE_NAME="$LIBRARY_NAME.$GENOME"
+
+    echo "FINISH HOTSPOT1 SPOT SCORE: "
+    date
+    
+__SCRIPT__
+fi
+
 
 if [ ! -e $TAGCOUNTS_FILE ]; then
 
