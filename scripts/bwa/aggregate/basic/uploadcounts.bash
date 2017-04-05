@@ -20,3 +20,6 @@ upload "$LIBRARY_NAME.$GENOME.uniques.sorted.hotspot2.info"
 
 # Upload SPOT1 stats
 upload "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.info"
+
+# Upload Adapter stats
+upload "$LIBRARY_NAME.adaptercounts.txt"
