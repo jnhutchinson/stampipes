@@ -27,6 +27,7 @@ export FINAL_BAM=${LIBRARY_NAME}.${GENOME}.sorted.bam
 export FINAL_BAM_MARKED=${LIBRARY_NAME}.${GENOME}.sorted.marked.bam
 export FINAL_UNIQUES_BAM=${LIBRARY_NAME}.${GENOME}.uniques.sorted.bam
 export TAGCOUNTS_FILE=${LIBRARY_NAME}.tagcounts.txt
+export ADAPTER_COUNT_FILE=${LIBRARY_NAME}.adaptercounts.txt
 export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.bed.starch
 export DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.bw
 export NORM_DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.normalized.${GENOME}.bw
@@ -37,7 +38,7 @@ export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
 export HOTSPOT2_DIR=peaks
 HOTSPOT_PREFIX=$(basename "$FINAL_UNIQUES_BAM" .bam)
 export HOTSPOT_CALLS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.05.starch
-export HOTSPOT_DENSITY=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.sorted.density.bw
+export HOTSPOT_DENSITY=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.density.bw
 
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
@@ -51,6 +52,7 @@ fi
 
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
 COUNT_JOBNAME=${JOB_BASENAME}_count
+ADAPTERCOUNT_JOBNAME=${JOB_BASENAME}_adaptercount
 HOTSPOT_JOBNAME=${JOB_BASENAME}_hotspot
 SPOTSCORE_JOBNAME=${JOB_BASENAME}_spotscore
 DENSITY_JOBNAME=${JOB_BASENAME}_density
@@ -175,11 +177,23 @@ __SCRIPT__
 
 fi
 
+if [[ ! -s "$ADAPTER_COUNT_FILE" ]]; then
+  PROCESSING="$PROCESSING,${ADAPTERCOUNT_JOBNAME}"
+  set -x -e -o pipefail
+  qsub -N "$ADAPTERCOUNT_JOBNAME" -q "$QUEUE" -hold_jid "$MERGE_DUP_JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+    set -x -e -o pipefail
+    adaptercount=\$(bash "$STAMPIPES/scripts/bam/count_adapters.sh" "$FINAL_BAM")
+    if [ -n \$adapter_count ] ; then
+      echo -e "adapter\t\$adaptercount" > "$ADAPTER_COUNT_FILE"
+    fi
+__SCRIPT__
+fi
+
 if [[ ! -s "$DENSITY_BIGWIG" || ! -s "$NORM_DENSITY_BIGWIG" ]]; then
 
 PROCESSING="$PROCESSING,${DENSITY_JOBNAME}"
 
-qsub -N "${DENSITY_JOBNAME}" -q ${QUEUE} -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N "${DENSITY_JOBNAME}" -q ${QUEUE} -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bis/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -199,7 +213,7 @@ __SCRIPT__
 
 fi
 
-if [ ! -e $CUTCOUNTS_BIGWIG ]; then
+if [ ! -e "$CUTCOUNTS_BIGWIG" ]; then
 
 PROCESSING="$PROCESSING,${CUTCOUNTS_JOBNAME}"
 
@@ -222,10 +236,9 @@ __SCRIPT__
 
 fi
 
-if [ -n ${PROCESSING} ]; then
+if [[ -n "${PROCESSING}" ]]; then
 
 UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
-ATTACH_AGGREGATION="python3 $UPLOAD_SCRIPT --attach_file_contenttype AggregationData.aggregation --attach_file_objectid ${AGGREGATION_ID}"
 qsub -N "${JOB_BASENAME}_complete" -q ${QUEUE} -hold_jid "${PROCESSING}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
