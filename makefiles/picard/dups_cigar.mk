@@ -29,7 +29,7 @@ all : $(OUTBAM)
 $(TMPDIR)/$(SAMPLE_NAME).cigar.bam : $(BAMFILE)
 	time picard RevertOriginalBaseQualitiesAndAddMateCigar \
 		INPUT=$(BAMFILE) OUTPUT=$(TMPDIR)/$(SAMPLE_NAME).cigar.bam \
-		VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate
+		VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
 
 # Calculate the duplication score of the random sample
 $(OUTBAM) : $(TMPDIR)/$(SAMPLE_NAME).cigar.bam
