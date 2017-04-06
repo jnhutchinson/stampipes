@@ -87,7 +87,7 @@ qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_fcounts" -q $QUEUE -S /bin/bash <<'_
 __FCOUNTS__
 fi
 
-qsub -N ".AGG#${AGGREGATION_ID}.complete" -hold_jid ".star_*" -V -cwd -q $QUEUE -S /bin/bash > /dev/stderr <<__SCRIPT__
+qsub -N ".AGG#${AGGREGATION_ID}.complete" -hold_jid ".AGG${AGGREGATION_ID}.star_*" -V -cwd -q $QUEUE -S /bin/bash > /dev/stderr <<__SCRIPT__
     bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
     bash $STAMPIPES/scripts/rna-star/aggregate/attachfiles.sh
 __SCRIPT__
