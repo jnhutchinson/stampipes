@@ -53,6 +53,8 @@ def parser_setup():
         help="Run for this particular flowcell label.")
     parser.add_argument("--tag", dest="tag",
         help="Run for alignments tagged here.")
+    parser.add_argument("--project", dest="project",
+        help="Run for alignments in this project.")
 
     parser.add_argument("--script_template", dest="script_template",
         help="The script template to use.")
@@ -198,6 +200,11 @@ class ProcessSetUp(object):
         align_tags = self.api_list_result("tagged_object/?content_type=47&tag__slug=%s" % tag_slug)
 
         self.setup_alignments([align_tag["object_id"] for align_tag in align_tags])
+
+    def setup_project(self, project_id):
+        logging.info("Setting up project #%s" % project_id)
+        alignments = self.api_list_result("flowcell_lane_alignment/?lane__sample__project=%s" % project_id)
+        self.setup_alignments([alignment["id"] for alignment in alignments])
 
     def setup_flowcell(self, flowcell_label):
 
@@ -408,6 +415,10 @@ from the command line."""
 
     if poptions.tag:
         process.setup_tag(poptions.tag)
+
+    if poptions.project:
+        process.setup_project(poptions.project)
+
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing

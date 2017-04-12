@@ -47,7 +47,7 @@ def parser_setup():
         help="The base directory to put aggregations in.  Can get from environment AGGREGATIONS variable")
 
     parser.add_argument("-o", "--outfile", dest="outfile",
-        help="Append commands to run this alignment to this file.")
+        help="Append commands to run this aggregation to this file.")
     parser.add_argument("--overwrite", dest="overwrite", action="store_true",
         help="Create a new outfile instead of appending commands.")
     parser.add_argument("--script_template", dest="script_template",
@@ -58,9 +58,11 @@ def parser_setup():
         help="Name of the script that goes after the sample name.")
 
     parser.add_argument("--tag", dest="tag",
-        help="Run for alignments tagged here.")    
+        help="Run for aggregations tagged here.")
     parser.add_argument("--aggregation", dest="aggregation_ids", type=int, action="append",
         help="Run for these aggregations (can be used more than once).")
+    parser.add_argument("--project", dest="project",
+        help="Run for aggregations in this project.")
 
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
@@ -306,6 +308,11 @@ class ProcessSetUp(object):
 
         self.setup_aggregations([aggregation_tag["object_id"] for aggregation_tag in aggregation_tags])
 
+    def setup_project(self, project_id):
+        logging.info("Setting up project #%s" % project_id)
+        aggregations = self.api_list_result("aggregation/?library__sample__project=%s" % project_id)
+        self.setup_aggregations([a['id'] for a in aggregations])
+
     def setup_aggregations(self, aggregation_ids):
         self.pool.map(self.setup_aggregation, aggregation_ids)
 
@@ -481,6 +488,9 @@ from the command line."""
 
     if poptions.tag:
         process.setup_tag(poptions.tag)
+
+    if poptions.project:
+        process.setup_project(poptions.project)
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
