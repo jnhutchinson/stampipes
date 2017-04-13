@@ -67,7 +67,7 @@ if [[ ! -s "$FINAL_BAM.bai" || ! -s "$FINAL_UNIQUES_BAM.bai" || ! -s "$DUPS_FILE
 
 PROCESSING="$PROCESSING,${MERGE_DUP_JOBNAME}"
 
-qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -q ${QUEUE} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub ${SUBMIT_SLOTS} -N "${MERGE_DUP_JOBNAME}" -q ${QUEUE} -V -cwd --mem 32GB -pe threads 1 -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -130,7 +130,7 @@ fi
 if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
   PROCESSING="$PROCESSING,${HOTSPOT_JOBNAME}"
   HOTSPOT_SPOT=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.SPOT.txt
-  qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -q ${QUEUE} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  qsub ${SUBMIT_SLOTS} -hold_jid "${MERGE_DUP_JOBNAME}" -N "${HOTSPOT_JOBNAME}" -q ${QUEUE} -V -cwd --mem 32GB -pe threads 1 -S /bin/bash > /dev/stderr << __SCRIPT__
     "$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT2_DIR"
     "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.info"
 __SCRIPT__
@@ -138,7 +138,7 @@ fi
 
 if [[ ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.out" || ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spotdups.txt" ]]; then
   PROCESSING="$PROCESSING,${SPOTSCORE_JOBNAME}"
-  qsub -N "${SPOTSCORE_JOBNAME}" -q ${QUEUE} -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr <<__SCRIPT__
+  qsub -N "${SPOTSCORE_JOBNAME}" -q ${QUEUE} -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd --mem 32GB -pe threads 1 -S /bin/bash > /dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
     echo "Hostname: "
     hostname
@@ -159,7 +159,7 @@ if [ ! -e $TAGCOUNTS_FILE ]; then
 
 PROCESSING="$PROCESSING,${COUNT_JOBNAME}"
 
-qsub -N "${COUNT_JOBNAME}" -q ${QUEUE} -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N "${COUNT_JOBNAME}" -q ${QUEUE} -hold_jid ${MERGE_DUP_JOBNAME} -V -cwd --mem 32GB -pe threads 1 -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -180,7 +180,7 @@ fi
 if [[ ! -s "$ADAPTER_COUNT_FILE" ]]; then
   PROCESSING="$PROCESSING,${ADAPTERCOUNT_JOBNAME}"
   set -x -e -o pipefail
-  qsub -N "$ADAPTERCOUNT_JOBNAME" -q "$QUEUE" -hold_jid "$MERGE_DUP_JOBNAME" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+  qsub -N "$ADAPTERCOUNT_JOBNAME" -q "$QUEUE" -hold_jid "$MERGE_DUP_JOBNAME" -V -cwd --mem 32GB -pe threads 1 -S /bin/bash > /dev/stderr << __SCRIPT__
     set -x -e -o pipefail
     adaptercount=\$(bash "$STAMPIPES/scripts/bam/count_adapters.sh" "$FINAL_BAM")
     if [ -n \$adapter_count ] ; then
@@ -193,7 +193,7 @@ if [[ ! -s "$DENSITY_BIGWIG" || ! -s "$NORM_DENSITY_BIGWIG" ]]; then
 
 PROCESSING="$PROCESSING,${DENSITY_JOBNAME}"
 
-qsub -N "${DENSITY_JOBNAME}" -q ${QUEUE} -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bis/bash > /dev/stderr << __SCRIPT__
+qsub -N "${DENSITY_JOBNAME}" -q ${QUEUE} -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd --mem 32GB -pe threads 1 -S /bis/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -217,7 +217,7 @@ if [ ! -e "$CUTCOUNTS_BIGWIG" ]; then
 
 PROCESSING="$PROCESSING,${CUTCOUNTS_JOBNAME}"
 
-qsub -N "${CUTCOUNTS_JOBNAME}" -q ${QUEUE} -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N "${CUTCOUNTS_JOBNAME}" -q ${QUEUE} -hold_jid "${MERGE_DUP_JOBNAME}" -V -cwd --mem 32GB -pe threads 1 -S /bin/bash > /dev/stderr << __SCRIPT__
 
   set -x -e -o pipefail
 
@@ -239,7 +239,7 @@ fi
 if [[ -n "${PROCESSING}" ]]; then
 
 UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
-qsub -N "${JOB_BASENAME}_complete" -q ${QUEUE} -hold_jid "${PROCESSING}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
+qsub -N "${JOB_BASENAME}_complete" -q ${QUEUE} -hold_jid "${PROCESSING}" -V -cwd --mem 32GB -pe threads 1 -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
