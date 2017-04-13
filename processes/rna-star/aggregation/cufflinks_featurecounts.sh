@@ -36,7 +36,7 @@ fi
 
 # density information
 if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
-  qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_den" -q $QUEUE -S /bin/bash <<'__DEN__'
+  qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_den" -q $QUEUE --mem 32GB -pe threads 1 -S /bin/bash <<'__DEN__'
 
     # Write starch and bigwig to .tmp files
     function convertBedGraph(){
@@ -71,7 +71,7 @@ fi
 
 # cufflinks
 if [ ! -s "genes.fpkm_tracking" ] ; then
-qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_cuff" -q $QUEUE -S /bin/bash <<'__CUFF__'
+qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_cuff" -q $QUEUE --mem 32GB -pe threads 1 -S /bin/bash <<'__CUFF__'
     CUFF=cufflinks
     CUFF_COMMON="--no-update-check --library-type fr-firststrand"
     $CUFF $CUFF_COMMON --GTF $ANNOTATION $GENOME_BAM
@@ -80,14 +80,14 @@ fi
 
 # featureCounts
 if [ ! -s "feature_counts.txt" ] ; then
-qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_fcounts" -q $QUEUE -S /bin/bash <<'__FCOUNTS__'
+qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_fcounts" -q $QUEUE --mem 32GB -pe threads 1 -S /bin/bash <<'__FCOUNTS__'
     FCOUNTS=featureCounts
     FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2"
     $FCOUNTS $FCOUNTS_COMMON -t 'exon' -g 'gene_id' -a $ANNOTATION -o feature_counts.txt $GENOME_BAM
 __FCOUNTS__
 fi
 
-qsub -N ".AGG#${AGGREGATION_ID}.complete" -hold_jid ".AGG${AGGREGATION_ID}.star_*" -V -cwd -q $QUEUE -S /bin/bash > /dev/stderr <<__SCRIPT__
+qsub -N ".AGG#${AGGREGATION_ID}.complete" -hold_jid ".AGG${AGGREGATION_ID}.star_*" -V -cwd -q $QUEUE --mem 32GB -pe threads 1 -S /bin/bash > /dev/stderr <<__SCRIPT__
     bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
     bash $STAMPIPES/scripts/rna-star/aggregate/attachfiles.sh
 __SCRIPT__
