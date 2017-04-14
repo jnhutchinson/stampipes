@@ -184,7 +184,7 @@ class BAMFilter(object):
 
         count_labels = ['u', 'u-pf', 'u-pf-n', 'u-pf-n-mm%d' % self.max_mismatches,
                         'u-pf-n-mm%d-mito' % self.max_mismatches, 'mm', 'nm',
-                        'qc-flagged', 'umi-duplicate', 'umi-duplicate-nuclear',
+                        'qc-flagged', 'duplicate', 'duplicate-nuclear',
                         'nuclear-align', 'autosomal-align',
                         'paired-aligned', 'paired-nuclear-align',
                         'paired-autosomal-align', 'all-aligned',
