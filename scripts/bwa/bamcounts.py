@@ -141,9 +141,9 @@ class BAMFilter(object):
                     self.counts['paired-autosomal-align'] += 1
 
         if read.flag & 1024:
-            self.counts['umi-duplicate'] += 1
+            self.counts['duplicate'] += 1
             if nuclear:
-                self.counts['umi-duplicate-nuclear'] += 1
+                self.counts['duplicate-nuclear'] += 1
 
         self.counts['u'] += 1
 
