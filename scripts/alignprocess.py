@@ -24,7 +24,7 @@ script_options = {
     "tag": None,
     "outfile": os.path.join(os.getcwd(), "run.bash"),
     "sample_script_basename": "run.bash",
-    "qsub_queue": "queue0",
+    "qsub_queue": "queue2",
     "qsub_prefix": ".proc",
     "dry_run": False,
     "no_mask": False,
@@ -68,7 +68,7 @@ def parser_setup():
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
     parser.add_argument("--qsub-queue", dest="qsub_queue",
-        help="Name of the SLURM queue")
+        help="Name of the SLURM partition")
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
         help="Take no action, only print messages.")
     parser.add_argument("--no-mask", dest="no_mask", action="store_true",
@@ -223,8 +223,8 @@ class ProcessSetUp(object):
             outfile = open(self.outfile, 'a')
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
-        outfile.write("qsub -p %d -N \"%s%s-%s-ALIGN#%d\" -q %s -cwd -V -S /bin/bash %s\n\n" % (self.qsub_priority, self.qsub_prefix, sample_name, processing_info['flowcell']['label'], align_id, self.qsub_queue, script_file))
-
+        fullname = "%s%s-%s-ALIGN#%d" % (self.qsub_prefix,sample_name,processing_info['flowcell']['label'],align_id)
+        outfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n\n" % (fullname, fullname, fullname, self.queue, script_file))
         outfile.close()
 
     def get_script_template(self, process_template):

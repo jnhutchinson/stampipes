@@ -14,7 +14,6 @@ module load R/3.2.5
 module load git/2.3.3
 module load coreutils/8.25
 module load pigz/2.3.3
-
 module load modwt/1.0
 module load hotspot2/2.0
 
@@ -24,7 +23,7 @@ module load python/3.5.1
 module load pysam/0.9.0
 module load python/2.7.11
 
-export QUEUE=queue0
+export QUEUE=queue2
 
 export MAX_MISMATCHES=2
 export MIN_MAPPING_QUALITY=10
@@ -41,12 +40,9 @@ JOB_BASENAME=${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}
 export FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 export FINAL_BAM_MARKED=${SAMPLE_NAME}.sorted.marked.bam
 export UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
-
 export ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 export VERSION_FILE=${SAMPLE_NAME}.versions.txt
-
 export FASTQ_TMP=$ALIGN_DIR/fastq
-
 
 cd "$ALIGN_DIR"
 
@@ -87,12 +83,12 @@ FASTQ_PAIR_HOLDS=""
 FASTQ_PAIR_BAMS=""
 
 for filenum in $(seq -f "%03g" 0 $((NUMBER_FASTQ_FILES - 1))); do
-  NAME=".aln${JOB_BASENAME}_${filenum}"
+  JOBNAME=".aln${JOB_BASENAME}_${filenum}"
   BAMFILE="${SAMPLE_NAME}_${filenum}.sorted.bam"
 
   if [[ ! -e "$BAMFILE" && ! -e "$FINAL_BAM" ]]; then
 
-    qsub -p "$ALN_PRIORITY" -N "$NAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+    qsub -p "$ALN_PRIORITY" -N "$JOBNAME" -q $QUEUE --mem 32GB -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
       set -x -e -o pipefail
 
       echo "Hostname: "
@@ -157,7 +153,7 @@ for filenum in $(seq -f "%03g" 0 $((NUMBER_FASTQ_FILES - 1))); do
 __SCRIPT__
 
     # Only hold on alignments that are being run
-    FASTQ_PAIR_HOLDS="$FASTQ_PAIR_HOLDS,$NAME"
+    FASTQ_PAIR_HOLDS="$FASTQ_PAIR_HOLDS,$JOBNAME"
 
   fi
 
@@ -179,13 +175,11 @@ if [[ ! -e "$FINAL_BAM.bai" || ! -e "$UNIQUES_BAM.bai" ]]; then
   export REPROCESS=1
 
   PROCESS_HOLD="-hold_jid .pb${JOB_BASENAME}"
-
   JOBNAME=".pb${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
-
   export FINAL_BAM_PREFIX=${FINAL_BAM%.*}
 
-  qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash <<__SCRIPT__
+  qsub -p $BASE_PRIORITY ${SPLIT_ALIGN_HOLD} ${SUBMIT_SLOTS} -N "$JOBNAME" -q $QUEUE --mem 32GB -V -cwd -S /bin/bash <<__SCRIPT__
     set -x -e -o pipefail
 
     echo "Hostname: "
@@ -263,7 +257,7 @@ fi
 if [[ ! -s "$SAMPLE_NAME.uniques.preseq.targets.txt" || ! -s "$SAMPLE_NAME.uniques.dup.lorentz.txt" ]]; then
   JOBNAME=".ps${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
-  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<'__SCRIPT__'
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE --mem 8GB -V -cwd -S /bin/bash >/dev/stderr <<'__SCRIPT__'
     set -x
     hist=$SAMPLE_NAME.uniques.duphist.txt
     preseq=$SAMPLE_NAME.uniques.preseq.txt
@@ -315,7 +309,7 @@ if [[ ! -e "$SAMPLE_NAME.uniques.spot2.out" ]]; then
   PROCESSING="$PROCESSING,$JOBNAME"
 
   HOTSPOT_PREFIX=$(basename "$UNIQUES_BAM" .bam)
-  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE --mem 32GB -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -e -u -o errexit
     num_fragments=\$(samtools idxstats "$UNIQUES_BAM" | awk '{x+=\$3}END{print x/2}')
     if [[ \$num_fragments -lt 10000000 ]]; then
@@ -350,7 +344,7 @@ if [[ ! -e "$SAMPLE_NAME.tagcounts.txt" || -n "$FORCE_COUNTS" ]]; then
   JOBNAME=".ct${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE --mem 16GB -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
     echo "Hostname: "
     hostname
@@ -379,7 +373,7 @@ if [[ ! -e "$SAMPLE_NAME.R1.rand.uniques.sorted.spot.out" || ! -e "$SAMPLE_NAME.
   JOBNAME=".sp${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p $BASE_PRIORITY $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V --mem 8GB -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
 
     echo "Hostname: "
@@ -411,7 +405,7 @@ if [[ ! -e "$SAMPLE_NAME.75_20.$GENOME.bw" ]]; then
   JOBNAME=".den${JOB_BASENAME}"
   PROCESSING="$PROCESSING,$JOBNAME"
 
-  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p "$BASE_PRIORITY" $PROCESS_HOLD -N "$JOBNAME" -q $QUEUE --mem 16GB -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
 
     echo "Hostname: "
@@ -432,7 +426,7 @@ fi
 
 if [[ -n "$PROCESSING" ]]; then
 
-  qsub -p "$BASE_PRIORITY" -hold_jid "$PROCESSING" -N ".com$JOB_BASENAME" -q $QUEUE -V -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
+  qsub -p "$BASE_PRIORITY" -hold_jid "$PROCESSING" -N ".com$JOB_BASENAME" -q $QUEUE -V --mem 1GB -cwd -S /bin/bash >/dev/stderr <<__SCRIPT__
     set -x -e -o pipefail
     echo "Hostname: "
     hostname

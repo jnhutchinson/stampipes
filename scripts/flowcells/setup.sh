@@ -418,7 +418,7 @@ __COPY__
 )
 
 # Collate
-sbatch --export=ALL -J "collate-$flowcell" --dependency=afterok:\$copy_jobid -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COLLATE__'
+sbatch --export=ALL -J "collate-$flowcell" --dependency=afterok:\$copy_jobid -o "collate-$flowcell.o%A" -e "collate-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COLLATE__'
 #!/bin/bash
 
 bash collate.bash
@@ -433,7 +433,7 @@ bash fastqc.bash
 
 # Set up alignments but don't run them until later
 python3 "$STAMPIPES/scripts/alignprocess.py" \
-  --flowcell "$flowcell"
+  --flowcell "$flowcell"                     \
   --outfile run.bash
 # bash run.bash
 

@@ -111,16 +111,17 @@ for i in "${inputfiles[@]}" ; do
     submitjob="bash"
   fi
 
-  cat <<__DEMUX__ | $submitjob
-    python3 "$demux_script"       \
-      $suffix                     \
-      --processing "$processing"  \
-      --outdir "$outdir"          \
-      --mismatches "$mismatches"  \
-      --lane "$lane"              \
-      --ignore_failed_lanes       \
-      $dryrun                     \
-      "$i"
-__DEMUX__
+  $submitjob <<__UNDET__
+#!/bin/bash
+  python3 "$demux_script"        \
+     $suffix                     \
+     --processing "$processing"  \
+     --outdir "$outdir"          \
+     --mismatches "$mismatches"  \
+     --lane "$lane"              \
+     --ignore_failed_lanes       \
+     $dryrun                     \
+     "$i"
+__UNDET__
 
 done
