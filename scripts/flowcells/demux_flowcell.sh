@@ -106,7 +106,7 @@ for i in "${inputfiles[@]}" ; do
 
   # If dryrun; we want the output on stdout, not qsubbed.
   if [ -z "$dryrun" ] ; then
-    submitjob="qsub -cwd -V -q $queue -N .dmx$(basename "$i")"
+    submitjob="sbatch --export=ALL -J .dmx$(basename "$i") -o .dmx$(basename "$i").o%A -e .dmx$(basename "$i").e%A --partition $queue --ntasks=1 --cpus-per-task=1 --mem-per-cpu=8000 --parsable --oversubscribe"
   else
     submitjob="bash"
   fi

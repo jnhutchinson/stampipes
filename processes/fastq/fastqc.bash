@@ -15,8 +15,6 @@ cd $FASTQ_DIR
 
 if [ ! -e "$R1_FASTQC" -o ! -e "$R2_FASTQC" ]; then
 
-#PROCESS_NAME=".fq${SAMPLE_NAME}_${FLOWCELL}_LANE#${FLOWCELL_LANE_ID}"
-#qsub -N ".fq${SAMPLE_NAME}" -V -cwd -S /bin/bash > /dev/stderr << __SCRIPT__
   set -x -e -o pipefail
 
   echo "Hostname: "
@@ -48,6 +46,6 @@ if [ ! -e "$R1_FASTQC" -o ! -e "$R2_FASTQC" ]; then
 
   echo "FINISH: "
   date
-#__SCRIPT__
+
 fi
 

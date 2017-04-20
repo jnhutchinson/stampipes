@@ -198,10 +198,10 @@ case $run_type in
       --use-bases-mask "$bcl_mask" \\\\
       --output-dir "$fastq_dir" \\\\
       --barcode-mismatches "$mismatches" \\\\
-      --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
-      --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
-      --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
-      --processing-threads     \\\$(( NSLOTS ))
+      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
+      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
+      --demultiplexing-threads \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
 _U_
     set -e
     ;;
@@ -236,10 +236,10 @@ _U_
       --use-bases-mask "$bcl_mask" \\\\
       --output-dir "$fastq_dir.L00\\\$SGE_TASK_ID" \\\\
       --barcode-mismatches "$mismatches" \\\\
-      --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
-      --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
-      --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
-      --processing-threads     \\\$(( NSLOTS ))     \\\\
+      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
+      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
+      --demultiplexing-threads \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))     \\\\
       --tiles s_\\\$SGE_TASK_ID
 _U_
   ;;
@@ -261,10 +261,10 @@ _U_
       --use-bases-mask "$bcl_mask" \\\\
       --output-dir "$fastq_dir" \\\\
       --barcode-mismatches "$mismatches" \\\\
-      --loading-threads        \\\$(( NSLOTS / 4 )) \\\\
-      --writing-threads        \\\$(( NSLOTS / 4 )) \\\\
-      --demultiplexing-threads \\\$(( NSLOTS / 2 )) \\\\
-      --processing-threads     \\\$(( NSLOTS ))
+      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
+      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
+      --demultiplexing-threads \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
 _U_
     set -e
     ;;
@@ -357,7 +357,6 @@ python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmas
 __BARCODES__
 done
 
-bcl_jobid=$(sbatch --export=ALL -J "u-$flowcell" -o "u-$flowcell.o%A" -e "u-$flowcell.e%A" --partition=$queue --ntasks=1 --cpus-per-task=4 --mem-per-cpu=8000 --oversubscribe <<'__FASTQ__'
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -368,7 +367,6 @@ $unaligned_command
 __FASTQ__
 )
 
-dmx_jobid=$(sbatch --export=ALL -J "dmx-$flowcell" --dependency=afterok:$bcl_jobid -o "dmx-$flowcell.o%A" -e "dmx-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --oversubscribe <<'__DMX__'
 #!/bin/bash
    $demux_cmd
 # Wait for jobs to finish
@@ -378,7 +376,6 @@ done
 __DMX__
 )
 
-sbatch --export=ALL -J "c-$flowcell" --dependency=afterok:$dmx_jobid -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --oversubscribe <<'__COPY__'
 #!/bin/bash
 
 # copy files

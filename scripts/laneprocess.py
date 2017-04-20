@@ -60,7 +60,7 @@ def parser_setup():
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
     parser.add_argument("--queue", dest="queue",
-        help="SLURM queue for jobs.")
+        help="SLURM partition for jobs.")
 
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
         help="Take no action, only print messages.")
@@ -192,7 +192,8 @@ class ProcessSetUp(object):
             outfile = open(self.outfile, 'a')
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
-        outfile.write("qsub -N \"%s%s-%s-LANE#%d\" -q %s -cwd -V -S /bin/bash %s\n\n" % (self.qsub_prefix, sample_name, flowcell_label, lane_id, self.queue, script_file))
+        fullname = "%s%s-%s-Lane#%d" % (self.qsub_prefix,sample_name,flowcell_label,lane_id)
+        outfile.write("sbatch --export=ALL -J %s -o %s.o\%A -e %s.e\%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe bash %s\n\n" % (fullname, fullname, fullname, self.queue, script_file))
 
         outfile.close()
 
