@@ -347,16 +347,17 @@ lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flo
 lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
 
 # Submit a barcode job for each mask
-
 for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
     export bcmask
-    sbatch --export=ALL -J "bc-$flowcell" -o "bc-$flowcell.o%A" -e "bc-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --oversubscribe <<'__BARCODES__'
+    sbatch --export=ALL -J "bc-$flowcell" -o "bc-$flowcell.o%A" -e "bc-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<'__BARCODES__'
 #!/bin/bash
 bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
 python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
 __BARCODES__
 done
 
+# bcl2fastq
+bcl_jobid=\$(sbatch --export=ALL -J "u-$flowcell" -o "u-$flowcell.o%A" -e "u-$flowcell.e%A" --partition=$queue --ntasks=1 --cpus-per-task=4 --mem-per-cpu=8000 --parsable --oversubscribe <<'__FASTQ__'
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -367,6 +368,8 @@ $unaligned_command
 __FASTQ__
 )
 
+# demultiplex
+dmx_jobid=\$(sbatch --export=ALL -J "dmx-$flowcell" --dependency=afterok:\$bcl_jobid -o "dmx-$flowcell.o%A" -e "dmx-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<'__DMX__'
 #!/bin/bash
    $demux_cmd
 # Wait for jobs to finish
@@ -376,6 +379,8 @@ done
 __DMX__
 )
 
+# copy files and prep collation/fastqc
+copy_jobid=\$(sbatch --export=ALL -J "c-$flowcell" --dependency=afterok:\$dmx_jobid -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<'__COPY__'
 #!/bin/bash
 
 # copy files
@@ -410,6 +415,29 @@ python3 "$STAMPIPES/scripts/laneprocess.py" \
   --outfile collate.bash
 
 __COPY__
+)
+
+# Collate
+sbatch --export=ALL -J "collate-$flowcell" --dependency=afterok:\$copy_jobid -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COLLATE__'
+#!/bin/bash
+
+bash collate.bash
+
+# Wait for collation jobs to finish
+while ( squeue -o "%j" | grep -q '^.collatefqDS.*$flowcell') ; do
+   sleep 60
+done
+
+# Run fastQC
+bash fastqc.bash
+
+# Set up alignments but don't run them until later
+python3 "$STAMPIPES/scripts/alignprocess.py" \
+  --flowcell "$flowcell"
+  --outfile run.bash
+# bash run.bash
+
+__COLLATE__
 
 __BCL2FASTQ__
 
