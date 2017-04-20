@@ -193,8 +193,7 @@ class ProcessSetUp(object):
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
         fullname = "%s%s-%s-Lane#%d" % (self.qsub_prefix,sample_name,flowcell_label,lane_id)
-        outfile.write("sbatch --export=ALL -J %s -o %s.o\%A -e %s.e\%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe bash %s\n\n" % (fullname, fullname, fullname, self.queue, script_file))
-
+        outfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__LANEPROC__\n#!/bin/bash\nbash %s\n__LANEPROC__\n\n" % (fullname, fullname, fullname, self.queue, script_file))
         outfile.close()
 
     def get_script_template(self):
