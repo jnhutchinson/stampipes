@@ -11,8 +11,6 @@ source $PYTHON3_ACTIVATE
 # Options
 #########
 
-NODES=40
-
 usage(){
 cat << EOF
 usage: $0 [-f flowcell_label]
@@ -176,7 +174,7 @@ case $run_type in
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
-    queue="queue0"
+    queue="queue2"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1
 
@@ -214,7 +212,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--hiseq4k"
-    queue="queue0"
+    queue="queue2"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1-8
 
@@ -253,7 +251,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--miniseq"
-    queue="queue0"
+    queue="queue2"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1
     set +e
@@ -314,7 +312,6 @@ if [ -n "$demux" ] ; then
   link_command="#Demuxing happened, no linking to do"
 fi
 
-
 flowcell_id=$( curl \
   "$LIMS_API_URL"/flowcell_run/?label=$flowcell \
   -H "Authorization: Token $LIMS_API_TOKEN" \
@@ -330,7 +327,6 @@ cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 source $MODULELOAD
 module load bcl2fastq2/2.17.1.14
 source $PYTHON3_ACTIVATE
-
 source $STAMPIPES/scripts/lims/api_functions.sh
 
 # Register the file directory
@@ -340,55 +336,61 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   --attach_file_purpose flowcell-directory \
   --attach_file_objectid $flowcell_id
 
-# register as "Sequencing" in LIMS
+# Register as "Sequencing" in LIMS
 lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/2/"
 
+# Wait for RTAComplete
 while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
 
-# register as "Processing" in LIMS
+# Register as "Processing" in LIMS
 lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/3/"
 lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
 
 # Submit a barcode job for each mask
+
 for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
     export bcmask
-    qsub -cwd -N "bc-$flowcell" -q $queue $parallel_env -V -S /bin/bash <<'__BARCODES__'
-    GOMAXPROCS=\$(( NSLOTS * 2 )) bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
-
-    python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
+    sbatch --export=ALL -J "bc-$flowcell" -o "bc-$flowcell.o%A" -e "bc-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --oversubscribe <<'__BARCODES__'
+#!/bin/bash
+bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
+python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
 __BARCODES__
 done
 
-qsub -cwd -N "u-$flowcell" -q $queue $parallel_env -V -t $bcl_tasks -S /bin/bash  <<'__FASTQ__'
+bcl_jobid=$(sbatch --export=ALL -J "u-$flowcell" -o "u-$flowcell.o%A" -e "u-$flowcell.e%A" --partition=$queue --ntasks=1 --cpus-per-task=4 --mem-per-cpu=8000 --oversubscribe <<'__FASTQ__'
+#!/bin/bash
 
 set -x -e -o pipefail
-
 cd "$illumina_dir"
 
 $unaligned_command
 
 __FASTQ__
+)
 
-qsub -cwd -N "dmx-$flowcell" -q $queue -hold_jid "u-$flowcell" -V -S /bin/bash <<__DMX__
-  $demux_cmd
-  # Wait for jobs to finish
-  while ( squeue -o "%j" | grep -q '^.dmx') ; do
-    sleep 60
-  done
+dmx_jobid=$(sbatch --export=ALL -J "dmx-$flowcell" --dependency=afterok:$bcl_jobid -o "dmx-$flowcell.o%A" -e "dmx-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --oversubscribe <<'__DMX__'
+#!/bin/bash
+   $demux_cmd
+# Wait for jobs to finish
+while ( squeue -o "%j" | grep -q '^.dmx') ; do
+   sleep 60
+done
 __DMX__
+)
 
-qsub -cwd -N "c-$flowcell" -q $queue -hold_jid "dmx-$flowcell" -V -S /bin/bash <<__COPY__
+sbatch --export=ALL -J "c-$flowcell" --dependency=afterok:$dmx_jobid -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --oversubscribe <<'__COPY__'
+#!/bin/bash
+
+# copy files
 mkdir -p "$analysis_dir"
-
 rsync -avP "$copy_from_dir" "$analysis_dir/"
 rsync -avP "$illumina_dir/InterOp" "$analysis_dir/"
 rsync -avP "$illumina_dir/RunInfo.xml" "$analysis_dir/"
 rsync -avP "$samplesheet" "$analysis_dir"
 
+# create fastqc and collation scripts
 cd "$analysis_dir"
-
 $link_command
-
 # Remove existing scripts if they exist (to avoid appending)
 rm -f fastqc.bash collate.bash run.bash
 
@@ -409,19 +411,6 @@ python3 "$STAMPIPES/scripts/laneprocess.py" \
   --sample-script-basename "collate.bash" \
   --flowcell_label "$flowcell" \
   --outfile collate.bash
-
-bash collate.bash
-
-qsub -N .run$flowcell -q $queue -hold_jid '.collatefq*$flowcell*' -cwd -V -S /bin/bash <<__ALIGN__
-  bash fastqc.bash
-
-  # Create alignment scripts
-  python3 $STAMPIPES/scripts/alignprocess.py \
-    --flowcell $flowcell \
-    --outfile run.bash
-
-  bash run.bash
-__ALIGN__
 
 __COPY__
 
