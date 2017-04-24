@@ -421,6 +421,8 @@ __COPY__
 sbatch --export=ALL -J "collate-$flowcell" --dependency=afterok:\$copy_jobid -o "collate-$flowcell.o%A" -e "collate-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COLLATE__'
 #!/bin/bash
 
+cd "$analysis_dir"
+
 bash collate.bash
 
 # Wait for collation jobs to finish

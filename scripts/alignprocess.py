@@ -224,7 +224,7 @@ class ProcessSetUp(object):
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
         fullname = "%s%s-%s-ALIGN#%d" % (self.qsub_prefix,sample_name,processing_info['flowcell']['label'],align_id)
-        outfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n\n" % (fullname, fullname, fullname, self.queue, script_file))
+        outfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n\n" % (fullname, fullname, fullname, self.qsub_queue, script_file))
         outfile.close()
 
     def get_script_template(self, process_template):
