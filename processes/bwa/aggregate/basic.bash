@@ -18,8 +18,8 @@ BINI=20
 
 cd $AGGREGATION_FOLDER
 BAM_COUNT=`ls $BAM_FILES | wc -l`
-QUEUE=queue0
-ASSAY=DNAse1
+
+ASSAY=DNAse1 # hardcoded for now? do we need this for SPOT? isn't every assay here DNAse?
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 

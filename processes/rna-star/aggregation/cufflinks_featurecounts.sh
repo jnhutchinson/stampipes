@@ -12,8 +12,6 @@ export STARrefDir="$REFDIR/${STAR_DIR}"
 export TARGET_BAM=Aligned.toTranscriptome.out.bam
 export GENOME_BAM=Aligned.toGenome.out.bam
 
-export QUEUE=queue0
-
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/rna-star/aggregate/reset.bash
 fi

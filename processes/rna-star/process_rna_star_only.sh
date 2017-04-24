@@ -7,8 +7,6 @@ module load perl/5.16.3
 
 source "$PYTHON3_ACTIVATE"
 
-QUEUE=queue0
-
 outdir=$(pwd)
 
 scriptdir="$STAMPIPES/scripts/rna-star/"
@@ -73,7 +71,8 @@ uploadjob=".up$jobbase"
 
 # Run STAR
 if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
-  star_jobid=\$(sbatch --export=ALL -J "$starjob" -o "$starjob.o%A" -e "$starjob.e%A" --partition=$QUEUE --cpus-per-task=4 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__RNA-STAR__
+  star_jobid=$(sbatch --export=ALL -J "$starjob" -o "$starjob.o%A" -e "$starjob.e%A" --partition=$QUEUE --cpus-per-task=4 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__RNA-STAR__
+#!/bin/bash
     set -x
 
     STARdir=\$("$STAMPIPES/scripts/cache.sh" "$STARdir")

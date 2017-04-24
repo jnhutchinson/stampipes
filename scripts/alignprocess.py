@@ -370,6 +370,8 @@ class ProcessSetUp(object):
                 outfile.write("unset %s\n" % var)
 
         outfile.write("\n")
+        outfile.write("export QUEUE=%s\n" % (self.qsub_queue))
+        outfile.write("\n")
         outfile.write(self.get_script_template(process_template))
         outfile.close()
 
