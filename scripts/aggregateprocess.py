@@ -24,6 +24,7 @@ script_options = {
     "overwrite": False,
     "script_name": "run.bash",
     "qsub_prefix": ".agg",
+    "qsub_queue": "queue2",
     "dry_run": False,
     "aggregation_base_directory": None,
     "aggregation_directory": None,
@@ -66,6 +67,8 @@ def parser_setup():
 
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
+    parser.add_argument("--qsub-queue", dest="qsub_queue",
+        help="Name of the SLURM partition to use.")
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
         help="Take no action, only print messages.")
 
@@ -83,6 +86,7 @@ class ProcessSetUp(object):
         self.api_url = api_url
         self.qsub_scriptname = args.script_name
         self.qsub_prefix = args.qsub_prefix
+        self.qsub_queue = args.qsub_queue
         self.outfile = args.outfile
         self.dry_run = args.dry_run
         self.aggregation_base_directory = aggregation_base_directory
@@ -300,7 +304,8 @@ class ProcessSetUp(object):
 
         with open(self.outfile, mode) as runfile:
             runfile.write("cd %s && " % aggregation_folder)
-            runfile.write("qsub -V -cwd -S /bin/bash -N \"%sLN%d_AGG#%d\" %s\n\n" % (self.qsub_prefix, library_number, aggregation_id, self.qsub_scriptname))
+            fullname = "%sLN%d_AGG#%d" % (self.qsub_prefix, library_number, aggregation_id)
+            runfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__AGG__\n#!/bin/bash/\nbash %s\n__AGG__\n\n" % (fullname, fullname, fullname, self.qsub_queue, self.qsub_scriptname))
 
     def setup_tag(self, tag_slug):
 
@@ -432,6 +437,8 @@ class ProcessSetUp(object):
             else:
                 script.write("unset %s\n" % var)
 
+        script.write("\n")
+        script.write("export QUEUE=%s\n" % self.qsub_queue)
         script.write("\n")
 
         script.write(script_contents)

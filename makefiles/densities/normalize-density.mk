@@ -28,7 +28,7 @@ WIN=75
 # Bin interval
 BINI=20
 
-BAM_FILE ?= $(SAMPLE_NAME).$(GENOME).uniques.sorted.bam
+BAMFILE ?= $(SAMPLE_NAME).$(GENOME).uniques.sorted.bam
 RAW_DENSITY_FILE ?= $(SAMPLE_NAME).$(WIN)_$(BINI).$(GENOME).uniques-density.bed.starch
 STAMPIPES ?= ~/stampipes
 
@@ -47,9 +47,9 @@ WIG_TMP=$(TMPDIR)/$(SAMPLE_NAME).norm.tmp.wig
 
 all : $(STARCH_OUT) $(BW_OUT)
 
-$(STARCH_OUT) $(BED_TMP) : $(RAW_DENSITY_FILE) $(BAM_FILE)
+$(STARCH_OUT) $(BED_TMP) : $(RAW_DENSITY_FILE) $(BAMFILE)
 	unstarch $(RAW_DENSITY_FILE) | \
-	  awk -v allcounts=`samtools view -c $(BAM_FILE)` -v extranuclear_counts=`samtools view -c $(BAM_FILE) chrM chrC` -v scale=$(SCALE) 'BEGIN{ tagcount=allcounts-extranuclear_counts }{z=$$5; n=(z/tagcount)*scale; print $$1 "\t" $$2 "\t" $$3 "\t" $$4 "\t" n }' \
+	  awk -v allcounts=`samtools view -c $(BAMFILE)` -v extranuclear_counts=`samtools view -c $(BAMFILE) chrM chrC` -v scale=$(SCALE) 'BEGIN{ tagcount=allcounts-extranuclear_counts }{z=$$5; n=(z/tagcount)*scale; print $$1 "\t" $$2 "\t" $$3 "\t" $$4 "\t" n }' \
 	  | tee $(BED_TMP) \
 	  | starch - > $(STARCH_OUT)
 
