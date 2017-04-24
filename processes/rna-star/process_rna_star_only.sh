@@ -2,15 +2,12 @@ source "$MODULELOAD"
 module load samtools/1.3
 module load gcc/4.7.2     # for adapter trimming
 module load coreutils/8.25 # parallel sort
-
 module load STAR/2.4.2a
 module load perl/5.16.3
 
 source "$PYTHON3_ACTIVATE"
 
-PRIORITY=${PRIORITY:-0}
-
-SLOTS=${SLOTS:-8}
+QUEUE=queue0
 
 outdir=$(pwd)
 
@@ -76,22 +73,23 @@ uploadjob=".up$jobbase"
 
 # Run STAR
 if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
-  qsub -cwd -V -N "$starjob" -pe threads "$SLOTS" -p "$PRIORITY" -S /bin/bash << __RNA-STAR__
+  star_jobid=\$(sbatch --export=ALL -J "$starjob" -o "$starjob.o%A" -e "$starjob.e%A" --partition=$QUEUE --cpus-per-task=4 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__RNA-STAR__
     set -x
 
     STARdir=\$("$STAMPIPES/scripts/cache.sh" "$STARdir")
-
-    nThreadsSTAR=\$((NSLOTS * 2))
+    nThreadsSTAR=\$((SLURM_CPUS_PER_TASK * 2))
 
     cd "$outdir"
-
-    # Run!
     "$script" "$TRIM_R1" "$TRIM_R2" "\$STARdir" "$dataType" "\$nThreadsSTAR" 
+
 __RNA-STAR__
+)
 fi
 
 # Check for completeness and upload files.
-qsub -cwd -V -hold_jid "$starjob" -N "$uploadjob" -S /bin/bash << __UPLOAD__
+sbatch --export=ALL -J "$uploadjob" --dependency=afterok:$star_jobid -o "$uploadjob.o%A" -e "$uploadjob.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__UPLOAD__
+#!/bin/bash
+
   set -e
   bash "$STAMPIPES/scripts/rna-star/checkcomplete.bash"
   bash "$STAMPIPES/scripts/rna-star/attachfiles.sh"
