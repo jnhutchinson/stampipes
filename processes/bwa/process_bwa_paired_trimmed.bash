@@ -75,9 +75,9 @@ if [[ ! -e "$FINAL_BAM" ]]; then
    else
       python3 "$STAMPIPES/scripts/lims/upload_data.py" -a "$LIMS_API_URL" \
          -t "$LIMS_API_TOKEN" \
-  		 --start_alignment_progress \
-  		 --alignment_id "$ALIGNMENT_ID" \
-  		 --version_file "$VERSION_FILE"	
+  	 --start_alignment_progress \
+  	 --alignment_id "$ALIGNMENT_ID" \
+  	 --version_file "$VERSION_FILE"	
    fi
    
 fi
@@ -104,6 +104,9 @@ hostname
 
 echo "START ALIGNMENT: "
 date
+
+export TMPDIR=slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
 
 if [[ -n $PAIRED ]]; then
 
@@ -164,6 +167,8 @@ else
 
 fi
 
+rm -rf "\$TMPDIR"
+
 echo "FINISH ALIGNMENT: "
 date
 
@@ -201,6 +206,9 @@ hostname
 
 echo "START BAM PROCESS: "
 date
+
+export TMPDIR=slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
 
 # merge BAMs
 if [[ ! -e ${FINAL_BAM} ]]; then
@@ -243,6 +251,8 @@ python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
    --alignment_id ${ALIGNMENT_ID} \
    --flowcell_lane_id ${FLOWCELL_LANE_ID} \
    --dupsfile ${SAMPLE_NAME}.MarkDuplicates.picard
+
+rm -rf "\$TMPDIR"
 
 echo "FINISH BAM PROCESS: "
 date
@@ -353,6 +363,9 @@ hostname
 echo "START HOTSPOTS2: "
 date
 
+export TMPDIR=slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
 num_fragments=\$(samtools idxstats "$UNIQUES_BAM" | awk '{x+=\$3}END{print x/2}')
 if [[ \$num_fragments -lt 10000000 ]]; then
    echo "Not enough fragments to get a reliable SPOT2 score, skipping"
@@ -375,6 +388,8 @@ cp "hotspot2/$HOTSPOT_PREFIX.SPOT.txt" "$SAMPLE_NAME.uniques.spot2.out"
    hotspot2 \
    hotspot2/$HOTSPOT_PREFIX.SPOT.txt > "$HOTSPOT_PREFIX.hotspot2.info"
 
+rm -rf "\$TMPDIR"
+
 echo "END HOTSPOTS2: "
 date
 
@@ -395,7 +410,7 @@ echo "Hostname: "
 hostname
 
 echo "START TAG COUNTS: "
-date    
+date
 
 if [[ -n "$PAIRED" ]]; then
    time bash $STAMPIPES/scripts/bwa/tagcounts.bash $SAMPLE_NAME $SAMPLE_NAME.sorted.bam $SAMPLE_NAME.tagcounts.txt $R1_FASTQ $R2_FASTQ
@@ -432,6 +447,9 @@ hostname
 
 echo "START SPOT SCORE: "
 date
+
+export TMPDIR=slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
    
 if [[ -n "$PAIRED" ]]; then
    make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
@@ -455,6 +473,8 @@ else
       --spotdupfile ${SAMPLE_NAME}.rand.uniques.sorted.spotdups.txt
 fi
 
+rm -rf "\$TMPDIR"
+
 echo "FINISH SPOT SCORE: "
 date
     
@@ -477,8 +497,13 @@ hostname
 echo "START DENSITY: "
 date
 
+export TMPDIR=slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
 make -f $STAMPIPES/makefiles/densities/density.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+
+rm -rf "\$TMPDIR"
 
 echo "FINISH DENSITY: "
 date
@@ -489,7 +514,7 @@ __SCRIPT__
 fi
 
 # upload and complete
-dependencies_uniquebam=$(echo $PROCESSING | sed -e 's/,/,afterok:/g' | sed -e 's/^,afterok/--dependency=afterok/g')
+dependencies_uniquebam=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterok/g')
 if [[ -n "$PROCESSING" ]]; then
   sbatch --export=ALL -J ".com$JOB_BASENAME" -o ".com$JOB_BASENAME.o%A" -e ".com$JOB_BASENAME.e%A" $dependencies_uniquebam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
