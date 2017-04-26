@@ -92,6 +92,7 @@ if [[ ! -e "$FINAL_BAM" ]]; then
    for filenum in $(seq -f "%03g" 0 $((NUMBER_FASTQ_FILES - 1))); do
       JOBNAME=".aln${JOB_BASENAME}_${filenum}"
       BAMFILE="${SAMPLE_NAME}_${filenum}.sorted.bam"
+      filenum=$filenum
       if [[ ! -e "$BAMFILE" ]]; then
          jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
