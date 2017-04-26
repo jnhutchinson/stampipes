@@ -24,12 +24,8 @@
 SHELL = bash
 PYTHON = python3
 
-# NSLOTS is the default sge environment variable letting the process know
-# how many threads it has reserved
-# We can use that for the default number of threads to use for the bwa
-# aln process
-NSLOTS ?= 1
-THREADS ?= 3
+# this needs to be changed but i can't deal with this now
+THREADS ?= 2
 
 # Use the default PATH version of each of these programs unless overridden
 SAMTOOLS ?= samtools
