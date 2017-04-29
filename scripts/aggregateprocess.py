@@ -305,7 +305,7 @@ class ProcessSetUp(object):
         with open(self.outfile, mode) as runfile:
             runfile.write("cd %s && " % aggregation_folder)
             fullname = "%sLN%d_AGG#%d" % (self.qsub_prefix, library_number, aggregation_id)
-            runfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__AGG__\n#!/bin/bash/\nbash %s\n__AGG__\n\n" % (fullname, fullname, fullname, self.qsub_queue, self.qsub_scriptname))
+            runfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__AGG__\n#!/bin/bash\nbash %s\n__AGG__\n\n" % (fullname, fullname, fullname, self.qsub_queue, self.qsub_scriptname))
 
     def setup_tag(self, tag_slug):
 

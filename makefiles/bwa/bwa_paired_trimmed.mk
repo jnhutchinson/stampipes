@@ -24,7 +24,7 @@
 SHELL = bash
 PYTHON = python3
 
-THREADS ?= 1 # change me someday!
+THREADS ?= 3
 
 # Use the default PATH version of each of these programs unless overridden
 SAMTOOLS ?= samtools
