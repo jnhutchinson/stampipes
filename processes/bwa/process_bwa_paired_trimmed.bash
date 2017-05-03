@@ -39,6 +39,9 @@ export FASTQ_TMP=$ALIGN_DIR/fastq
 
 cd "$ALIGN_DIR"
 
+export TMPDIR=/tmp/slurm.$SLURM_JOB_ID
+mkdir -p $TMPDIR
+
 # check if alignment needs to be completely reset
 if [[ -n "$REDO_ALIGNMENT" ]]; then
    bash "$STAMPIPES/scripts/bwa/reset_alignment.bash"
@@ -548,3 +551,5 @@ date
 
 __SCRIPT__
 fi
+
+rm -rf "$TMPDIR"
