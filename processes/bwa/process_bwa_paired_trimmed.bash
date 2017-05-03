@@ -105,7 +105,7 @@ hostname
 echo "START ALIGNMENT: "
 date
 
-export TMPDIR=slurm.\$SLURM_JOB_ID
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
 if [[ -n $PAIRED ]]; then
@@ -207,7 +207,7 @@ hostname
 echo "START BAM PROCESS: "
 date
 
-export TMPDIR=slurm.\$SLURM_JOB_ID
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
 # merge BAMs
@@ -363,7 +363,7 @@ hostname
 echo "START HOTSPOTS2: "
 date
 
-export TMPDIR=slurm.\$SLURM_JOB_ID
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
 num_fragments=\$(samtools idxstats "$UNIQUES_BAM" | awk '{x+=\$3}END{print x/2}')
@@ -435,7 +435,7 @@ __SCRIPT__
 fi
 
 # SPOT SCORE
-if [[ -n "$PAIRED" && ! -e "$SAMPLE_NAME.R1.rand.uniques.sorted.spotdups.txt" ]] || [[ ! -n "$PAIRED" && ! -e "$SAMPLE_NAME.rand.uniques.sorted.spotdups.txt" ]]; then
+if [[ -n "$PAIRED" && ! -e "$SAMPLE_NAME.R1.rand.uniques.sorted.spot.txt" ]] || [[ ! -n "$PAIRED" && ! -e "$SAMPLE_NAME.rand.uniques.sorted.spot.txt" ]]; then
    JOBNAME=".sp${JOB_BASENAME}"
    jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
@@ -448,7 +448,7 @@ hostname
 echo "START SPOT SCORE: "
 date
 
-export TMPDIR=slurm.\$SLURM_JOB_ID
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
    
 if [[ -n "$PAIRED" ]]; then
@@ -497,7 +497,7 @@ hostname
 echo "START DENSITY: "
 date
 
-export TMPDIR=slurm.\$SLURM_JOB_ID
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
 make -f $STAMPIPES/makefiles/densities/density.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
