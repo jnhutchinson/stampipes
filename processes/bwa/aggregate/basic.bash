@@ -256,7 +256,7 @@ fi
 
 # density tracks
 if [[ ! -s "$DENSITY_BIGWIG" || ! -s "$NORM_DENSITY_BIGWIG" ]]; then
-	jobid=$(sbatch --export=ALL -J "$DENSITY_JOBNAME" -o "$DENSITY_JOBNAME.o%A" -e "$DENSITY_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$DENSITY_JOBNAME" -o "$DENSITY_JOBNAME.o%A" -e "$DENSITY_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
