@@ -295,7 +295,12 @@ hostname
 echo "START: cutcounts"
 date
 
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
 bash $STAMPIPES/scripts/bwa/aggregate/basic/cutcounts.bash
+
+rm -rf "\$TMPDIR"
 
 echo "FINISH: cutcounts"
 date
