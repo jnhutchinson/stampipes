@@ -285,7 +285,7 @@ fi
 
 # cutcounts
 if [ ! -e "$CUTCOUNTS_BIGWIG" ]; then
-	jobid=$(sbatch --export=ALL -J "$CUTCOUNTS_JOBNAME" -o "$CUTCOUNTS_JOBNAME.o%A" -e "$CUTCOUNTS_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$CUTCOUNTS_JOBNAME" -o "$CUTCOUNTS_JOBNAME.o%A" -e "$CUTCOUNTS_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
