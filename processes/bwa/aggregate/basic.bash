@@ -326,9 +326,9 @@ hostname
 echo "START: "
 date
 
-bash "$STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash"
 bash "$STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash"
 bash "$STAMPIPES/scripts/bwa/aggregate/basic/uploadcounts.bash"
+bash "$STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash"
 
 echo "FINISH: "
 date

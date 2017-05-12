@@ -33,11 +33,17 @@ all : calcdup calcspot
 
 SPOT_OUT ?= $(OUTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spot.out
 DUP_OUT ?= $(OUTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spotdups.txt
+SPOT_INFO ?= $(OUTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spot.info
 
 NUCLEAR_SAMPLE_BAM ?= $(TMPDIR)/$(SAMPLE_NAME).nuclear.uniques.sorted.bam
 RANDOM_SAMPLE_BAM ?= $(TMPDIR)/$(SAMPLE_NAME).rand.uniques.sorted.bam
 
-calcspot : $(SPOT_OUT)
+# Files produced by hotspot
+HOTSPOT_SPOT = $(SPOTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spot.out
+HOTSPOT_WIG = $(SPOTDIR)/$(SAMPLE_NAME).rand.uniques.sorted-both-passes/$(SAMPLE_NAME).rand.uniques.sorted.hotspot.twopass.zscore.wig
+HOTSPOT_STARCH = $(SPOTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.hotspots.starch
+
+calcspot : $(SPOT_OUT) $(SPOT_INFO)
 calcdup : $(DUP_OUT)
 
 # exclude chrM*, chrC and random
@@ -56,8 +62,19 @@ $(SPOT_OUT) : $(SPOTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spot.out
 	cp $(SPOTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spot.out $(SPOT_OUT)
 
 # run the SPOT program
-$(SPOTDIR)/$(SAMPLE_NAME).rand.uniques.sorted.spot.out : $(RANDOM_SAMPLE_BAM)
+$(HOTSPOT_SPOT) : $(RANDOM_SAMPLE_BAM)
 	bash -e $(STAMPIPES)/scripts/SPOT/runhotspot.bash $(HOTSPOT_DIR) $(SPOTDIR) $(RANDOM_SAMPLE_BAM) $(GENOME) $(READLENGTH) $(ASSAY)
+
+# generate info
+$(SPOT_INFO) : $(HOTSPOT_STARCH) $(HOTSPOT_SPOT)
+        $(STAMPIPES)/scripts/SPOT/info.sh $(HOTSPOT_STARCH) hotspot1 $(HOTSPOT_SPOT) > $@
+
+$(HOTSPOT_STARCH) : $(HOTSPOT_WIG)
+        starch --header $(HOTSPOT_WIG) > "$@"
+
+# Dummy rule
+$(HOTSPOT_WIG) : $(HOTSPOT_SPOT)
+        @
 
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM)
