@@ -27,8 +27,8 @@ $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.75_20.normalized.${GENOME}.uni
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw --attach_file_type bigwig --attach_file_purpose cutcounts-bw
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cuts.sorted.bed.starch --attach_file_type starch --attach_file_purpose cuts-starch
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.starch --attach_file_type starch --attach_file_purpose cutcounts-starch
-$ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.fragments.sorted.bed.starch --attach_file_type starch --attach_file_purpose fragments-starch
 
+# hotspot2 output
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.allcalls.starch --attach_file_purpose hotspot-per-base --attach_file_type starch
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.fragments.sorted.starch --attach_file_purpose fragments-starch-fragments --attach_file_type starch
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.hotspots.fdr0.05.starch --attach_file_purpose hotspot-calls --attach_file_type starch
@@ -46,4 +46,8 @@ if [ -e ${LIBRARY_NAME}.MarkDuplicates.picard ]; then
 python3 $UPLOAD_SCRIPT \
     --aggregation_id ${AGGREGATION_ID} \
     --dupsfile ${LIBRARY_NAME}.MarkDuplicates.picard
+fi
+
+if [ -e ${LIBRARY_NAME}.${GENOME}.fragments.sorted.bed.starch ]; then
+    $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.fragments.sorted.bed.starch --attach_file_type starch --attach_file_purpose fragments-starch
 fi

@@ -23,10 +23,21 @@ files=(
     "$LIBRARY_NAME.$GENOME.cutcounts.sorted.bed.starch" 
     "$LIBRARY_NAME.$GENOME.cutcounts.$READ_LENGTH.bw" 
     "$LIBRARY_NAME.MarkDuplicates.picard"
+    "$LIBRARY_NAME.adaptercounts.txt"
+    "$LIBRARY_NAME.$GENOME.uniques.sorted.hotspot2.info"
     )
 paired_files=(
     "$LIBRARY_NAME.CollectInsertSizeMetrics.picard"
+    "$LIBRARY_NAME.CollectInsertSizeMetrics.picard.pdf"
     "$LIBRARY_NAME.$GENOME.fragments.sorted.bed.starch"
+    "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spotdups.txt"
+    "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.out"
+    "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.info"
+    )
+single_files=(
+    "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spotdups.txt"
+    "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spot.out"
+    "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spot.info"
     )
 
 for FILE in "${files[@]}"; do

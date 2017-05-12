@@ -368,8 +368,12 @@ $unaligned_command
 __FASTQ__
 )
 
+if [[ -n \$bcl_jobid ]]; then
+   bcl_dependency=\$(echo \$bcl_jobid | sed -e 's/^/--dependency=afterok:/g')
+fi
+
 # demultiplex
-dmx_jobid=\$(sbatch --export=ALL -J "dmx-$flowcell" --dependency=afterok:\$bcl_jobid -o "dmx-$flowcell.o%A" -e "dmx-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<'__DMX__'
+dmx_jobid=\$(sbatch --export=ALL -J "dmx-$flowcell" \$bcl_dependency -o "dmx-$flowcell.o%A" -e "dmx-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<'__DMX__'
 #!/bin/bash
    $demux_cmd
 # Wait for jobs to finish
@@ -379,8 +383,12 @@ done
 __DMX__
 )
 
+if [[ -n \$dmx_jobid ]]; then
+   dmx_dependency=\$(echo \$dmx_jobid | sed -e 's/^/--dependency=afterok:/g')
+fi
+
 # copy files and prep collation/fastqc
-copy_jobid=\$(sbatch --export=ALL -J "c-$flowcell" --dependency=afterok:\$dmx_jobid -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<'__COPY__'
+copy_jobid=\$(sbatch --export=ALL -J "c-$flowcell" \$dmx_dependency -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<'__COPY__'
 #!/bin/bash
 
 # copy files
@@ -417,8 +425,12 @@ python3 "$STAMPIPES/scripts/laneprocess.py" \
 __COPY__
 )
 
+if [[ -n \$copy_jobid ]]; then
+   copy_dependency=\$(echo \$copy_jobid | sed -e 's/^/--dependency=afterok:/g')
+fi
+
 # Collate
-sbatch --export=ALL -J "collate-$flowcell" --dependency=afterok:\$copy_jobid -o "collate-$flowcell.o%A" -e "collate-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COLLATE__'
+sbatch --export=ALL -J "collate-$flowcell" \$copy_dependency -o "collate-$flowcell.o%A" -e "collate-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COLLATE__'
 #!/bin/bash
 
 cd "$analysis_dir"
