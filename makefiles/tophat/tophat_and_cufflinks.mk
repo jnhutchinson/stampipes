@@ -162,7 +162,7 @@ $(marked_bam) $(SAMPLE_NAME).spotdups.txt : $(tophat_file)
 
 $(tophat_file) : $(R1_trimmed_fastq) $(R2_trimmed_fastq)
 	$(SCRIPT_DIR)/tophatPE.sh $^ $(TOPHAT_REF) $(LIBTYPE) $(ANNOT_GTF) $(TMPDIR)/tophat \
-		$(THREADS)
+		$(THREADS) $(MISMATCHES)
 
 $(ribosomal_file) : $(R1_trimmed_fastq)
 	zcat -f $^ | $(BOWTIE) --threads $(THREADS) -n 3 -e 140 \

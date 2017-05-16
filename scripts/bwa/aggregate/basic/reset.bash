@@ -12,7 +12,7 @@ files=( \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard" \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.pdf" \
     "${LIBRARY_NAME}.MarkDuplicates.picard" \
-    "${LIBRARY_NAME}.75_20.uniques-density.${GENOME}.bed.starch" \
+    "${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch" \
     "${LIBRARY_NAME}.75_20.${GENOME}.bw" \
     "${LIBRARY_NAME}.75_20.normalized.${GENOME}.bw" \
     "${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch" \ 
@@ -37,7 +37,7 @@ for FILE in "${files[@]}"; do
     fi
 done
 
-if [ -d "$HOTSPOT2_DIR" && "$HOTSPOT2_DIR" = "peaks" ]; then
+if [[ -d "$HOTSPOT2_DIR" && "$HOTSPOT2_DIR" = "peaks" ]]; then
     rm -r $HOTSPOT2_DIR
 fi
 

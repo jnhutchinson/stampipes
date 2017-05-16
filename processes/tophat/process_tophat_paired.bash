@@ -17,6 +17,12 @@ export REF_DIR=$(dirname "$GENOME_INDEX")
 export ADAPTER_FILE="$SAMPLE_NAME.adapters.txt"
 export VERSION_FILE="$SAMPLE_NAME.versions.txt"
 
+if [ $READLENGTH == "36" ] ; then
+    export MISMATCHES="1"
+else
+    export MISMATCHES="2"
+fi
+
 filesize=$( du --total "$FASTQ_DIR"/*fastq.gz | tail -n1 | cut -f1)
 
 # For small files, prioritize overall throughput
