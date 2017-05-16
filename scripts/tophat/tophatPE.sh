@@ -14,6 +14,7 @@ libraryType=$4
 gtf=$5
 outputdir=$6
 numthreads=$7
+mismatches=$8
 
 if ! [ -d "$outputdir" ] ; then
     mkdir -p $outputdir
@@ -52,7 +53,7 @@ if [ "$USE_TMERCER_PARAMS" == "1" ] ; then
 fi
 
 #options=" --GTF $gtf -r $mate_inner_dist --mate-std-dev $mate_std_dev --tmp-dir $TMPDIR_t --library-type $libraryType "
-options=" $opt_known_junctions -r $mate_inner_dist --mate-std-dev $mate_std_dev --library-type $libraryType --no-coverage-search"
+options=" $opt_known_junctions -N $mismatches -r $mate_inner_dist --mate-std-dev $mate_std_dev --library-type $libraryType --no-coverage-search"
 reads=" $readsF $readsR "
 echo -e "tophat $options $opt_special -p $numthreads -o $outputdir $bowtie_index $reads"
          tophat $options $opt_special -p $numthreads -o $outputdir $bowtie_index $reads
