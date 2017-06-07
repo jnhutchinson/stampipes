@@ -332,7 +332,7 @@ source $STAMPIPES/scripts/lims/api_functions.sh
 # Register the file directory
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   --attach_directory "$analysis_dir" \
-  --attach_file_contenttype sequencingdata.flowcellrun \
+  --attach_file_contenttype SequencingData.flowcellrun \
   --attach_file_purpose flowcell-directory \
   --attach_file_objectid $flowcell_id
 

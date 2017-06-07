@@ -6,6 +6,11 @@ import json
 import fileinput
 import argparse
 
+try:
+    from concurrent.futures import ThreadPoolExecutor
+except ImportError:
+    from futures import ThreadPoolExecutor
+
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 script_options = {
@@ -15,6 +20,7 @@ script_options = {
     "debug": False,
     "alignment_group": None,
     "flowcell": None,
+    "project": None,
     "outfile": "processing.json",
 }
 
@@ -34,6 +40,8 @@ def parser_setup():
         help="Your authentication token.  Required.")
     parser.add_argument("-f", "--flowcell", dest="flowcell",
         help="The flowcell we want to get processing info for.")
+    parser.add_argument("-p", "--project", dest="project",
+        help="The project to get processing info for.")
     parser.add_argument("-g", "--alignment-group", dest="alignment_group", type=int,
         help="A specific aligment group to get processing info for.")
 
@@ -45,7 +53,30 @@ def parser_setup():
 
     return parser
 
-def get_processing_info(api_url, token, id, outfile):
+def get_processing_info_project(api_url, token, id, outfile):
+    # get all LNs
+    # then get all AGGs
+    # then get all AGG info
+
+    logging.info("Setting up project #%s" % id)
+    
+    info = requests.get("%s/aggregation/?library__sample__project=%s&page_size=1000" % (api_url,id),
+        headers={'Authorization': "Token %s" % token})
+
+#    info = requests.get("%s/aggregation/?library__sample__tissue\_culture__project=%s" % (api_url,id),
+#        headers={'Authorization': "Token %s" % token})
+
+    if info.ok:
+        result = info.json()
+        with open(outfile, 'w') as output:
+            json.dump(result, output, sort_keys=True, indent=4, separators=(',', ': '))
+    else:
+        logging.error("info was not found within API")
+
+    return
+
+
+def get_processing_info_alignment_group(api_url, token, id, outfile):
 
     info = requests.get("%s/flowcell_lane_alignment_group/%d/processing_information/" % (api_url, id),
         headers={'Authorization': "Token %s" % token})
@@ -59,6 +90,7 @@ def get_processing_info(api_url, token, id, outfile):
         logging.error("Could not find processing info for alignment group %s\n" % str(id))
 
     return
+
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
@@ -92,6 +124,10 @@ from the command line."""
         logging.error("Could not find LIMS API TOKEN.\n")
         sys.exit(1)
 
+    if poptions.project:
+        logging.info("Getting aggregation information for project #%s" % poptions.project)
+        get_processing_info_project(api_url, token, poptions.project, poptions.outfile)
+
     if poptions.flowcell:
 
         logging.info("Getting alignment groups for %s" % poptions.flowcell)
@@ -112,10 +148,15 @@ from the command line."""
            logging.error("More than one alignment group found: %s" % ", ".join(["%d" % ag["id"] for ag in results['results']]))
            sys.exit(1)
 
-        get_processing_info(api_url, token, results['results'][0]["id"], poptions.outfile)
+        get_processing_info_alignment_group(api_url, token, results['results'][0]["id"], poptions.outfile)
 
     if poptions.alignment_group:
-        get_processing_info(api_url, token, poptions.alignment_group, poptions.outfile)
+        get_processing_info_alignment_group(api_url, token, poptions.alignment_group, poptions.outfile)
+
+
+
+
+############
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
