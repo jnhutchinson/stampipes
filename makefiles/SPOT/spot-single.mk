@@ -67,14 +67,14 @@ $(HOTSPOT_SPOT) : $(RANDOM_SAMPLE_BAM)
 
 # generate info
 $(SPOT_INFO) : $(HOTSPOT_STARCH) $(HOTSPOT_SPOT)
-        $(STAMPIPES)/scripts/SPOT/info.sh $(HOTSPOT_STARCH) hotspot1 $(HOTSPOT_SPOT) > $@
+	$(STAMPIPES)/scripts/SPOT/info.sh $(HOTSPOT_STARCH) hotspot1 $(HOTSPOT_SPOT) > $@
 
 $(HOTSPOT_STARCH) : $(HOTSPOT_WIG)
-        starch --header $(HOTSPOT_WIG) > "$@"
+	starch --header $(HOTSPOT_WIG) > "$@"
 
 # Dummy rule
 $(HOTSPOT_WIG) : $(HOTSPOT_SPOT)
-        @
+	@
 
 # Calculate the duplication score of the random sample
 $(DUP_OUT) : $(RANDOM_SAMPLE_BAM)
