@@ -56,7 +56,7 @@ echo "hub ${FLOW}_hub" > hub.txt
 echo "shortLabel ${FLOW}_hub" >> hub.txt
 echo "longLabel hub for all flowcell data" >> hub.txt
 echo "genomesFile genomes.txt" >> hub.txt
-echo "email placeholder@altiusinstitute.org" >> hub.txt
+echo "email anishida@altius.org" >> hub.txt
 
 # make new genomes.txt from genomes seen
 echo "" > genomes.txt
