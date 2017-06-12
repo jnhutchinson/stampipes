@@ -160,6 +160,8 @@ class MakeBrowserload(object):
         for key in self.subtrack_sets.keys():
             if key == "mm10-encode3-male":
                 self.subtrack_sets["mm10"] = self.subtrack_sets.pop("mm10-encode3-male")
+            if key == "GRCh38_no_alts":
+                self.subtrack_sets["hg38"] = self.subtrack_sets.pop("GRCh38_no_alts")
 
         self.create_ras()
         self.create_hubtxt()
@@ -175,7 +177,7 @@ class MakeBrowserload(object):
         hub.write("shortLabel %s\n" % self.flowcell_name)
         hub.write("longLabel Tag sequencing, aligned %s\n" % (self.flowcell_date))
         hub.write("genomesFile genomes.txt\n")
-        hub.write("email anishida@altiusinstitute.org\n")
+        hub.write("email anishida@altius.org\n")
         hub.write("descriptionUrl description.html\n")
         hub.close()
 
@@ -225,11 +227,9 @@ class MakeBrowserload(object):
             trackname_suffix = "L%s%s%s%sm%d" % (track["Lane"], track["Index"], track["SampleID"].lower(), track["strand"], self.mersize)
             track["tagtrackname"] = mysql_clean("%stag%s" % (self.main_label, trackname_suffix))
             track["dentrackname"] = mysql_clean("%sden%s" % (self.main_label, trackname_suffix))
-            track["cutcountstrackname"] = mysql_clean("%scutcounts%s" % (self.main_label, trackname_suffix))
 
             logging.debug("tag track name: " + track["tagtrackname"])
             logging.debug("den track name: " + track["dentrackname"])
-            logging.debug("cutcounts track name: " + track["cutcountstrackname"])
 
             project = track["SampleProject"]
 
@@ -248,7 +248,6 @@ class MakeBrowserload(object):
                 track["wigfilename"]        = "%s.75_20.%s.wig"       % (track["SampleName"], hgdb)
                 track["bigwigfilename"]     = "%s.75_20.%s.bw"        % (track["SampleName"], hgdb)
                 track["bamfilename"]        = "%s.uniques.sorted.bam" % (track["SampleName"])
-                track["cutcountsfilename"]  = "%s.cutcounts.bw"      % (track["SampleName"])
             elif track["aligner"] == "tophat":
                 filename_prefix = "%s.%s.%s"     % (track["SampleName"], track["strand"], hgdb)
                 track["wigfilename"]    = "%s.wig" % filename_prefix  # NYI
@@ -265,7 +264,6 @@ class MakeBrowserload(object):
 
             track["hasTags"] = False
             track["hasDensities"] = False
-            track["hasCutCounts"] = False
 
             if "Extra" in track and track["Extra"] is not None:
                 track["Extra"] = track["Extra"].strip()
@@ -276,10 +274,8 @@ class MakeBrowserload(object):
                 track["hasDensities"] = True
             if os.path.exists(os.path.join(track["sampleDir"], track["bamfilename"])):
                 track["hasTags"] = True
-            if os.path.exists(os.path.join(track["sampleDir"], track["cutcountsfilename"])):
-                track["hasCutCounts"] = True
 
-            if not track["hasDensities"] or not track["hasTags"] or not track["hasCutCounts"]:
+            if not track["hasDensities"] or not track["hasTags"]:
                 logging.error("%s does not have all files" % track["SampleID"])
                 if not track["hasDensities"]:
                     logging.error( "Missing densities" )
@@ -290,12 +286,9 @@ class MakeBrowserload(object):
                 if not track["hasTags"]:
                     logging.error("Missing tags")
                     logging.error("Wanted: " + os.path.join(track["sampleDir"], track["bamfilename"]))
-                if not track["hasCutCounts"]:
-                    logging.error("Missing cut counts")
-                    logging.error("Wanted: " + os.path.join(track["sampleDir"], track["cutcountsfilename"]))
                 logging.info("%s" % str(track))
 
-            if track["hasDensities"] or track["hasTags"] or track["hasCutCounts"]:
+            if track["hasDensities"] or track["hasTags"]:
                 self.subtrack_sets[hgdb].append(track)
 
     # writes html files for individual genomes and a concatenated version with all genomes (we don't really use these)
@@ -358,7 +351,7 @@ class MakeBrowserload(object):
         ra.write("longLabel Tag sequencing, aligned %s\n" % (self.flowcell_date,))
         ra.write("group %s\n" % self.project)
         ra.write("priority %s\n" % self.priority)
-        ra.write("subGroup1 view Views TAG=Tags DEN=Density CC=CutCounts\n")
+        ra.write("subGroup1 view Views TAG=Tags DEN=Density\n")
         ra.write("subGroup2 sample Sample %s\n" % " ".join(sorted(['%s=%s' % (id, display) for id, display in samples.items()])))
         ra.write("dimensions dimensionX=view dimensionY=sample\n")
         ra.write("sortOrder view=+ sample=+\n")
@@ -424,25 +417,6 @@ class MakeBrowserload(object):
                 ra.write("\t\ttype bigWig\n\n")
             else:
                 ra.write("\t\ttype wig 1.00 10000\n\n")
-
-        ra.write("\ttrack %scutcounts\n" % self.main_label)
-        ra.write("\tsubTrack %s\n" % self.main_label)
-        ra.write("\tview CC\n")
-        ra.write("\tshortLabel CutCounts\n")
-        ra.write("\tvisibility hide\n\n")
-        
-        for subtrack in subtracks:
-            ra.write("\t\ttrack %s\n" % subtrack["cutcountstrackname"])
-            ra.write("\t\tbigDataUrl %s%s/%s/%s\n" % (self.trackhubURL,self.label,subtrack["sampleDir"],subtrack["cutcountsfilename"]))
-            ra.write("\t\tsubTrack %scutcounts\n" % self.main_label)
-            ra.write("\t\tsubGroups view=CC sample=%s\n" % subtrack["SampleID"])
-            ra.write("\t\tshortLabel %s %s:%s cutcounts\n" % (subtrack["SampleID"], subtrack["Lane"], subtrack["Index"],))
-            ra.write("\t\tlongLabel %s %s %s %s:%s %dm %s %s %s %s tags: %s (%s), spot: %s\n" % (
-                subtrack["CellType"], subtrack["SampleID"], self.flowcell_name, subtrack["Lane"],
-                subtrack["Index"], self.mersize, subtrack["Assay"], subtrack["Factors"], subtrack["Extra"], subtrack["strand"], subtrack["wellmapping"],
-                subtrack["wellmapping-no-mito"], subtrack["SPOT"]))
-            ra.write("\t\tgroup %s\n" % self.project)
-            ra.write("\t\ttype bigWig\n\n")
             
         ra.close()
 
