@@ -28,6 +28,9 @@ files=( \
     "${LIBRARY_NAME}.${GENOME}.rand.uniques.sorted.spotdups.txt" \
     "${LIBRARY_NAME}.${GENOME}.rand.uniques.sorted.spot.out" \
     "${LIBRARY_NAME}.${GENOME}.rand.uniques.sorted.spot.info" \
+    "${LIBRARY_NAME}.uniques.duphist.txt" \
+    "${LIBRARY_NAME}.uniques.preseq.txt" \
+    "${LIBRARY_NAME}.uniques.preseq.targets.txt" \
 )
 
 for FILE in "${files[@]}"; do

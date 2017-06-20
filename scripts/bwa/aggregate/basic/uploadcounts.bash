@@ -23,3 +23,6 @@ upload "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.info"
 
 # Upload Adapter stats
 upload "$LIBRARY_NAME.adaptercounts.txt"
+
+# Upload Preseq stats
+upload "$LIBRARY_NAME.uniques.preseq.targets.txt"
