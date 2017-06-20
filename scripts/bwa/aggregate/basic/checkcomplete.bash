@@ -25,6 +25,9 @@ files=(
     "$LIBRARY_NAME.MarkDuplicates.picard"
     "$LIBRARY_NAME.adaptercounts.txt"
     "$LIBRARY_NAME.$GENOME.uniques.sorted.hotspot2.info"
+    "$LIBRARY_NAME.uniques.duphist.txt"
+    "$LIBRARY_NAME.uniques.preseq.txt"
+    "$LIBRARY_NAME.uniques.preseq.targets.txt"
     )
 paired_files=(
     "$LIBRARY_NAME.CollectInsertSizeMetrics.picard"

@@ -42,7 +42,7 @@ def get_projects(api_url, token, outfile):
         result = info.json()
         out = open(outfile, 'w')
         for proj in result['results']:
-            outstring = "%s\t%s\n" % (proj['id'], proj['name'])
+            outstring = "%s\t%s\n" % (proj['id'], proj['slug'])
             out.write(outstring)
 
     else:

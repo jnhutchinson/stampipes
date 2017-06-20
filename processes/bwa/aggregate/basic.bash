@@ -28,6 +28,9 @@ export NORM_DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.normalized.${GENOME}.b
 export CUTCOUNTS_BIGWIG=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw
 export INSERT_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard
 export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
+export PRESEQ_HIST=${LIBRARY_NAME}.uniques.duphist.txt
+export PRESEQ_RES=${LIBRARY_NAME}.uniques.preseq.txt
+export PRESEQ_TRGT=${LIBRARY_NAME}.uniques.preseq.targets.txt
 
 export HOTSPOT2_DIR=peaks
 HOTSPOT_PREFIX=$(basename "$FINAL_UNIQUES_BAM" .bam)
@@ -45,6 +48,7 @@ HOTSPOT_JOBNAME=${JOB_BASENAME}_hotspot
 SPOTSCORE_JOBNAME=${JOB_BASENAME}_spotscore
 COUNT_JOBNAME=${JOB_BASENAME}_count
 ADAPTERCOUNT_JOBNAME=${JOB_BASENAME}_adaptercount
+PRESEQ_JOBNAME=${JOB_BASENAME}_preseq
 DENSITY_JOBNAME=${JOB_BASENAME}_density
 CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 
@@ -252,6 +256,40 @@ date
 __SCRIPT__
 )
 	PROCESSING="$PROCESSING,$jobid"
+fi
+
+# preseq
+if [[ ! -s "$PRESEQ_TRGT" ]]; then
+        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+#!/bin/bash
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START: preseq"
+date
+
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
+# create histogram
+python3 "$STAMPIPES/scripts/bam/mark_dups.py" -i "${FINAL_UNIQUES_BAM}" -o /dev/null --hist "$PRESEQ_HIST"
+
+# get preseq metric
+preseq lc_extrap -hist "$PRESEQ_HIST" -extrap 1.001e9 -s 1e6 -v > "$PRESEQ_RES"
+
+# write out preseq targets
+bash "$STAMPIPES/scripts/utility/preseq_targets.sh" "${PRESEQ_RES}" "${PRESEQ_TRGT}"
+
+rm -rf "\$TMPDIR"
+
+echo "FINISH: preseq"
+date
+
+__SCRIPT__
+)
+        PROCESSING="$PROCESSING,$jobid"
 fi
 
 # density tracks

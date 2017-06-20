@@ -291,7 +291,7 @@ class MakeBrowserLoad(object):
             if path == "align_path":
                 file_format = "bam"
             if path == "norm_dens_path" or path == "poscov_path" or path == "negcov_path":
-                visibility = "full\n\tviewLimits 1:10\n\tautoScale off\n\tmaxHeightPixels 100:32:16"
+                visibility = "full\n\tviewLimits 0:10\n\tautoScale off\n\tmaxHeightPixels 100:32:16"
 
             # write path header
             ra.write("\ttrack %s_%s\n" % (self.projectname, path))
