@@ -147,7 +147,7 @@ class MakeBrowserLoad(object):
         logging.info("Creating genome.txt file: %s" % genomefile)
         genomes = open( genomefile, 'w')
         for key in self.all_tracks:
-            genomes.write("genome %s\n" % key)
+            genomes.write("\ngenome %s\n" % key)
             genomes.write("trackDb %s/trackDb.%s.txt\n" % (key,self.projectname))
         genomes.close()
 

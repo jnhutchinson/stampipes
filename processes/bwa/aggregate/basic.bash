@@ -117,14 +117,17 @@ if [[ "$UMI" == "True" && -n "$PAIRED" ]]; then
 	make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
 	mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
 	samtools view -b -F 1536 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
+        samtools view -F512 -u ${FINAL_UNIQUES_BAM} | python3 /home/solexa/stampipes-hpc/scripts/bam/mark_dups.py -o /dev/null --hist "$PRESEQ_HIST"
 elif [[ -n "$PAIRED" ]]; then
 	make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
 	mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
 	samtools view -b -F 512 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
+        python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${FINAL_UNIQUES_BAM}" -o /dev/null --hist "$PRESEQ_HIST"
 else
         make -f $STAMPIPES/makefiles/picard/dups.mk SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM=${FINAL_BAM_MARKED}
         mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
         samtools view -b -F 512 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
+        python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${FINAL_UNIQUES_BAM}" -o /dev/null --hist "$PRESEQ_HIST"
 fi
 
 samtools index ${FINAL_BAM}
@@ -260,7 +263,7 @@ fi
 
 # preseq
 if [[ ! -s "$PRESEQ_TRGT" ]]; then
-        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
@@ -272,9 +275,6 @@ date
 
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
-
-# create histogram
-python3 "$STAMPIPES/scripts/bam/mark_dups.py" -i "${FINAL_UNIQUES_BAM}" -o /dev/null --hist "$PRESEQ_HIST"
 
 # get preseq metric
 preseq lc_extrap -hist "$PRESEQ_HIST" -extrap 1.001e9 -s 1e6 -v > "$PRESEQ_RES"
