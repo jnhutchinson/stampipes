@@ -187,7 +187,7 @@ class MakeBrowserload(object):
         logging.info("Creating genome.txt file: %s" % genomefile)
         genomes = open( genomefile, 'w')
         for hgdb, subtracks in self.subtrack_sets.items():
-            genomes.write("genome %s\n" % hgdb)
+            genomes.write("\ngenome %s\n" % hgdb)
             genomes.write("trackDb %s/trackDb.%s.%s.txt\n" % (hgdb,self.project,self.main_label))
         genomes.close()
 
