@@ -13,12 +13,16 @@ files=( \
 "isoforms.fpkm_tracking" \
 "Signal.UniqueMultiple.str-.bw" \
 "Signal.UniqueMultiple.str+.bw" \
+"Signal.UniqueMultiple.both.bw" \
 "Signal.UniqueMultiple.str-.starch" \
 "Signal.UniqueMultiple.str+.starch" \
+"Signal.UniqueMultiple.both.starch" \
 "Signal.Unique.str-.bw" \
 "Signal.Unique.str+.bw" \
+"Signal.Unique.both.bw" \
 "Signal.Unique.str-.starch" \
 "Signal.Unique.str+.starch" \
+"Signal.Unique.both.starch" \
 "skipped.gtf" \
 "transcripts.gtf" \
 )

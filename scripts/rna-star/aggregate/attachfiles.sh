@@ -26,3 +26,4 @@ $ATTACH_AGGREGATION --attach_file feature_counts.txt --attach_file_purpose featu
 # densities
 $ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.str+.bw --attach_file_purpose pos-coverage-bigwig --attach_file_type bigwig
 $ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.str-.bw --attach_file_purpose neg-coverage-bigwig --attach_file_type bigwig
+$ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.both.bw --attach_file_purpose all-coverage-bigwig --attach_file_type bigwig
