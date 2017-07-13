@@ -11,6 +11,7 @@ files=( \
     "isoforms.fpkm_tracking" \
     "Signal.UniqueMultiple.str-.bw" \
     "Signal.UniqueMultiple.str+.bw" \
+    "Signal.UniqueMultiple.both.bw" \
 )
 
 for FILE in "${files[@]}"; do

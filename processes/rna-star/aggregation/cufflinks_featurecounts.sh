@@ -51,14 +51,19 @@ if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
     mkdir -p $TMPDIR/Signal
 
     echo STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix $TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir $TMPDIR/STAR
+    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Unstranded --outFileNamePrefix $TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir $TMPDIR/STAR
+    mv $TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg $TMPDIR/Signal/Signal.UniqueMultiple.unstranded.out.bg
+    mv $TMPDIR/Signal/Signal.Unique.str1.out.bg $TMPDIR/Signal/Signal.Unique.unstranded.out.bg
     STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix $TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir $TMPDIR/STAR
 
     grep '^chr' $STARrefDir/chrNameLength.txt > chrNL.txt
 
     convertBedGraph $TMPDIR/Signal/Signal.Unique.str1.out.bg         Signal.Unique.str-
     convertBedGraph $TMPDIR/Signal/Signal.Unique.str2.out.bg         Signal.Unique.str+
+    convertBedGraph $TMPDIR/Signal/Signal.Unique.unstranded.out.bg         Signal.Unique.both
     convertBedGraph $TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg Signal.UniqueMultiple.str-
     convertBedGraph $TMPDIR/Signal/Signal.UniqueMultiple.str2.out.bg Signal.UniqueMultiple.str+
+    convertBedGraph $TMPDIR/Signal/Signal.UniqueMultiple.unstranded.out.bg Signal.UniqueMultiple.both
 
     for i in Signal*.tmp ; do
       mv $i ${i/.tmp/}
