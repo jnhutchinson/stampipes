@@ -195,13 +195,15 @@ class MakeBrowserLoad(object):
                     tracks['cutcounts_path'] = cutcounts_results[0]['path']
                 else:
                     logging.info("Unable to locate AGG files for: %s" % (agg['id']))
-            # rna
-            elif agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/30/":
+            # rna (processes are seperate for each genome)
+            elif agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/30/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/31/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/35/":
                 align_req = requests.get("%s/file/?object_id=%d&purpose__slug=all-alignments-bam" % (self.base_api_url,agg['id']),
                     headers={'Authorization': "Token %s" % self.token})
                 poscov_req = requests.get("%s/file/?object_id=%d&purpose__slug=pos-coverage-bigwig" % (self.base_api_url,agg['id']),
                     headers={'Authorization': "Token %s" % self.token})
                 negcov_req = requests.get("%s/file/?object_id=%d&purpose__slug=neg-coverage-bigwig" % (self.base_api_url,agg['id']),
+                    headers={'Authorization': "Token %s" % self.token})
+                bothcov_req = requests.get("%s/file/?object_id=%d&purpose__slug=all-coverage-bigwig" % (self.base_api_url,agg['id']),
                     headers={'Authorization': "Token %s" % self.token})
                 if align_req.ok and poscov_req.ok and negcov_req.ok:
                     align_results = align_req.json()['results']
@@ -212,6 +214,13 @@ class MakeBrowserLoad(object):
                     tracks['negcov_path'] = negcov_results[0]['path']
                 else:
                    logging.info("Unable to locate AGG files for: %s" % (agg['id']))
+                # coverage across both strands still new, seperate from the rest for now
+                if bothcov_req.ok:
+                    bothcov_results = bothcov_req.json()['results']
+                    if len(bothcov_results) != 0:
+                        tracks['bothcov_path'] = bothcov_results[0]['path']
+                else:
+                   logging.info("Unable to locate combined stranded AGG files for: %s" % (agg['id']))
             else:
                 logging.info("Unknown template type, %s, for %s" % (agg['aggregation_process_template'], agg['id']))
             
@@ -290,7 +299,7 @@ class MakeBrowserLoad(object):
             visibility = "hide"
             if path == "align_path":
                 file_format = "bam"
-            if path == "norm_dens_path" or path == "poscov_path" or path == "negcov_path":
+            if path == "norm_dens_path" or path == "poscov_path" or path == "negcov_path" or path == "bothcov_path":
                 visibility = "full\n\tviewLimits 0:10\n\tautoScale off\n\tmaxHeightPixels 100:32:16"
 
             # write path header
