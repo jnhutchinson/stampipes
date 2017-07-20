@@ -74,16 +74,22 @@ fi
 
 # cufflinks
 if [ ! -s "genes.fpkm_tracking" ] ; then
-qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_cuff" -q $QUEUE --mem 32GB -pe threads 1 -S /bin/bash <<'__CUFF__'
+qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_cuff" -q $QUEUE --mem 16GB -pe threads 1 -S /bin/bash <<'__CUFF__'
     CUFF=cufflinks
     CUFF_COMMON="--no-update-check --library-type fr-firststrand"
     $CUFF $CUFF_COMMON --GTF $ANNOTATION $GENOME_BAM
+
+    Rscript $STAMPIPES/scripts/rna-star/aggregate/dedupe_sort_cuffout.Rscript genes.fpkm_tracking
+    Rscript $STAMPIPES/scripts/rna-star/aggregate/dedupe_sort_cuffout.Rscript isoforms.fpkm_tracking
+    mv genes.fpkm_tracking.sort genes.fpkm_tracking
+    mv isoforms.fpkm_tracking.sort isoforms.fpkm_tracking
+
 __CUFF__
 fi
 
 # featureCounts
 if [ ! -s "feature_counts.txt" ] ; then
-qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_fcounts" -q $QUEUE --mem 32GB -pe threads 1 -S /bin/bash <<'__FCOUNTS__'
+qsub -cwd -V -N ".AGG${AGGREGATION_ID}.star_fcounts" -q $QUEUE --mem 16GB -pe threads 1 -S /bin/bash <<'__FCOUNTS__'
     FCOUNTS=featureCounts
     FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2"
     $FCOUNTS $FCOUNTS_COMMON -t 'exon' -g 'gene_id' -a $ANNOTATION -o feature_counts.txt $GENOME_BAM

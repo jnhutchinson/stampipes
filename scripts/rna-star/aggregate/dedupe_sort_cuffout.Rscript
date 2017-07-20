@@ -1,0 +1,11 @@
+args <- commandArgs(trailingOnly = T)
+infile <- args[1]
+outfile <- paste(infile,".sort",sep="")
+
+input <- read.table(infile,header=T,stringsAsFactors=FALSE)
+names <- input[,1]
+dupenames <- names[which(duplicated(names))]
+removedupes <- input[which(! names %in% dupenames),]
+rownames(removedupes) <- removedupes[,1]
+sorted <- removedupes[order(as.character(removedupes[,1])),]
+write.table(sorted,outfile,sep="\t",quote=F,col.names=T,row.names=F)
