@@ -14,7 +14,7 @@ PYTHON ?= python3
 
 # Use eight threads by default; each thread uses 250MB of memory, so we are staying
 # well within qsub memory limits
-FASTQC_OPTIONS ?= -t 8 --noextract --nogroup --casava
+FASTQC_OPTIONS ?= -t 8 --noextract --nogroup --casava --limits $(STAMPIPES)/config/fastqc/limits.txt
 
 ORIGINAL_FASTQC_OUTFILE ?= $(basename $(basename $(FASTQ_FILE) ))_fastqc.zip
 

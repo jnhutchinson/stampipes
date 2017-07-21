@@ -348,10 +348,10 @@ __SCRIPT__
 	PROCESSING="$PROCESSING,$jobid"
 fi
 
-# get complete dependencies
-complete_dependencies=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterok/g')
+# get complete dependencies and run complete even with some failures
+complete_dependencies=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterany/g')
 
-# upload data
+# check completion and upload data
 if [[ -n "${PROCESSING}" ]]; then
 	UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
 	jobid=$(sbatch --export=ALL -J "${JOB_BASENAME}_complete" -o "${JOB_BASENAME}_complete.o%A" -e "${JOB_BASENAME}_complete.e%A" $complete_dependencies --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__SCRIPT__
@@ -364,9 +364,9 @@ hostname
 echo "START: "
 date
 
+bash "$STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash"
 bash "$STAMPIPES/scripts/bwa/aggregate/basic/attachfiles.bash"
 bash "$STAMPIPES/scripts/bwa/aggregate/basic/uploadcounts.bash"
-bash "$STAMPIPES/scripts/bwa/aggregate/basic/checkcomplete.bash"
 
 echo "FINISH: "
 date

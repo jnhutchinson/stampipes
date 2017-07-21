@@ -14,6 +14,8 @@ checkfile(){
 files=(
     "$LIBRARY_NAME.$GENOME.sorted.bam"
     "$LIBRARY_NAME.$GENOME.sorted.bam.bai"
+    "$LIBRARY_NAME.$GENOME.uniques.sorted.bam"
+    "$LIBRARY_NAME.$GENOME.uniques.sorted.bam.bai"
     "$LIBRARY_NAME.tagcounts.txt" 
     "$LIBRARY_NAME.75_20.$GENOME.bw" 
     "$LIBRARY_NAME.75_20.$GENOME.uniques-density.bed.starch" 
@@ -43,13 +45,18 @@ single_files=(
     "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spot.info"
     )
 
+# check files
 for FILE in "${files[@]}"; do
     checkfile "$FILE"
 done
 
-# Only check for InsertSizeMetrics on paired-end data
+# checks for paired/single specific files
 if [[ -n "$PAIRED" ]]; then
     for FILE in "${paired_files[@]}" ; do
+        checkfile "$FILE"
+    done
+else
+    for FILE in "${single_files[@]}" ; do
         checkfile "$FILE"
     done
 fi
