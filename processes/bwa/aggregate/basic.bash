@@ -117,7 +117,7 @@ if [[ "$UMI" == "True" && -n "$PAIRED" ]]; then
 	make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
 	mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
 	samtools view -b -F 1536 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
-        samtools view -F512 -u ${FINAL_BAM} | python3 /home/solexa/stampipes-hpc/scripts/bam/mark_dups.py -o /dev/null --hist "$PRESEQ_HIST"
+        samtools view -F 512 -u ${FINAL_BAM} | python3 /home/solexa/stampipes-hpc/scripts/bam/mark_dups.py -o /dev/null --hist "$PRESEQ_HIST"
 elif [[ -n "$PAIRED" ]]; then
 	make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
 	mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
@@ -135,7 +135,13 @@ samtools index ${FINAL_UNIQUES_BAM}
 
 # calculate insert sizes
 if [[ ! -s "$INSERT_FILE" && -n "$PAIRED" ]]; then
-	make -f "$STAMPIPES/makefiles/picard/insert_size_metrics.mk" "SAMPLE_NAME=${LIBRARY_NAME}" "BAMFILE=${FINAL_UNIQUES_BAM}" "INSERTMETRICS=${INSERT_FILE}"
+
+    samtools idxstats ${FINAL_UNIQUES_BAM} | cut -f 1 | grep -v chrM | grep -v chrC | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
+    picard CollectInsertSizeMetrics INPUT=\${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam OUTPUT=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard \
+       HISTOGRAM_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.pdf \
+       VALIDATION_STRINGENCY=LENIENT \
+       ASSUME_SORTED=true && echo Picard stats >&2
+
 fi
 
 rm -rf "\$TMPDIR"

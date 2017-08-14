@@ -36,6 +36,7 @@ export UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 export ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 export VERSION_FILE=${SAMPLE_NAME}.versions.txt
 export FASTQ_TMP=$ALIGN_DIR/fastq
+export HIST=$SAMPLE_NAME.uniques.duphist.txt
 
 cd "$ALIGN_DIR"
 
@@ -236,16 +237,19 @@ if [[ -n $PAIRED ]]; then
       make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
       mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
       samtools view -b -F 1536 ${FINAL_BAM} > ${UNIQUES_BAM}
+      samtools view -F 512 -u ${FINAL_BAM} | python3 $STAMPIPES/scripts/bam/mark_dups.py -o /dev/null --hist "$HIST"
    else
       make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
       mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
       samtools view -b -F 512 ${FINAL_BAM} > ${UNIQUES_BAM}
+      python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${UNIQUES_BAM}" -o /dev/null/ --hist "$HIST"
    fi
-      samtools index ${FINAL_BAM}
-      samtools index ${UNIQUES_BAM}
+   samtools index ${FINAL_BAM}
+   samtools index ${UNIQUES_BAM}
 else
    make -f $STAMPIPES/makefiles/bwa/process_unpaired_bam.mk
    make -f $STAMPIPES/makefiles/picard/dups.mk
+   python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${UNIQUES_BAM}" -o /dev/null/ --hist "$HIST"
 fi
 
 python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
@@ -284,7 +288,15 @@ hostname
 echo "START INSERTSIZE: "
 date
 
-make -f "$STAMPIPES/makefiles/picard/insert_size_metrics.mk" "SAMPLE_NAME=${SAMPLE_NAME}" "BAMFILE=${UNIQUES_BAM}"
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
+samtools idxstats ${SAMPLE_NAME}.uniques.sorted.bam | cut -f 1 | grep -v chrM | grep -v chrC | xargs samtools view -b ${SAMPLE_NAME}.uniques.sorted.bam > ${TMPDIR}/${SAMPLE_NAME}.nuclear.bam
+
+picard CollectInsertSizeMetrics INPUT=${TMPDIR}/${SAMPLE_NAME}.nuclear.bam OUTPUT=${SAMPLE_NAME}.CollectInsertSizeMetrics.picard \
+    HISTOGRAM_FILE=${SAMPLE_NAME}.CollectInsertSizeMetrics.picard.pdf \
+    VALIDATION_STRINGENCY=LENIENT \
+    ASSUME_SORTED=true && echo Picard stats >&2
 
 python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
    -t ${LIMS_API_TOKEN} \
@@ -293,6 +305,8 @@ python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
    --flowcell_lane_id ${FLOWCELL_LANE_ID} \
    --insertsfile ${SAMPLE_NAME}.CollectInsertSizeMetrics.picard \
    --dupsfile ${SAMPLE_NAME}.MarkDuplicates.picard
+
+rm -rf "\$TMPDIR"
       
 echo "END INSERTSIZE: "
 date
@@ -304,7 +318,6 @@ fi
 
 # Preseq duplicate estimation
 if [[ -n "$PAIRED" && ! -s "$SAMPLE_NAME.uniques.preseq.targets.txt" ]]; then
-   hist=$SAMPLE_NAME.uniques.duphist.txt
    preseq=$SAMPLE_NAME.uniques.preseq.txt
    targets=$SAMPLE_NAME.uniques.preseq.targets.txt
    lorentz=$SAMPLE_NAME.uniques.dup.lorentz.txt
@@ -321,14 +334,11 @@ hostname
 echo "START PRESEQ: "
 date
 
-# create histogram
-python3 "$STAMPIPES/scripts/bam/mark_dups.py" -i "$UNIQUES_BAM" -o /dev/null --hist "$hist"
-
 # get gini / robinhood metrics
-python3 "$STAMPIPES/scripts/utility/lorentz.py" < "$hist" > "$lorentz"
+python3 "$STAMPIPES/scripts/utility/lorentz.py" < "$HIST" > "$lorentz"
 
 # get preseq metrics
-preseq lc_extrap -hist "$hist" -extrap 1.001e9 -s 1e6 -v > "$preseq"
+preseq lc_extrap -hist "$HIST" -extrap 1.001e9 -s 1e6 -v > "$preseq"
 
 # write preseq targets
 bash "$STAMPIPES/scripts/utility/preseq_targets.sh" "$preseq" "$targets"
