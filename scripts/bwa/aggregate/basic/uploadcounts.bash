@@ -19,7 +19,11 @@ upload "$LIBRARY_NAME.tagcounts.txt"
 upload "$LIBRARY_NAME.$GENOME.uniques.sorted.hotspot2.info"
 
 # Upload SPOT1 stats
-upload "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.info"
+if [[ -n "$PAIRED" ]]; then
+        upload "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.info"
+else
+        upload "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spot.info"
+fi
 
 # Upload Adapter stats
 upload "$LIBRARY_NAME.adaptercounts.txt"

@@ -65,4 +65,4 @@ if [[ $EXIT -ne 1 ]]; then
     python3 "$STAMPIPES/scripts/lims/upload_data.py" --aggregation_id ${AGGREGATION_ID} --complete_aggregation
 fi
 
-exit $EXIT
+#exit $EXIT
