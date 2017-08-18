@@ -242,14 +242,14 @@ if [[ -n $PAIRED ]]; then
       make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
       mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
       samtools view -b -F 512 ${FINAL_BAM} > ${UNIQUES_BAM}
-      python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${UNIQUES_BAM}" -o /dev/null/ --hist "$HIST"
+      python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${UNIQUES_BAM}" -o /dev/null --hist "$HIST"
    fi
    samtools index ${FINAL_BAM}
    samtools index ${UNIQUES_BAM}
 else
    make -f $STAMPIPES/makefiles/bwa/process_unpaired_bam.mk
    make -f $STAMPIPES/makefiles/picard/dups.mk
-   python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${UNIQUES_BAM}" -o /dev/null/ --hist "$HIST"
+   python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${UNIQUES_BAM}" -o /dev/null --hist "$HIST"
 fi
 
 python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
