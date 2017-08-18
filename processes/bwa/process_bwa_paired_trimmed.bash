@@ -192,7 +192,7 @@ fi
 dependencies_align=$(echo $ALIGNMENT_JOBIDS | sed -e 's/,/,afterok:/g' | sed -e 's/^,afterok/--dependency=afterok/g')
 
 # mark duplicates and unique file
-if [[ ! -e "$FINAL_BAM" || ! -e "$UNIQUES_BAM" ]]; then
+if [[ ! -e "$FINAL_BAM" || ! -e "$UNIQUES_BAM" || ! -e "$HIST" ]]; then
 
   # If we are redoing this part, then we should make sure
   # to redo all the other results as well
@@ -448,7 +448,7 @@ __SCRIPT__
 fi
 
 # SPOT SCORE
-if [[ -n "$PAIRED" && ! -e "$SAMPLE_NAME.R1.rand.uniques.sorted.spot.txt" ]] || [[ ! -n "$PAIRED" && ! -e "$SAMPLE_NAME.rand.uniques.sorted.spot.txt" ]]; then
+if [[ -n "$PAIRED" && ! -e "$SAMPLE_NAME.R1.rand.uniques.sorted.spot.info" ]] || [[ ! -n "$PAIRED" && ! -e "$SAMPLE_NAME.rand.uniques.sorted.spot.txt" ]]; then
    JOBNAME=".sp${JOB_BASENAME}"
    jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
