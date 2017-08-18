@@ -314,8 +314,7 @@ class ProcessSetUp(object):
             p5_adapter = lane['barcode1']['adapter5']
             if "barcode2" in lane and lane['barcode2']:
                 # Override the "default" end adapter from barcode1
-                # TODO: Make sure we want adapter7, double-check lims methods
-                p5_adapter = lane['barcode2']['adapter7']
+                p5_adapter = lane['barcode2']['adapter5_reverse_complement']
 
             if not p7_adapter or not p5_adapter:
                 logging.warn("Alignment %d missing adapters, some processes might not work" % alignment['id'])
