@@ -300,7 +300,7 @@ class MakeBrowserLoad(object):
             if path == "align_path":
                 file_format = "bam"
             if path == "norm_dens_path" or path == "poscov_path" or path == "negcov_path" or path == "bothcov_path":
-                visibility = "full\n\tviewLimits 0:10\n\tautoScale off\n\tmaxHeightPixels 100:32:16"
+                visibility = "full\n\tviewLimits 0:5\n\tautoScale off\n\tmaxHeightPixels 100:32:16"
 
             # write path header
             ra.write("\ttrack %s_%s\n" % (self.projectname, path))
@@ -320,6 +320,8 @@ class MakeBrowserLoad(object):
                     ra.write("\t\tsubGroups view=%s sample=%s\n" % (path, track['agg_id']))
                     ra.write("\t\tlongLabel %s, AG%s, LN%s%s, %s, %s\n" % (self.projectname, track['agg_id'], track['agg_ln'], track['agg_ln_sub'], genome, path))
                     ra.write("\t\tgroup %s\n" % self.projectname)
+                    if file_format == "bam":
+                        ra.write("\t\tpairEndsByName .\n")
                     ra.write("\t\ttype %s\n\n" % file_format)
 
         ra.close()
