@@ -8,6 +8,7 @@ files=( \
     "${SAMPLE_NAME}.sorted.bam.bai" \ 
     "${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt" \
     "${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out" \
+    "${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.info" \
     "${SAMPLE_NAME}.tagcounts.txt" \
     "${SAMPLE_NAME}.sorted.bam" \
     "${SAMPLE_NAME}.sorted.bam.bai" \
