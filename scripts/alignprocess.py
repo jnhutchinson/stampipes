@@ -239,10 +239,11 @@ class ProcessSetUp(object):
            full_path = os.path.join(lane["directory"], alignment["align_dir"], "last_complete_job_id.txt")
            alignment_string = alignment_string + " " + full_path
         aggregationrun = "sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 \$upload_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG2__\n#!/bin/bash\npython /home/solexa/stampipes-hpc/scripts/aggregateprocessflowcell.py --flowcell %s --outfile run_aggregations.bash\nbash run_aggregations.bash\n__AUTOAGG2__" % (aaname_run,aaname_run,aaname_run,self.qsub_queue,flowcell_label)
+        sleep = "sleep 60"
         upload_count = "upload_count=$(" + alignment_string + " | wc -l)"
         upload_dependencies = "upload_dependencies=$(" + alignment_string + " | tr \'\\n\' \',\' | sed -e \'s/,$//g\'| sed -e \'s/,/,afterok:/g\' | sed -e \'s/^/--dependency=afterok:/g\')"
-        if_statement = "if [ $upload_count == " + str(len(alignments)) + " ]\nthen\n%s\nfi\n" % aggregationrun
-        aggregationscript = upload_count + "\n" + upload_dependencies + "\n\n" + if_statement
+        if_statement = "if [ \$upload_count == " + str(len(alignments)) + " ]\nthen\n%s\nfi\n" % aggregationrun
+        aggregationscript = sleep + "\n" + upload_count + "\n" + upload_dependencies + "\n\n" + if_statement
 
         outfile.write("cd /net/seq/data/flowcells/FC%s_*\n" % flowcell_label) # replace me with actual path
         outfile.write("sentinel_dependencies=$(echo $PROCESSING | sed -e \'s/,/,afterok:/g\' | sed -e \'s/^,afterok/--dependency=afterok/g\')\n")

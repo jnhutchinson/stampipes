@@ -452,7 +452,7 @@ python3 "$STAMPIPES/scripts/alignprocess.py" \
   --outfile run_alignments.bash
 
 # Set up of flowcell aggregations
-curl -X POST "$LIMS_API_URL/flowcell_run/\$flowcell_id/autoaggregate/" -H "Authorization: Token $LIMS_API_TOKEN"
+curl -X POST "$LIMS_API_URL/flowcell_run/$flowcell_id/autoaggregate/" -H "Authorization: Token $LIMS_API_TOKEN"
 
 # Run alignments
 # bash run_alignments.bash
