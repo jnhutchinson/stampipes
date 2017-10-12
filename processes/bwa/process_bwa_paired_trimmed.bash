@@ -529,7 +529,7 @@ fi
 # upload and complete
 dependencies_uniquebam=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterok/g')
 if [[ -n "$PROCESSING" ]]; then
-  sbatch --export=ALL -J ".com$JOB_BASENAME" -o ".com$JOB_BASENAME.o%A" -e ".com$JOB_BASENAME.e%A" $dependencies_uniquebam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__SCRIPT__
+  upload_id=$(sbatch --export=ALL -J ".com$JOB_BASENAME" -o ".com$JOB_BASENAME.o%A" -e ".com$JOB_BASENAME.e%A" $dependencies_uniquebam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -560,6 +560,10 @@ echo "FINISH COMPLETION: "
 date
 
 __SCRIPT__
+)
 fi
 
 rm -rf "$TMPDIR"
+
+# return upload id
+echo "$upload_id" > last_complete_job_id.txt

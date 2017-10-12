@@ -31,6 +31,7 @@ script_options = {
     "bases_mask": None,
     "redo_completed": False,
     "qsub_priority": -50,
+    "auto_aggregate": False,
 }
 
 def parser_setup():
@@ -77,6 +78,8 @@ def parser_setup():
         help="Set a bases mask.")
     parser.add_argument("--redo_completed", dest="redo_completed", help="Redo alignments marked as completed.",
         action="store_true")
+    parser.add_argument("--auto_aggregate", dest="auto_aggregate", help="Script created will also run auto-aggregations after alignments finished.",
+        action="store_true")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -99,6 +102,7 @@ class ProcessSetUp(object):
         self.script_template = args.script_template
         self.qsub_priority = args.qsub_priority
         self.qsub_queue = args.qsub_queue
+        self.auto_aggregate = args.auto_aggregate
 
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
@@ -207,11 +211,43 @@ class ProcessSetUp(object):
         self.setup_alignments([alignment["id"] for alignment in alignments])
 
     def setup_flowcell(self, flowcell_label):
-
         logging.info("Setting up flowcell for %s" % flowcell_label)
         alignments = self.api_list_result("flowcell_lane_alignment/?lane__flowcell__label=%s" % flowcell_label)
+        if self.auto_aggregate:
+            for alignment in alignments:
+                self.setup_alignment(alignment["id"])
+            self.auto_aggregation_script(flowcell_label,alignments)
+        else:
+            self.setup_alignments([alignment["id"] for alignment in alignments])
 
-        self.setup_alignments([alignment["id"] for alignment in alignments])
+    def auto_aggregation_script(self,flowcell_label,alignments):
+        aaname_sentinel = "auto_agg_sentinel.%s" % (flowcell_label)
+        aaname_run = "auto_agg_run.%s" % (flowcell_label)
+
+        if not self.outfile:
+            logging.debug("Writing script to stdout")
+            outfile = sys.stdout
+        else:
+            logging.debug("Logging script to %s" % self.outfile)
+            outfile = open(self.outfile, 'a')
+
+        alignment_string = "cat"
+        for a in alignments:
+           aln = self.get_align_process_info(a["id"])
+           lane = aln["libraries"][0]
+           alignment = lane["alignments"][0]
+           full_path = os.path.join(lane["directory"], alignment["align_dir"], "last_complete_job_id.txt")
+           alignment_string = alignment_string + " " + full_path
+        aggregationrun = "sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 \$upload_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG2__\n#!/bin/bash\npython /home/solexa/stampipes-hpc/scripts/aggregateprocessflowcell.py --flowcell %s --outfile run_aggregations.bash\nbash run_aggregations.bash\n__AUTOAGG2__" % (aaname_run,aaname_run,aaname_run,self.qsub_queue,flowcell_label)
+        upload_count = "upload_count=$(" + alignment_string + " | wc -l)"
+        upload_dependencies = "upload_dependencies=$(" + alignment_string + " | tr \'\\n\' \',\' | sed -e \'s/,$//g\'| sed -e \'s/,/,afterok:/g\' | sed -e \'s/^/--dependency=afterok:/g\')"
+        if_statement = "if [ $upload_count == " + str(len(alignments)) + " ]\nthen\n%s\nfi\n" % aggregationrun
+        aggregationscript = upload_count + "\n" + upload_dependencies + "\n\n" + if_statement
+
+        outfile.write("cd /net/seq/data/flowcells/FC%s_*\n" % flowcell_label) # replace me with actual path
+        outfile.write("sentinel_dependencies=$(echo $PROCESSING | sed -e \'s/,/,afterok:/g\' | sed -e \'s/^,afterok/--dependency=afterok/g\')\n")
+        outfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 $sentinel_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG1__\n#!/bin/bash\n%s\n__AUTOAGG1__\n" % (aaname_sentinel, aaname_sentinel, aaname_sentinel, self.qsub_queue, aggregationscript))
+        outfile.close()
 
     def add_script(self, align_id, processing_info, script_file, sample_name):
 
@@ -224,7 +260,7 @@ class ProcessSetUp(object):
 
         outfile.write("cd %s && " % os.path.dirname(script_file))
         fullname = "%s%s-%s-ALIGN#%d" % (self.qsub_prefix,sample_name,processing_info['flowcell']['label'],align_id)
-        outfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n\n" % (fullname, fullname, fullname, self.qsub_queue, script_file))
+        outfile.write("jobid=$(sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n)\nPROCESSING=\"$PROCESSING,$jobid\"\n\n" % (fullname, fullname, fullname, self.qsub_queue, script_file))
         outfile.close()
 
     def get_script_template(self, process_template):
