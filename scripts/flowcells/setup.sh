@@ -445,11 +445,17 @@ done
 # Run fastQC
 bash fastqc.bash
 
-# Set up alignments but don't run them until later
+# Set up of flowcell alignments
 python3 "$STAMPIPES/scripts/alignprocess.py" \
   --flowcell "$flowcell"                     \
-  --outfile run.bash
-# bash run.bash
+  --auto_aggregate                           \
+  --outfile run_alignments.bash
+
+# Set up of flowcell aggregations
+curl -X POST "$LIMS_API_URL/flowcell_run/\$flowcell_id/autoaggregate/" -H "Authorization: Token $LIMS_API_TOKEN"
+
+# Run alignments
+# bash run_alignments.bash
 
 __COLLATE__
 
