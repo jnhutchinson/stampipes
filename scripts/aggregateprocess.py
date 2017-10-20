@@ -26,6 +26,7 @@ script_options = {
     "qsub_prefix": ".agg",
     "qsub_queue": "queue2",
     "dry_run": False,
+    "sequins": False,
     "aggregation_base_directory": None,
     "aggregation_directory": None,
     "script_template": None,
@@ -71,6 +72,8 @@ def parser_setup():
         help="Name of the SLURM partition to use.")
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
         help="Take no action, only print messages.")
+    parser.add_argument("--sequins",dest="sequins",
+        help="If this is a sequins analysis.")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -93,6 +96,7 @@ class ProcessSetUp(object):
         self.aggregation_directory = args.aggregation_directory
         self.script_template = args.script_template
         self.overwrite = args.overwrite
+        self.sequins = args.sequins
 
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
@@ -215,6 +219,26 @@ class ProcessSetUp(object):
         file_info = results[0]
 
         return (file_info["path"], file_info["md5sum"])
+
+    def get_trimmed_fastq_r1(self, aggregation_id, alignment_id):
+
+        results = self.api_list_result("file/?purpose__slug=r1-fastq-trimmed&filetype__slug=gzipped-fastq&content_type=47&object_id=%d" % alignment_id)
+
+        if len(results) != 1:
+            logging.error("Found %d trimmed FQ files for alignment %d, require 1 (Aggregation %d)" % (len(results), alignment_id, aggregation_id))
+            logging.error(results)
+            return None
+        file_info = results[0]
+
+    def get_trimmed_fastq_r1(self, aggregation_id, alignment_id):
+
+        results= self.api_list_result("file/?purpose__slug=r2-fastq-trimmed&filetype__slug=gzipped-fastq&content_type=47&object_id=%d" % alignment_id)
+
+        if len(results) != 1:
+            logging.error("Found %d trimmed FQ files for alignment %d, require 1 (Aggregation %d)" % (len(results), alignment_id, aggregation_id))
+            logging.error(results)
+            return None
+        file_info = results[0]
 
     def get_library_info(self, aggregation_info):
         library_info = self.api_single_result(url=aggregation_info["library"])
@@ -368,6 +392,20 @@ class ProcessSetUp(object):
                 logging.info(bamfile)
                 files.append(bamfile)
 
+            if sequins == True:
+                trimmed_R1 = self.get_lane_trimmed_r1_file(aggregation_id, alignment_id)
+                trimmed_R2 = self.get_lane_trimmed_R2_file(aggregation_id, alignment_id)
+                if not trimmed_R1:
+                    missing = True
+                    logging.critical("No trimmed R1 file for alignment %s for lane %s, skipping (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], aggregation_id))
+                    continue
+                if not trimmed_R2:
+                    missing = True
+                    logging.critical("No trimmed R2 file for alignment %s for lane %s, skipping (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], aggregation_id))
+                    continue
+                files.append(trimmed_R1)
+                files.append(trimmed_R2)
+
         if missing: return False
 
         (script_contents, process_template) = self.get_script_template(aggregation_id, aggregation["aggregation_process_template"], self.script_template)
@@ -395,6 +433,10 @@ class ProcessSetUp(object):
             env_vars["PAIRED"] = True
         else:
             env_vars["PAIRED"] = None
+
+        if sequins == True:
+            env_vars["TRIMMED_R1"] = join([trimmed_R1[0] for trimmed_R1 in files])
+            env_vars["TRIMMED_R2"] = join([trimmed_R2[0] for trimmed_R2 in files])
 
         # Set process template env var overrides
         if 'process_variables' in process_template and process_template['process_variables']:

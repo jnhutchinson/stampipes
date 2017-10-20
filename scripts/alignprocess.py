@@ -240,8 +240,8 @@ class ProcessSetUp(object):
            alignment_string = alignment_string + " " + full_path
         aggregationrun = "sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 \$upload_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG2__\n#!/bin/bash\npython /home/solexa/stampipes-hpc/scripts/aggregateprocessflowcell.py --flowcell %s --outfile run_aggregations.bash\nbash run_aggregations.bash\n__AUTOAGG2__" % (aaname_run,aaname_run,aaname_run,self.qsub_queue,flowcell_label)
         sleep = "sleep 60"
-        upload_count = "upload_count=$(" + alignment_string + " | wc -l)"
-        upload_dependencies = "upload_dependencies=$(" + alignment_string + " | tr \'\\n\' \',\' | sed -e \'s/,$//g\'| sed -e \'s/,/,afterok:/g\' | sed -e \'s/^/--dependency=afterok:/g\')"
+        upload_count = "upload_count=\$(" + alignment_string + " | wc -l)"
+        upload_dependencies = "upload_dependencies=\$(" + alignment_string + " | tr \'\\n\' \',\' | sed -e \'s/,$//g\'| sed -e \'s/,/,afterok:/g\' | sed -e \'s/^/--dependency=afterok:/g\')"
         if_statement = "if [ \$upload_count == " + str(len(alignments)) + " ]\nthen\n%s\nfi\n" % aggregationrun
         aggregationscript = sleep + "\n" + upload_count + "\n" + upload_dependencies + "\n\n" + if_statement
 

@@ -19,6 +19,7 @@ Modules
 
 The current modules to load for working the pipeline are:
 
+* `anaquin/2.0`
 * `bcl2fastq/1.8.4`
 * `bcl2fastq2/2.15.0.4`
 * `bedops/2.4.19`
@@ -31,6 +32,7 @@ The current modules to load for working the pipeline are:
 * `gcc/4.7.2`
 * `git/2.3.3`
 * `jdk/1.8.0_92`
+* `kallisto/0.43.1`
 * `picard/2.8.1`
 * `pigz/2.3.3`
 * `pysam/0.9.0`
