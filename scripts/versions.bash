@@ -87,3 +87,8 @@ if [[ `command -v R` ]]; then
 echo "R:"
 R --version | grep "R version"
 fi
+
+if [[ `command -v anaquin` ]]; then
+echo "Anaquin:"
+anaquin -v
+fi

@@ -4,6 +4,7 @@ module load gcc/4.7.2     # for adapter trimming
 module load coreutils/8.25 # parallel sort
 module load STAR/2.4.2a
 module load perl/5.16.3
+module load anaquin/2.0
 
 source "$PYTHON3_ACTIVATE"
 
@@ -12,17 +13,20 @@ outdir=$(pwd)
 scriptdir="$STAMPIPES/scripts/rna-star/"
 script="$scriptdir/STAR_ONLY.sh"
 
-REFDIR=$(dirname "$BWAINDEX")
+# backup in case this didn't point to the right file
+#sequins_ref="/net/seq/data/genomes/sequins_v1/Sequin_annotations.gtf"
+sequins_ref=$SEQUINS_REF
 
+REFDIR=$(dirname "$BWAINDEX")
 # $STAR_DIR is set by the process template, and are relative to the reference directory
 export STARdir="$REFDIR/$STAR_DIR"
 
 TRIMDIR="trimmed/"
-TRIM_R1=$TRIMDIR/$(basename "$R1_FASTQ")
-TRIM_R2=$TRIMDIR/$(basename "$R2_FASTQ")
+TRIM_R1=$TRIMDIR/${SAMPLE_NAME}.trimmed.R1.fastq.gz
+TRIM_R2=$TRIMDIR/${SAMPLE_NAME}.trimmed.R2.fastq.gz
 mkdir -p "$TRIMDIR"
 
-dataType="str_PE"  # 4 types; str_SE str_PE unstr_SE unstr_PE
+dataType="str_PE"  # 4 types; str_SE str_PE unstr_SE unstr_PE, truseq is str_PE
 
 ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 VERSION_FILE=${SAMPLE_NAME}.versions.txt
@@ -47,8 +51,9 @@ fi
 
 # Perform trimming
 if [[ ( "$ADAPTER_P7"  == "NOTAVAILABLE" ) || ( "$ADAPTER_P5" == "NOTAVAILABLE" ) ]] ; then
-  TRIM_R1=$R1_FASTQ
-  TRIM_R2=$R2_FASTQ
+  # distinguish trimming needs further upstream in the future, for now copy so they always get saved independently
+  cp $R1_FASTQ $TRIM_R1
+  cp $R2_FASTQ $TRIM_R2
 else 
   if [[ ( ! -e "$TRIM_R1" ) || ( ! -e "$TRIM_R2" ) ]] ; then
     trim-adapters-illumina -f "$ADAPTER_FILE" \
@@ -81,12 +86,14 @@ if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
     cd "$outdir"
     "$script" "$TRIM_R1" "$TRIM_R2" "\$STARdir" "$dataType" "\$nThreadsSTAR" 
 
+    anaquin RnaAlign -rgtf $sequins_ref -usequin Aligned.sortedByCoord.out.bam -o anaquin_star
+
 __RNA-STAR__
 )
 fi
 
 # Check for completeness and upload files.
-sbatch --export=ALL -J "$uploadjob" --dependency=afterok:$star_jobid -o "$uploadjob.o%A" -e "$uploadjob.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__UPLOAD__
+jobid=$(sbatch --export=ALL -J "$uploadjob" --dependency=afterok:$star_jobid -o "$uploadjob.o%A" -e "$uploadjob.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__UPLOAD__
 #!/bin/bash
 
   set -e
@@ -100,3 +107,5 @@ sbatch --export=ALL -J "$uploadjob" --dependency=afterok:$star_jobid -o "$upload
     --finish_alignment
 
 __UPLOAD__
+)
+echo "$jobid" > last_complete_job_id.txt
