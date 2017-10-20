@@ -20,6 +20,9 @@ $ATTACH_AGGREGATION --attach_file Aligned.toTranscriptome.out.bam --attach_file_
 $ATTACH_AGGREGATION --attach_file genes.fpkm_tracking --attach_file_purpose gene-expression-levels --attach_file_type plaintext
 $ATTACH_AGGREGATION --attach_file isoforms.fpkm_tracking --attach_file_purpose isoform-expression-levels --attach_file_type plaintext
 
+# kallisto
+$ATTACH_AGGREGATION --attach_file kallisto_output/abundance.tsv --attach_file_purpose kallisto-abundance --attach_file_type tabtext
+
 # featureCounts
 $ATTACH_AGGREGATION --attach_file feature_counts.txt --attach_file_purpose featureCounts-output --attach_file_type plaintext
 

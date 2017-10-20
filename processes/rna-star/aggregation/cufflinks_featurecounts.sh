@@ -185,9 +185,7 @@ hostname
 echo "START KALLISTO: "
 date
 
-# hardcode path to sequins kallisto index... may add gencode? mitranscriptome?
-# run kallisto using mitranscriptome or gencode v25 eventually?
-kallisto quant -i /net/seq/data/genomes/human/GRCh38/noalts-sequins/sequins_kallisto -o kallisto_output $TRIMS_R1 $TRIMS_R2
+kallisto quant -i $KALLISTO_INDEX -o kallisto_output $TRIMS_R1 $TRIMS_R2
 anaquin RnaExpression -o anaquin_kallisto_isoforms -rmix $SEQUINS_ISO_MIX -method isoform -usequin kallisto_output/abundance.tsv
 anaquin RnaExpression -o anaquin_kallisto_genes -rmix $SEQUINS_ISO_MIX -method gene -usequin kallisto_output/abundance.tsv
 
