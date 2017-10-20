@@ -10,8 +10,8 @@ files=( \
     "Aligned.toTranscriptome.out.bam" \
     "anaquin_star/RnaAlign_sequins.tsv" \
     "anaquin_star/RnaAlign_summary.stats" \
-    "trimmed/{SAMPLE_NAME}.trimmed.R1.fastq.gz" \
-    "trimmed/{SAMPLE_NAME}.trimmed.R2.fastq.gz"
+    "trimmed/${SAMPLE_NAME}.trimmed.R1.fastq.gz" \
+    "trimmed/${SAMPLE_NAME}.trimmed.R2.fastq.gz"
 )
 
 for FILE in "${files[@]}"; do

@@ -7,21 +7,24 @@ module load bedops/2.4.19
 module load subread/1.5.1 # for featureCounts
 module load cufflinks/2.2.1 # for cuffLinks
 module load anaquin/2.0
+module load kallisto/0.43.1
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
 export TARGET_BAM=Aligned.toTranscriptome.out.bam
 export GENOME_BAM=Aligned.toGenome.out.bam
 
-sequins_gene_mix="/net/seq/data/genomes/sequins_v1/Sequin_gene_mix.csv"
-sequins_isoform_mix="/net/seq/data/genomes/sequins_v1/Sequin_isoform_mix.csv"
-
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/rna-star/aggregate/reset.bash
 fi
 
+TRIMS_R1=trims.R1.fastq.gz
+TRIMS_R2=trims.R2.fastq.gz
 # create merged fastqs
-# placeholder
+if [ ! -s "$TRIMS_R1" ] ; then
+    zcat $TRIMMED_R1 > $TRIMS_R1
+    zcat $TRIMMED_R2 > $TRIMS_R2
+fi
 
 # create proper merged BAM
 numbam=$(wc -w <<< $BAM_FILES)
@@ -73,11 +76,14 @@ mkdir -p \$TMPDIR
 
     mkdir -p \$TMPDIR/Signal
 
-    echo STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
-    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Unstranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
+    echo STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigRe
+ferencesPrefix chr --outTmpDir \$TMPDIR/STAR
+    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Unstranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigRefer
+encesPrefix chr --outTmpDir \$TMPDIR/STAR
     mv \$TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg \$TMPDIR/Signal/Signal.UniqueMultiple.unstranded.out.bg
     mv \$TMPDIR/Signal/Signal.Unique.str1.out.bg \$TMPDIR/Signal/Signal.Unique.unstranded.out.bg
-    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
+    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferen
+cesPrefix chr --outTmpDir \$TMPDIR/STAR
 
     grep '^chr' $STARrefDir/chrNameLength.txt > chrNL.txt
 
@@ -117,6 +123,7 @@ date
 
     CUFF=cufflinks
     CUFF_COMMON="--no-update-check --library-type fr-firststrand"
+
     \$CUFF \$CUFF_COMMON --GTF $ANNOTATION $GENOME_BAM
 
     # delete duplicate rows and sort into identical orders across all samples
@@ -125,11 +132,9 @@ date
     mv genes.fpkm_tracking.sort genes.fpkm_tracking
     mv isoforms.fpkm_tracking.sort isoforms.fpkm_tracking
 
-    # gene quantification with anaquin Rna Expression
-#    ~/anaquin RnaExpression -o anaquin_cufflinks_genes -rmix $sequins_gene_mix -method gene -usequin transcripts.gtf
-
-    # isoform quantification with anaquin Rna Expression
-#    ~/anaquin RnaExpression -o anaquin_cufflinks_isoforms -rmix $sequins_isoform_mix -method isoform -usequin transcripts.gtf
+    # quantification with anaquin Rna Expression
+    anaquin RnaExpression -o anaquin_cufflinks_isoforms -rmix $SEQUINS_ISO_MIX -method isoform -usequin transcripts.gtf
+    anaquin RnaExpression -o anaquin_cufflinks_genes -rmix $SEQUINS_ISO_MIX -method gene -usequin transcripts.gtf
 
 echo "FINISH CUFFLINKS: "
 date
@@ -156,8 +161,8 @@ date
     FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2"
     \$FCOUNTS \$FCOUNTS_COMMON -t 'exon' -g 'gene_id' -a $ANNOTATION -o feature_counts.txt $GENOME_BAM
 
-    # gene quantification with anaquin Rna Expression
-#    ~/anaquin RnaExpression -o anaquin_fcounts_genes -rmix $sequins_gene_mix -method gene -usequin #transcripts.gtf 
+    # future implementation
+#    ~/anaquin RnaExpression -o anaquin_fcounts_genes -rmix $sequins_gene_mix -method gene -usequin #transcripts.gtf etc.
 
 echo "FINISH FEATURECOUNTS: "
 date
@@ -168,8 +173,8 @@ __FC__
 fi
 
 # kallisto
-if [ ! -s "kallisto_output.txt" ] ; then
-    jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__KALLISTO__
+if [ ! -s "kallisto_output/abundance.tsv" ] ; then
+    jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -180,11 +185,11 @@ hostname
 echo "START KALLISTO: "
 date
 
-    # run kallisto using gencodev25
-    # run kallisto using miitranscriptome
-
-    # gene quantification with anaquin Rna Expression
-#    ~/anaquin RnaExpression -o anaquin_fcounts_genes -rmix $sequins_gene_mix -method gene -usequin #transcripts.gtf
+# hardcode path to sequins kallisto index... may add gencode? mitranscriptome?
+# run kallisto using mitranscriptome or gencode v25 eventually?
+kallisto quant -i /net/seq/data/genomes/human/GRCh38/noalts-sequins/sequins_kallisto -o kallisto_output $TRIMS_R1 $TRIMS_R2
+anaquin RnaExpression -o anaquin_kallisto_isoforms -rmix $SEQUINS_ISO_MIX -method isoform -usequin kallisto_output/abundance.tsv
+anaquin RnaExpression -o anaquin_kallisto_genes -rmix $SEQUINS_ISO_MIX -method gene -usequin kallisto_output/abundance.tsv
 
 echo "FINISH KALLISTO: "
 date
