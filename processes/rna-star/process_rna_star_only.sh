@@ -86,10 +86,12 @@ if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
 
 __RNA-STAR__
 )
+   PROCESSING="$PROCESSING,$star_jobid"
 fi
 
+dependencies_full=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterok/g')
 # Check for completeness and upload files.
-jobid=$(sbatch --export=ALL -J "$uploadjob" --dependency=afterok:$star_jobid -o "$uploadjob.o%A" -e "$uploadjob.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__UPLOAD__
+jobid=$(sbatch --export=ALL -J "$uploadjob" -o "$uploadjob.o%A" -e "$uploadjob.e%A" $dependencies_full --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__UPLOAD__
 #!/bin/bash
 
   set -e

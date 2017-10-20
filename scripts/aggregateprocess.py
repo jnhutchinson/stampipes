@@ -439,8 +439,8 @@ class ProcessSetUp(object):
             env_vars["PAIRED"] = None
 
         if self.sequins == True:
-            env_vars["TRIMMED_R1"] = join([trimmed_R1[0] for trimmed_R1 in r1s])
-            env_vars["TRIMMED_R2"] = join([trimmed_R2[0] for trimmed_R2 in r2s])
+            env_vars["TRIMMED_R1"] = " ".join([trimmed_R1[0] for trimmed_R1 in r1s])
+            env_vars["TRIMMED_R2"] = " ".join([trimmed_R2[0] for trimmed_R2 in r2s])
 
         # Set process template env var overrides
         if 'process_variables' in process_template and process_template['process_variables']:

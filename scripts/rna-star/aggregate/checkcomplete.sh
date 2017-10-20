@@ -12,6 +12,16 @@ files=( \
     "Signal.UniqueMultiple.str-.bw" \
     "Signal.UniqueMultiple.str+.bw" \
     "Signal.UniqueMultiple.both.bw" \
+    "trims.R1.fastq.gz" \
+    "trims.R2.fastq.gz" \
+    "anaquin_cufflinks_genes/RnaExpression_sequins.tsv" \
+    "anaquin_cufflinks_genes/RnaExpression_summary.stats" \
+    "anaquin_kallisto_genes/RnaExpression_sequins.tsv" \
+    "anaquin_kallisto_genes/RnaExpression_summary.stats" \
+    "anaquin_cufflinks_isoforms/RnaExpression_sequins.tsv" \
+    "anaquin_cufflinks_isoforms/RnaExpression_summary.stats" \
+    "anaquin_kallisto_isoforms/RnaExpression_sequins.tsv" \
+    "anaquin_kallisto_isoforms/RnaExpression_summary.stats" \
 )
 
 for FILE in "${files[@]}"; do
