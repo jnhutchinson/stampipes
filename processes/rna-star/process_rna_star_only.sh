@@ -13,10 +13,6 @@ outdir=$(pwd)
 scriptdir="$STAMPIPES/scripts/rna-star/"
 script="$scriptdir/STAR_ONLY.sh"
 
-# backup in case this didn't point to the right file
-#sequins_ref="/net/seq/data/genomes/sequins_v1/Sequin_annotations.gtf"
-sequins_ref=$SEQUINS_REF
-
 REFDIR=$(dirname "$BWAINDEX")
 # $STAR_DIR is set by the process template, and are relative to the reference directory
 export STARdir="$REFDIR/$STAR_DIR"
@@ -80,13 +76,13 @@ if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
 #!/bin/bash
     set -x
 
-    STARdir=\$("$STAMPIPES/scripts/cache.sh" "$STARdir")
+#    STARdir=\$("$STAMPIPES/scripts/cache.sh" "$STARdir")
     nThreadsSTAR=\$((SLURM_CPUS_PER_TASK * 2))
 
     cd "$outdir"
-    "$script" "$TRIM_R1" "$TRIM_R2" "\$STARdir" "$dataType" "\$nThreadsSTAR" 
+    "$script" "$TRIM_R1" "$TRIM_R2" "$STARdir" "$dataType" "\$nThreadsSTAR" 
 
-    anaquin RnaAlign -rgtf $sequins_ref -usequin Aligned.sortedByCoord.out.bam -o anaquin_star
+    anaquin RnaAlign -rgtf $SEQUINS_REF -usequin Aligned.sortedByCoord.out.bam -o anaquin_star
 
 __RNA-STAR__
 )
