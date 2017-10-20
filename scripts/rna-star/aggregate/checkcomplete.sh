@@ -22,6 +22,7 @@ files=( \
     "anaquin_cufflinks_isoforms/RnaExpression_summary.stats" \
     "anaquin_kallisto_isoforms/RnaExpression_sequins.tsv" \
     "anaquin_kallisto_isoforms/RnaExpression_summary.stats" \
+    "kallisto_output/abundance.tsv" \
 )
 
 for FILE in "${files[@]}"; do
