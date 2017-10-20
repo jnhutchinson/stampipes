@@ -72,7 +72,7 @@ def parser_setup():
         help="Name of the SLURM partition to use.")
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
         help="Take no action, only print messages.")
-    parser.add_argument("--sequins",dest="sequins",
+    parser.add_argument("--sequins",dest="sequins", action="store_true",
         help="If this is a sequins analysis.")
 
     parser.set_defaults( **script_options )
@@ -229,8 +229,9 @@ class ProcessSetUp(object):
             logging.error(results)
             return None
         file_info = results[0]
+        return (file_info["path"], file_info["md5sum"])
 
-    def get_trimmed_fastq_r1(self, aggregation_id, alignment_id):
+    def get_trimmed_fastq_r2(self, aggregation_id, alignment_id):
 
         results= self.api_list_result("file/?purpose__slug=r2-fastq-trimmed&filetype__slug=gzipped-fastq&content_type=47&object_id=%d" % alignment_id)
 
@@ -239,6 +240,7 @@ class ProcessSetUp(object):
             logging.error(results)
             return None
         file_info = results[0]
+        return (file_info["path"], file_info["md5sum"])
 
     def get_library_info(self, aggregation_info):
         library_info = self.api_single_result(url=aggregation_info["library"])
@@ -369,6 +371,8 @@ class ProcessSetUp(object):
         missing = False
 
         files = []
+        r1s = []
+        r2s = []
         for aggregation_lane in aggregation_lanes:
             if not aggregation_lane["include"]:
                 logging.info("Not including lane %s (Aggregation %d)" % (aggregation_lane["lane"], aggregation_id))
@@ -392,9 +396,9 @@ class ProcessSetUp(object):
                 logging.info(bamfile)
                 files.append(bamfile)
 
-            if sequins == True:
-                trimmed_R1 = self.get_lane_trimmed_r1_file(aggregation_id, alignment_id)
-                trimmed_R2 = self.get_lane_trimmed_R2_file(aggregation_id, alignment_id)
+            if self.sequins == True:
+                trimmed_R1 = self.get_trimmed_fastq_r1(aggregation_id, alignment_id)
+                trimmed_R2 = self.get_trimmed_fastq_r2(aggregation_id, alignment_id)
                 if not trimmed_R1:
                     missing = True
                     logging.critical("No trimmed R1 file for alignment %s for lane %s, skipping (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], aggregation_id))
@@ -403,8 +407,8 @@ class ProcessSetUp(object):
                     missing = True
                     logging.critical("No trimmed R2 file for alignment %s for lane %s, skipping (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], aggregation_id))
                     continue
-                files.append(trimmed_R1)
-                files.append(trimmed_R2)
+                r1s.append(trimmed_R1)
+                r2s.append(trimmed_R2)
 
         if missing: return False
 
@@ -434,9 +438,9 @@ class ProcessSetUp(object):
         else:
             env_vars["PAIRED"] = None
 
-        if sequins == True:
-            env_vars["TRIMMED_R1"] = join([trimmed_R1[0] for trimmed_R1 in files])
-            env_vars["TRIMMED_R2"] = join([trimmed_R2[0] for trimmed_R2 in files])
+        if self.sequins == True:
+            env_vars["TRIMMED_R1"] = join([trimmed_R1[0] for trimmed_R1 in r1s])
+            env_vars["TRIMMED_R2"] = join([trimmed_R2[0] for trimmed_R2 in r2s])
 
         # Set process template env var overrides
         if 'process_variables' in process_template and process_template['process_variables']:

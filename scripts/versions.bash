@@ -90,5 +90,5 @@ fi
 
 if [[ `command -v anaquin` ]]; then
 echo "Anaquin:"
-anaquin -v
+anaquin | grep 'Version'
 fi
