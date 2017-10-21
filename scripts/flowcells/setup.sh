@@ -57,7 +57,7 @@ done
 
 if [ -z "$flowcell" ] ; then
     echo "No flowcell label specified"
-    flowcell=$(basename $(pwd) | cut -f4 -d_ | cut -c2-6)
+    flowcell=$(basename $(pwd) | cut -f4 -d_ | cut -c2-10)
     echo "Guessing $flowcell..."
     #usage >&2
     #exit 1

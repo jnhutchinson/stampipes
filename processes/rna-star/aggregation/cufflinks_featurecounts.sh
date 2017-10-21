@@ -76,14 +76,11 @@ mkdir -p \$TMPDIR
 
     mkdir -p \$TMPDIR/Signal
 
-    echo STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigRe
-ferencesPrefix chr --outTmpDir \$TMPDIR/STAR
-    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Unstranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigRefer
-encesPrefix chr --outTmpDir \$TMPDIR/STAR
+    echo STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
+    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Unstranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
     mv \$TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg \$TMPDIR/Signal/Signal.UniqueMultiple.unstranded.out.bg
     mv \$TMPDIR/Signal/Signal.Unique.str1.out.bg \$TMPDIR/Signal/Signal.Unique.unstranded.out.bg
-    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferen
-cesPrefix chr --outTmpDir \$TMPDIR/STAR
+    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
 
     grep '^chr' $STARrefDir/chrNameLength.txt > chrNL.txt
 
