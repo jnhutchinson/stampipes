@@ -25,12 +25,29 @@ files=( \
 "Signal.Unique.both.starch" \
 "skipped.gtf" \
 "transcripts.gtf" \
+"trims.R1.fastq.gz" \
+"trims.R2.fastq.gz" \
+)
+
+dirs=( \
+    "anaquin_cufflinks_genes"    \
+    "anaquin_kallisto_genes"     \
+    "anaquin_cufflinks_isoforms" \
+    "anaquin_kallisto_isoforms"  \
+    "kallisto_output"            \
 )
 
 for FILE in "${files[@]}"; do
     if [ -e "$FILE" ]; then
         echo "Removing $FILE"
         rm $FILE
+    fi
+done
+
+for DIR in "${files[@]}"; do
+    if [ -d $DIR ]; then
+	echo "Removing Directory $DIR"
+        rm -r $DIR
     fi
 done
 
