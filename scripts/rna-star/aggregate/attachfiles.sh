@@ -32,8 +32,8 @@ $ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.str-.bw --attach_file_pu
 $ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.both.bw --attach_file_purpose all-coverage-bigwig --attach_file_type bigwig
 
 # trimmed fastqs
-$ATTACH_AGGREGATION --attach_file trims.R1.fastq --attach_file_purpose r1-fastq-trimmed --attach_file_type fastq
-$ATTACH_AGGREGATION --attach_file trims.R2.fastq --attach_file_purpose r2-fastq-trimmed --attach_file_type fastq
+$ATTACH_AGGREGATION --attach_file trims.R1.fastq.gz --attach_file_purpose r1-fastq-trimmed --attach_file_type gzipped-fastq
+$ATTACH_AGGREGATION --attach_file trims.R2.fastq.gz --attach_file_purpose r2-fastq-trimmed --attach_file_type gzipped-fastq
 
 # sequins output
 $ATTACH_AGGREGATION --attach_file anaquin_cufflinks/RnaExpression_genes.tsv --attach_file_purpose anaquin-rnaexpression-star-cuff-gene-sequins --attach_file_type plaintext

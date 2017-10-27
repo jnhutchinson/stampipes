@@ -25,8 +25,8 @@ files=( \
 "Signal.Unique.both.starch" \
 "skipped.gtf" \
 "transcripts.gtf" \
-"trims.R1.fastq" \
-"trims.R2.fastq" \
+"trims.R1.fastq.gz" \
+"trims.R2.fastq.gz" \
 )
 
 dirs=( \

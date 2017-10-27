@@ -18,12 +18,12 @@ if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/rna-star/aggregate/reset.bash
 fi
 
-TRIMS_R1=trims.R1.fastq
-TRIMS_R2=trims.R2.fastq
+TRIMS_R1=trims.R1.fastq.gz
+TRIMS_R2=trims.R2.fastq.gz
 # create merged fastqs
 if [ ! -s "$TRIMS_R1" ] ; then
-    zcat $TRIMMED_R1 > $TRIMS_R1
-    zcat $TRIMMED_R2 > $TRIMS_R2
+    cat $TRIMMED_R1 > $TRIMS_R1
+    cat $TRIMMED_R2 > $TRIMS_R2
 fi
 
 # create proper merged BAM
