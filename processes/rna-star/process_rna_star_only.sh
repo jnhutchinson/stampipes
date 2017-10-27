@@ -4,7 +4,7 @@ module load gcc/4.7.2     # for adapter trimming
 module load coreutils/8.25 # parallel sort
 module load STAR/2.4.2a
 module load perl/5.16.3
-module load anaquin/2.0
+module load anaquin/2.0.1
 
 source "$PYTHON3_ACTIVATE"
 

@@ -32,15 +32,13 @@ $ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.str-.bw --attach_file_pu
 $ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.both.bw --attach_file_purpose all-coverage-bigwig --attach_file_type bigwig
 
 # trimmed fastqs
-$ATTACH_AGGREGATION --attach_file trims.R1.fastq.gz --attach_file_purpose r1-fastq-trimmed --attach_file_type gzipped-fastq
-$ATTACH_AGGREGATION --attach_file trims.R2.fastq.gz --attach_file_purpose r2-fastq-trimmed --attach_file_type gzipped-fastq
+$ATTACH_AGGREGATION --attach_file trims.R1.fastq --attach_file_purpose r1-fastq-trimmed --attach_file_type fastq
+$ATTACH_AGGREGATION --attach_file trims.R2.fastq --attach_file_purpose r2-fastq-trimmed --attach_file_type fastq
 
 # sequins output
-$ATTACH_AGGREGATION --attach_file anaquin_cufflinks_genes/RnaExpression_sequins.tsv --attach_file_purpose anaquin-rnaexpression-star-cuff-gene-sequins --attach_file_type plaintext
-$ATTACH_AGGREGATION --attach_file anaquin_cufflinks_genes/RnaExpression_summary.stats --attach_file_purpose anaquin-rnaexpression-star-cuff-gene-summary --attach_file_type plaintext
-$ATTACH_AGGREGATION --attach_file anaquin_cufflinks_isoforms/RnaExpression_sequins.tsv --attach_file_purpose anaquin-rnaexpression-star-cuff-isoform-sequins --attach_file_type plaintext
-$ATTACH_AGGREGATION --attach_file anaquin_cufflinks_isoforms/RnaExpression_summary.stats --attach_file_purpose anaquin-rnaexpression-star-cuff-isoform-summary --attach_file_type plaintext
-$ATTACH_AGGREGATION --attach_file anaquin_kallisto_genes/RnaExpression_sequins.tsv --attach_file_purpose anaquin-rnaexpression-kallisto-gene-sequins --attach_file_type plaintext
-$ATTACH_AGGREGATION --attach_file anaquin_kallisto_genes/RnaExpression_summary.stats --attach_file_purpose anaquin-rnaexpression-kallisto-gene-summary --attach_file_type plaintext
-$ATTACH_AGGREGATION --attach_file anaquin_kallisto_isoforms/RnaExpression_sequins.tsv --attach_file_purpose anaquin-rnaexpression-kallisto-isoform-sequins --attach_file_type plaintext
-$ATTACH_AGGREGATION --attach_file anaquin_kallisto_isoforms/RnaExpression_summary.stats --attach_file_purpose anaquin-rnaexpression-kallisto-isoform-summary --attach_file_type plaintext
+$ATTACH_AGGREGATION --attach_file anaquin_cufflinks/RnaExpression_genes.tsv --attach_file_purpose anaquin-rnaexpression-star-cuff-gene-sequins --attach_file_type plaintext
+$ATTACH_AGGREGATION --attach_file anaquin_cufflinks/RnaExpression_isoforms.tsv --attach_file_purpose anaquin-rnaexpression-star-cuff-isoform-sequins --attach_file_type plaintext
+$ATTACH_AGGREGATION --attach_file anaquin_cufflinks/RnaExpression_summary.stats --attach_file_purpose anaquin-rnaexpression-star-cuff-summary --attach_file_type plaintext
+$ATTACH_AGGREGATION --attach_file anaquin_kallisto/RnaExpression_genes.tsv --attach_file_purpose anaquin-rnaexpression-kallisto-gene-sequins --attach_file_type plaintext
+$ATTACH_AGGREGATION --attach_file anaquin_kallisto/RnaExpression_isoforms.tsv --attach_file_purpose anaquin-rnaexpression-kallisto-isoform-sequins --attach_file_type plaintext
+$ATTACH_AGGREGATION --attach_file anaquin_kallisto/RnaExpression_summary.stats --attach_file_purpose anaquin-rnaexpression-kallisto-summary --attach_file_type plaintext

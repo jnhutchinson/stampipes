@@ -6,7 +6,7 @@ module load STAR/2.4.2a   # Just for densities
 module load bedops/2.4.19
 module load subread/1.5.1 # for featureCounts
 module load cufflinks/2.2.1 # for cuffLinks
-module load anaquin/2.0
+module load anaquin/2.0.1
 module load kallisto/0.43.1
 
 export REFDIR="$(dirname $GENOME_INDEX)"
@@ -18,8 +18,8 @@ if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/rna-star/aggregate/reset.bash
 fi
 
-TRIMS_R1=trims.R1.fastq.gz
-TRIMS_R2=trims.R2.fastq.gz
+TRIMS_R1=trims.R1.fastq
+TRIMS_R2=trims.R2.fastq
 # create merged fastqs
 if [ ! -s "$TRIMS_R1" ] ; then
     zcat $TRIMMED_R1 > $TRIMS_R1
@@ -106,7 +106,7 @@ __DEN__
 fi
 
 # cufflinks
-if [ ! -s "genes.fpkm_tracking" ] ; then
+if [ ! -s "anaquin_cufflinks/RnaExpression_summary.stats" ] ; then
     jobid=$(sbatch --export=ALL -J "$cufflinks_job" -o "$cufflinks_job.o%A" -e "$cufflinks_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__CUFF__
 #!/bin/bash
 
@@ -130,8 +130,7 @@ date
     mv isoforms.fpkm_tracking.sort isoforms.fpkm_tracking
 
     # quantification with anaquin Rna Expression
-    anaquin RnaExpression -o anaquin_cufflinks_isoforms -rmix $SEQUINS_ISO_MIX -method isoform -usequin transcripts.gtf
-    anaquin RnaExpression -o anaquin_cufflinks_genes -rmix $SEQUINS_ISO_MIX -method gene -usequin transcripts.gtf
+    anaquin RnaExpression -o anaquin_cufflinks -rmix $SEQUINS_ISO_MIX -usequin transcripts.gtf -mix A || (echo "NA" > anaquin_cufflinks/RnaExpression_genes.tsv && echo "NA" > anaquin_cufflinks/RnaExpression_isoforms.tsv && echo "NA" > anaquin_cufflinks/RnaExpression_summary.stats)
 
 echo "FINISH CUFFLINKS: "
 date
@@ -170,7 +169,7 @@ __FC__
 fi
 
 # kallisto
-if [ ! -s "kallisto_output/abundance.tsv" ] ; then
+if [ ! -s "anaquin_kallisto/RnaExpression_summary.stats" ] ; then
     jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
 
@@ -183,8 +182,8 @@ echo "START KALLISTO: "
 date
 
 kallisto quant -i $KALLISTO_INDEX -o kallisto_output $TRIMS_R1 $TRIMS_R2
-anaquin RnaExpression -o anaquin_kallisto_isoforms -rmix $SEQUINS_ISO_MIX -method isoform -usequin kallisto_output/abundance.tsv
-anaquin RnaExpression -o anaquin_kallisto_genes -rmix $SEQUINS_ISO_MIX -method gene -usequin kallisto_output/abundance.tsv
+
+anaquin RnaExpression -o anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_kallisto/RnaExpression_summary.stats)
 
 echo "FINISH KALLISTO: "
 date
