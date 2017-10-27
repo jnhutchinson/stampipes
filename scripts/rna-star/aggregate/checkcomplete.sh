@@ -12,8 +12,8 @@ files=( \
     "Signal.UniqueMultiple.str-.bw" \
     "Signal.UniqueMultiple.str+.bw" \
     "Signal.UniqueMultiple.both.bw" \
-    "trims.R1.fastq" \
-    "trims.R2.fastq" \
+    "trims.R1.fastq.gz" \
+    "trims.R2.fastq.gz" \
     "anaquin_cufflinks/RnaExpression_genes.tsv" \
     "anaquin_cufflinks/RnaExpression_isoforms.tsv" \
     "anaquin_cufflinks/RnaExpression_summary.stats" \
