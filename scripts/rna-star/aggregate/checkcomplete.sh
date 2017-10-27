@@ -12,16 +12,14 @@ files=( \
     "Signal.UniqueMultiple.str-.bw" \
     "Signal.UniqueMultiple.str+.bw" \
     "Signal.UniqueMultiple.both.bw" \
-    "trims.R1.fastq.gz" \
-    "trims.R2.fastq.gz" \
-    "anaquin_cufflinks_genes/RnaExpression_sequins.tsv" \
-    "anaquin_cufflinks_genes/RnaExpression_summary.stats" \
-    "anaquin_kallisto_genes/RnaExpression_sequins.tsv" \
-    "anaquin_kallisto_genes/RnaExpression_summary.stats" \
-    "anaquin_cufflinks_isoforms/RnaExpression_sequins.tsv" \
-    "anaquin_cufflinks_isoforms/RnaExpression_summary.stats" \
-    "anaquin_kallisto_isoforms/RnaExpression_sequins.tsv" \
-    "anaquin_kallisto_isoforms/RnaExpression_summary.stats" \
+    "trims.R1.fastq" \
+    "trims.R2.fastq" \
+    "anaquin_cufflinks/RnaExpression_genes.tsv" \
+    "anaquin_cufflinks/RnaExpression_isoforms.tsv" \
+    "anaquin_cufflinks/RnaExpression_summary.stats" \
+    "anaquin_kallisto/RnaExpression_genes.tsv" \
+    "anaquin_kallisto/RnaExpression_isoforms.tsv" \
+    "anaquin_kallisto/RnaExpression_summary.stats" \
     "kallisto_output/abundance.tsv" \
 )
 

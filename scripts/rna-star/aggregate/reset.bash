@@ -25,15 +25,13 @@ files=( \
 "Signal.Unique.both.starch" \
 "skipped.gtf" \
 "transcripts.gtf" \
-"trims.R1.fastq.gz" \
-"trims.R2.fastq.gz" \
+"trims.R1.fastq" \
+"trims.R2.fastq" \
 )
 
 dirs=( \
-    "anaquin_cufflinks_genes"    \
-    "anaquin_kallisto_genes"     \
-    "anaquin_cufflinks_isoforms" \
-    "anaquin_kallisto_isoforms"  \
+    "anaquin_cufflinks" \
+    "anaquin_kallisto"  \
     "kallisto_output"            \
 )
 
