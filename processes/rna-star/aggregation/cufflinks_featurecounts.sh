@@ -8,6 +8,7 @@ module load subread/1.5.1 # for featureCounts
 module load cufflinks/2.2.1 # for cuffLinks
 module load anaquin/2.0.1
 module load kallisto/0.43.1
+module load htslib/1.6.0
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
@@ -94,6 +95,9 @@ mkdir -p \$TMPDIR
     for i in Signal*.tmp ; do
       mv \$i \${i/.tmp/}
     done
+
+    unstarch Signal.Unique.both.starch | bgzip > Signal.Unique.both.starch.bgz
+    tabix -p bed Signal.Unique.both.starch.bgz
 
 rm -rf "\$TMPDIR"
 

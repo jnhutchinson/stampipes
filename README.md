@@ -31,6 +31,7 @@ The current modules to load for working the pipeline are:
 * `fastqc/0.11.5`
 * `gcc/4.7.2`
 * `git/2.3.3`
+* `htslib/1.6.0`
 * `jdk/1.8.0_92`
 * `kallisto/0.43.1`
 * `picard/2.8.1`

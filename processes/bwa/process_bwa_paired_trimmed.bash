@@ -16,6 +16,7 @@ module load coreutils/8.25
 module load pigz/2.3.3
 module load modwt/1.0
 module load hotspot2/2.0
+module load htslib/1.6.0
 
 # Load in this order specifically, currently the python3 activation
 # overwrites the default "python" call, against advice
@@ -515,6 +516,10 @@ mkdir -p \$TMPDIR
 
 make -f $STAMPIPES/makefiles/densities/density.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+
+# write tabix
+unstarch $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch | bgzip > $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch.bgz
+tabix -p bed $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch.bgz
 
 rm -rf "\$TMPDIR"
 

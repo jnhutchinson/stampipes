@@ -12,6 +12,7 @@ module load hotspot2/2.0
 module load bedtools/2.25.0
 module load python/3.5.1
 module load pysam/0.9.0
+module load htslib/1.6.0
 
 WIN=75
 BINI=20
@@ -24,7 +25,9 @@ export TAGCOUNTS_FILE=${LIBRARY_NAME}.tagcounts.txt
 export ADAPTER_COUNT_FILE=${LIBRARY_NAME}.adaptercounts.txt
 export DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.uniques-density.bed.starch
 export DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.${GENOME}.bw
+export NORM_DENSITY_STARCH=${LIBRARY_NAME}.${WIN}_${BINI}.normalized.${GENOME}.uniques-density.bed.starch
 export NORM_DENSITY_BIGWIG=${LIBRARY_NAME}.${WIN}_${BINI}.normalized.${GENOME}.bw
+export CUTCOUNTS_STARCH=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.starch
 export CUTCOUNTS_BIGWIG=$AGGREGATION_FOLDER/$LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw
 export INSERT_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard
 export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
@@ -317,6 +320,12 @@ make -f $STAMPIPES/makefiles/densities/density.mk FAI=${GENOME_INDEX}.fai SAMPLE
 	BAMFILE=${FINAL_UNIQUES_BAM} STARCH_OUT=${DENSITY_STARCH} BIGWIG_OUT=${DENSITY_BIGWIG}
 make -f "$STAMPIPES/makefiles/densities/normalize-density.mk" BAMFILE=${FINAL_UNIQUES_BAM} SAMPLE_NAME=${LIBRARY_NAME} FAI=${GENOME_INDEX}.fai
 
+# tabix
+unstarch $NORM_DENSITY_STARCH | bgzip > $NORM_DENSITY_STARCH.bgz
+tabix -p bed $NORM_DENSITY_STARCH.bgz
+unstarch $DENSITY_STARCH | bgzip > $DENSITY_STARCH.bgz
+tabix -p bed $DENSITY_STARCH.bgz
+
 rm -rf "\$TMPDIR"
 
 echo "FINISH: density"
@@ -343,6 +352,10 @@ export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
 bash $STAMPIPES/scripts/bwa/aggregate/basic/cutcounts.bash
+
+# tabix
+unstarch $CUTCOUNTS_STARCH | bgzip > $CUTCOUNTS_STARCH.bgz
+tabix -p bed $CUTCOUNTS_STARCH.bgz
 
 rm -rf "\$TMPDIR"
 
