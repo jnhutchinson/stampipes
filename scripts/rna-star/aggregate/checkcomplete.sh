@@ -20,6 +20,7 @@ files=( \
     "anaquin_kallisto/RnaExpression_genes.tsv" \
     "anaquin_kallisto/RnaExpression_isoforms.tsv" \
     "anaquin_kallisto/RnaExpression_summary.stats" \
+    "anaquin_star/RnaAlign_summary.stats" \
     "kallisto_output/abundance.tsv" \
 )
 

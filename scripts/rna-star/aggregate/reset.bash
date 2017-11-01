@@ -32,7 +32,8 @@ files=( \
 dirs=( \
     "anaquin_cufflinks" \
     "anaquin_kallisto"  \
-    "kallisto_output"            \
+    "anaquin_star"      \
+    "kallisto_output"   \
 )
 
 for FILE in "${files[@]}"; do

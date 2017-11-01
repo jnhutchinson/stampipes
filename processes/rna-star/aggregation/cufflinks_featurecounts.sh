@@ -42,6 +42,9 @@ if [ ! -s "$GENOME_BAM" ] ; then
   $STAMPIPES/scripts/tophat/merge_or_copy_bam.sh "$GENOME_BAM" $GENOME_BAM_FILES
   samtools index "$GENOME_BAM"
 fi
+# anaquin call on merged BAM
+anaquin RnaAlign -rgtf $SEQUINS_REF -usequin $GENOME_BAM -o anaquin_star
+bash $STAMPIPES/scripts/rna-star/aggregation/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
 
 density_job=.AG${AGGREGATION_ID}.star_den
 cufflinks_job=.AG${AGGREGATION_ID}.star_cuff
@@ -161,9 +164,6 @@ date
     FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2"
     \$FCOUNTS \$FCOUNTS_COMMON -t 'exon' -g 'gene_id' -a $ANNOTATION -o feature_counts.txt $GENOME_BAM
 
-    # future implementation
-#    ~/anaquin RnaExpression -o anaquin_fcounts_genes -rmix $sequins_gene_mix -method gene -usequin #transcripts.gtf etc.
-
 echo "FINISH FEATURECOUNTS: "
 date
 
@@ -189,6 +189,10 @@ kallisto quant -i $KALLISTO_INDEX -o kallisto_output $TRIMS_R1 $TRIMS_R2
 
 anaquin RnaExpression -o anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_kallisto/RnaExpression_summary.stats)
 
+bash $STAMPIPES/scripts/rna-star/aggregation/anaquin_rnaexp_stats.bash anaquin_kallisto/RnaExpression_summary.stats anaquin_kallisto/RnaExpression_summary.stats.info
+
+bash $STAMPIPES/scripts/rna-star/aggregation/anaquin_neat_comparison.bash anaquin_kallisto/RnaExpression_isoforms.tsv anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv $NEAT_MIX_A
+
 echo "FINISH KALLISTO: "
 date
 
@@ -210,6 +214,7 @@ echo "START COMPLETE: "
 date
 
     bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
+#    bash $STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash
     bash $STAMPIPES/scripts/rna-star/aggregate/attachfiles.sh
 
 echo "FINISH COMPLETE: "
