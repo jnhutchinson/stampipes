@@ -1,0 +1,22 @@
+args <- commandArgs(trailingOnly = T)
+infile <- args[1]
+outfile <- args[2]
+
+input <- read.table(infile)
+spmean <- mean(c(cor(input$V3,input$V6,method='spearman'),cor(input$V4,input$V6,method='spearman'),cor(input$V5,input$V6,method='spearman')))
+
+# something else goes here
+ranks <- data.frame(rank(input$V3),rank(input$V4),rank(input$V5),rank(input$V6))
+maxrank <- apply(ranks[,c(1,2,3)],1,max)
+meanrank <- apply(ranks[,c(1,2,3)],1,mean)
+minrank <- apply(ranks[,c(1,2,3)],1,min)
+diffs <- meanrank-rank(input$V6)
+input[which(diffs < mean(diffs)-2*sd(diffs) | diffs > mean(diffs)+2*sd(diffs)),1]
+diffs <- rank(input$V4)-rank(input$V6)
+input[which(diffs < mean(diffs)-2*sd(diffs) | diffs > mean(diffs)+2*sd(diffs)),1]
+diffs <- rank(input$V5)-rank(input$V6)
+input[which(diffs < mean(diffs)-2*sd(diffs) | diffs > mean(diffs)+2*sd(diffs)),1]
+
+df <- data.frame(c("neat-mixA-mean-spearman"),c(spmean))
+
+write.table(df,outfile,sep="\t",quote=F,col.names=F,row.names=F)
