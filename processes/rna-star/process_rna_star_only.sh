@@ -70,19 +70,23 @@ jobbase="${SAMPLE_NAME}-ALIGN#${ALIGNMENT_ID}"
 starjob=".rs$jobbase"
 uploadjob=".up$jobbase"
 
-# Run STAR
+# Run STAR, add mate cigars
 if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
   star_jobid=$(sbatch --export=ALL -J "$starjob" -o "$starjob.o%A" -e "$starjob.e%A" --partition=$QUEUE --cpus-per-task=4 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__RNA-STAR__
 #!/bin/bash
     set -x
 
-#    STARdir=\$("$STAMPIPES/scripts/cache.sh" "$STARdir")
+#    STARdir=\$("$STAMPIPES/scripts/cache.sh" "$STARdir") # depreciated with slurm?
     nThreadsSTAR=\$((SLURM_CPUS_PER_TASK * 2))
 
     cd "$outdir"
     "$script" "$TRIM_R1" "$TRIM_R2" "$STARdir" "$dataType" "\$nThreadsSTAR" 
 
     anaquin RnaAlign -rgtf $SEQUINS_REF -usequin Aligned.sortedByCoord.out.bam -o anaquin_star
+
+    if [[ -n $PAIRED ]]; then
+        picard RevertOriginalBaseQualitiesAndAddMateCigar INPUT=Aligned.sortedByCoord.out.bam OUTPUT=cigar.bam VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
+    fi
 
 __RNA-STAR__
 )

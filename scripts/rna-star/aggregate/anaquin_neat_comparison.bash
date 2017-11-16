@@ -23,4 +23,4 @@ done
 paste $reference $outfile > tmp.txt
 mv tmp.txt $outfile
 
-Rscript $STAMPIPES/scripts/rna-star/aggregate/anaquin_neat_mix.Rscript $outfile $outfile.info
+Rscript $STAMPIPES/scripts/rna-star/aggregate/anaquin_neat_comparison.Rscript $outfile $outfile.info

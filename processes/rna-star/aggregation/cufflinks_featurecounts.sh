@@ -9,6 +9,10 @@ module load cufflinks/2.2.1 # for cuffLinks
 module load anaquin/2.0.1
 module load kallisto/0.43.1
 module load htslib/1.6.0
+module load jdk/1.8.0_92
+module load picard/2.8.1
+source "$PYTHON3_ACTIVATE"
+module load python/2.7.11
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
@@ -44,13 +48,16 @@ if [ ! -s "$GENOME_BAM" ] ; then
 fi
 # anaquin call on merged BAM
 anaquin RnaAlign -rgtf $SEQUINS_REF -usequin $GENOME_BAM -o anaquin_star
-bash $STAMPIPES/scripts/rna-star/aggregation/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
+bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
 
 density_job=.AG${AGGREGATION_ID}.star_den
 cufflinks_job=.AG${AGGREGATION_ID}.star_cuff
 kallisto_job=.AGG${AGGREGATION_ID}.star_kallisto
 complete_job=.AGG#${AGGREGATION_ID}.complete
 fcounts_job=.AGG${AGGREGATION_ID}.star_fcounts
+picard_job=.AGG${AGGREGATION_ID}.picard
+tagcounts_job=.AGG${AGGREGATION_ID}.tagcounts
+adaptercounts_job=.AGG${AGGREGATION_ID}.adapter
 
 # density information, convoluted, can clean up so we skip a lot of these steps
 if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
@@ -189,9 +196,8 @@ kallisto quant -i $KALLISTO_INDEX -o kallisto_output $TRIMS_R1 $TRIMS_R2
 
 anaquin RnaExpression -o anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_kallisto/RnaExpression_summary.stats)
 
-bash $STAMPIPES/scripts/rna-star/aggregation/anaquin_rnaexp_stats.bash anaquin_kallisto/RnaExpression_summary.stats anaquin_kallisto/RnaExpression_summary.stats.info
-
-bash $STAMPIPES/scripts/rna-star/aggregation/anaquin_neat_comparison.bash anaquin_kallisto/RnaExpression_isoforms.tsv anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv $NEAT_MIX_A
+bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaexp_stats.bash anaquin_kallisto/RnaExpression_summary.stats anaquin_kallisto/RnaExpression_summary.stats.info
+bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_neat_comparison.bash anaquin_kallisto/RnaExpression_isoforms.tsv anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv $NEAT_MIX_A
 
 echo "FINISH KALLISTO: "
 date
@@ -201,6 +207,90 @@ __KALLISTO__
     PROCESSING="$PROCESSING,$jobid"
 fi
 
+# picard
+if [ ! -s "picard.CollectInsertSizes.txt" || ! -s "picard.RnaSeqMetrics.txt" ] ; then
+    jobid=$(sbatch --export=ALL -J "$picard_job" -o "$picard_job.o%A" -e "$picard_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__PIC__
+#!/bin/bash
+
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START PICARD: "
+date
+
+picard CollectInsertSizeMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
+picard CollectRnaSeqMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND="SECOND_READ_TRANSCRIPTION_STRAND"
+
+cat picard.RnaSeqMetrics.txt | grep -A 1 "METRICS CLASS" | sed 1d | tr '\t' '\n' > rna_stats_summary.info
+cat picard.RnaSeqMetrics.txt | grep -A 2 "METRICS CLASS" | sed 1d | sed 1d | tr '\t' '\n' | paste rna_stats_summary.info - > tmp.txt && mv tmp.txt rna_stats_summary.info
+
+echo "FINISH PICARD: "
+date
+
+__PIC__
+)
+   PROCESSING="$PROCESSING,$jobid"
+fi
+
+
+# tag counts
+if [ ! -s "tagcounts.txt" ] ; then
+    jobid=$(sbatch --export=ALL -J "$tagcounts_job" -o "$tagcounts_job.o%A" -e "$tagcounts_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__TC__
+#!/bin/bash
+
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START TAGCOUNTS: "
+date
+
+if [[ -n $PAIRED ]]; then
+    picard MarkDuplicatesWithMateCigar INPUT=Aligned.toGenome.out.bam OUTPUT=/dev/null METRICS_FILE=picard.MarkDuplicatesWithMateCigar.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+else
+    picard MarkDuplicates INPUT=Aligned.toGenome.out.bam OUTPUT=/dev/null METRICS_FILE=picard.MarkDuplicatesWithMateCigar.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+fi
+
+python3 $STAMPIPES/scripts/bwa/bamcounts.py Aligned.toGenome.out.bam tagcounts.txt
+
+echo "FINISH TAGCOUNTS: "
+date
+
+__TC__
+)
+   PROCESSING="$PROCESSING,$jobid"
+fi
+
+# adapter counts
+if [ ! -s "adapter_counts.info" ] ; then
+    jobid=$(sbatch --export=ALL -J "$adaptercounts_job" -o "$adaptercounts_job.o%A" -e "$adaptercounts_job.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+
+#!/bin/bash
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START: adapter counts"
+date
+
+adaptercount=\$(bash "$STAMPIPES/scripts/bam/count_adapters.sh" "Aligned.toGenome.out.bam")
+if [ -n \$adapter_count ]; then
+        echo -e "adapter\t\$adaptercount" > "adapter_counts.info"
+fi
+
+echo "FINISH: adapter counts"
+date
+
+__SCRIPT__
+)
+    PROCESSING="$PROCESSING,$jobid"
+fi
+
+# complete
 dependencies_full=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterok/g')
 sbatch --export=ALL -J "$complete_job" -o "$complete_job.o%A" -e "$complete_job.e%A" $dependencies_full --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__COMPLETE__
 #!/bin/bash

@@ -234,13 +234,12 @@ _U_
     bcl2fastq \\\\
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
       --use-bases-mask "$bcl_mask" \\\\
-      --output-dir "$fastq_dir.L00\\\$SGE_TASK_ID" \\\\
+      --output-dir "$fastq_dir" \\\\
       --barcode-mismatches "$mismatches" \\\\
       --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
       --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
       --demultiplexing-threads \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
-      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))     \\\\
-      --tiles s_\\\$SGE_TASK_ID
+      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
 _U_
   ;;
 "MiniSeq High Output Kit")
