@@ -4,6 +4,7 @@
 echo "RESETTING AGGREGATION ${AGGREGATION_ID} FOR ${LIBRARY_NAME}"
 
 files=( \
+"adapter_counts.info" \
 "Aligned.toGenome.out.bam" \
 "Aligned.toGenome.out.bam.bai" \
 "Aligned.toTranscriptome.out.bam" \
@@ -11,6 +12,9 @@ files=( \
 "feature_counts.txt.summary" \
 "genes.fpkm_tracking" \
 "isoforms.fpkm_tracking" \
+"picard.CollectInsertSizes.txt" \
+"picard.MarkDuplicatesWithMateCigar.txt" \
+"picard.RnaSeqMetrics.txt" \
 "Signal.UniqueMultiple.str-.bw" \
 "Signal.UniqueMultiple.str+.bw" \
 "Signal.UniqueMultiple.both.bw" \
@@ -24,6 +28,7 @@ files=( \
 "Signal.Unique.str+.starch" \
 "Signal.Unique.both.starch" \
 "skipped.gtf" \
+"tagcounts.txt" \
 "transcripts.gtf" \
 "trims.R1.fastq.gz" \
 "trims.R2.fastq.gz" \

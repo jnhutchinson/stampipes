@@ -9,9 +9,14 @@ files=( \
     "feature_counts.txt" \
     "genes.fpkm_tracking" \
     "isoforms.fpkm_tracking" \
+    "picard.CollectInsertSizes.txt" \
+    "picard.MarkDuplicatesWithMateCigar.txt" \
+    "picard.RnaSeqMetrics.txt" \
     "Signal.UniqueMultiple.str-.bw" \
     "Signal.UniqueMultiple.str+.bw" \
     "Signal.UniqueMultiple.both.bw" \
+    "adapter_counts.info" \
+    "tagcounts.txt" \
     "trims.R1.fastq.gz" \
     "trims.R2.fastq.gz" \
     "anaquin_cufflinks/RnaExpression_genes.tsv" \

@@ -15,3 +15,6 @@ upload() {
 # Upload anaquin stats
 upload "anaquin_kallisto/RnaExpression_summary.stats.info"
 upload "anaquin_star/RnaAlign_summary.stats.info"
+upload "tagcounts.txt"
+upload "adapter_counts.info"
+upload "rna_stats_summary.info"

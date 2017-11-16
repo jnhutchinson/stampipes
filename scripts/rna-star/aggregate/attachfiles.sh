@@ -38,7 +38,9 @@ $ATTACH_AGGREGATION --attach_file trims.R2.fastq.gz --attach_file_purpose r2-fas
 # sequins output
 $ATTACH_AGGREGATION --attach_file anaquin_cufflinks/RnaExpression_genes.tsv --attach_file_purpose anaquin-rnaexpression-star-cuff-gene-sequins --attach_file_type plaintext
 $ATTACH_AGGREGATION --attach_file anaquin_cufflinks/RnaExpression_isoforms.tsv --attach_file_purpose anaquin-rnaexpression-star-cuff-isoform-sequins --attach_file_type plaintext
-#$ATTACH_AGGREGATION --attach_file anaquin_cufflinks/RnaExpression_summary.stats --attach_file_purpose anaquin-rnaexpression-star-cuff-summary --attach_file_type plaintext
 $ATTACH_AGGREGATION --attach_file anaquin_kallisto/RnaExpression_genes.tsv --attach_file_purpose anaquin-rnaexpression-kallisto-gene-sequins --attach_file_type plaintext
 $ATTACH_AGGREGATION --attach_file anaquin_kallisto/RnaExpression_isoforms.tsv --attach_file_purpose anaquin-rnaexpression-kallisto-isoform-sequins --attach_file_type plaintext
-#$ATTACH_AGGREGATION --attach_file anaquin_kallisto/RnaExpression_summary.stats --attach_file_purpose anaquin-rnaexpression-kallisto-summary --attach_file_type plaintext
+
+# picard uploads
+python3 $UPLOAD_SCRIPT --aggregation_id ${AGGREGATION_ID} --insertsfile picard.CollectInsertSizes.txt
+python3 $UPLOAD_SCRIPT --aggregation_id ${AGGREGATION_ID} --dupsfile picard.MarkDuplicatesWithMateCigar.txt
