@@ -162,6 +162,8 @@ class MakeBrowserload(object):
                 self.subtrack_sets["mm10"] = self.subtrack_sets.pop("mm10-encode3-male")
             if key == "GRCh38_no_alts":
                 self.subtrack_sets["hg38"] = self.subtrack_sets.pop("GRCh38_no_alts")
+            if key == "GRCh38_no_alts_sequins":
+                self.subtrack_sets["hg38"] = self.subtrack_sets.pop("GRCh38_no_alts_sequins")
 
         self.create_ras()
         self.create_hubtxt()

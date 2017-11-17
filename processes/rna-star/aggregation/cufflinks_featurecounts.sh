@@ -208,7 +208,7 @@ __KALLISTO__
 fi
 
 # picard
-if [ ! -s "picard.CollectInsertSizes.txt" || ! -s "picard.RnaSeqMetrics.txt" ] ; then
+if [[ ! -s "picard.CollectInsertSizes.txt" || ! -s "picard.RnaSeqMetrics.txt" ]] ; then
     jobid=$(sbatch --export=ALL -J "$picard_job" -o "$picard_job.o%A" -e "$picard_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__PIC__
 #!/bin/bash
 
@@ -248,13 +248,9 @@ hostname
 echo "START TAGCOUNTS: "
 date
 
-if [[ -n $PAIRED ]]; then
-    picard MarkDuplicatesWithMateCigar INPUT=Aligned.toGenome.out.bam OUTPUT=/dev/null METRICS_FILE=picard.MarkDuplicatesWithMateCigar.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
-else
-    picard MarkDuplicates INPUT=Aligned.toGenome.out.bam OUTPUT=/dev/null METRICS_FILE=picard.MarkDuplicatesWithMateCigar.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
-fi
-
-python3 $STAMPIPES/scripts/bwa/bamcounts.py Aligned.toGenome.out.bam tagcounts.txt
+picard MarkDuplicates INPUT=Aligned.toGenome.out.bam OUTPUT=temp.bam METRICS_FILE=picard.MarkDuplicatesWithMateCigar.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+python3 $STAMPIPES/scripts/bwa/bamcounts.py temp.bam tagcounts.txt
+rm temp.bam
 
 echo "FINISH TAGCOUNTS: "
 date
@@ -267,7 +263,6 @@ fi
 # adapter counts
 if [ ! -s "adapter_counts.info" ] ; then
     jobid=$(sbatch --export=ALL -J "$adaptercounts_job" -o "$adaptercounts_job.o%A" -e "$adaptercounts_job.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
-
 #!/bin/bash
 set -x -e -o pipefail
 
@@ -304,7 +299,7 @@ echo "START COMPLETE: "
 date
 
     bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
-#    bash $STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash
+    bash $STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash
     bash $STAMPIPES/scripts/rna-star/aggregate/attachfiles.sh
 
 echo "FINISH COMPLETE: "

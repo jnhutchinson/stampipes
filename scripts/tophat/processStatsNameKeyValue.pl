@@ -55,7 +55,7 @@ foreach my $name (sort keys %unames) {
     my $rRNA = "TBD";
     my $rRNAcount = get($name, "rRNA" );
     if (defined($rRNAcount) and defined($mappedReads) and ($mappedReads>0)) {
-        $rRNA = pct( $rRNAcount / ($rRNAcount + $mappedReads ) );
+        $rRNA = pct( $rRNAcount / ( $mappedReads / 2 ) );
     }
     #
     my $chrM = "TBD";

@@ -235,6 +235,8 @@ class MakeBrowserLoad(object):
                 self.all_tracks["mm10"] = self.all_tracks.pop("mm10-encode3-male")
             if key == "GRCh38_no_alts":
                 self.all_tracks["hg38"] = self.all_tracks.pop("GRCh38_no_alts")
+            if key == "GRCh38_no_alts_sequins":
+                self.all_tracks["hg38"] = self.all_tracks.pop("GRCh38_no_alts_sequins")
 
     def create_ras(self):
         for key in self.all_tracks:

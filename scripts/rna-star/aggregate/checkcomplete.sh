@@ -10,7 +10,7 @@ files=( \
     "genes.fpkm_tracking" \
     "isoforms.fpkm_tracking" \
     "picard.CollectInsertSizes.txt" \
-    "picard.MarkDuplicatesWithMateCigar.txt" \
+    "picard.MarkDuplicates.txt" \
     "picard.RnaSeqMetrics.txt" \
     "Signal.UniqueMultiple.str-.bw" \
     "Signal.UniqueMultiple.str+.bw" \

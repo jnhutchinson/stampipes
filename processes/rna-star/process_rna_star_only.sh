@@ -5,7 +5,6 @@ module load coreutils/8.25 # parallel sort
 module load STAR/2.4.2a
 module load perl/5.16.3
 module load anaquin/2.0.1
-
 source "$PYTHON3_ACTIVATE"
 
 outdir=$(pwd)
@@ -83,10 +82,6 @@ if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
     "$script" "$TRIM_R1" "$TRIM_R2" "$STARdir" "$dataType" "\$nThreadsSTAR" 
 
     anaquin RnaAlign -rgtf $SEQUINS_REF -usequin Aligned.sortedByCoord.out.bam -o anaquin_star
-
-    if [[ -n $PAIRED ]]; then
-        picard RevertOriginalBaseQualitiesAndAddMateCigar INPUT=Aligned.sortedByCoord.out.bam OUTPUT=cigar.bam VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
-    fi
 
 __RNA-STAR__
 )
