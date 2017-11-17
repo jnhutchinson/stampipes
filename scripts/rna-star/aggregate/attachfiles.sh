@@ -43,4 +43,4 @@ $ATTACH_AGGREGATION --attach_file anaquin_kallisto/RnaExpression_isoforms.tsv --
 
 # picard uploads
 python3 $UPLOAD_SCRIPT --aggregation_id ${AGGREGATION_ID} --insertsfile picard.CollectInsertSizes.txt
-python3 $UPLOAD_SCRIPT --aggregation_id ${AGGREGATION_ID} --dupsfile picard.MarkDuplicatesWithMateCigar.txt
+python3 $UPLOAD_SCRIPT --aggregation_id ${AGGREGATION_ID} --dupsfile picard.MarkDuplicates.txt
