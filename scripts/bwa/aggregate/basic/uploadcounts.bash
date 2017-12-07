@@ -29,4 +29,6 @@ fi
 upload "$LIBRARY_NAME.adaptercounts.txt"
 
 # Upload Preseq stats
-upload "$LIBRARY_NAME.uniques.preseq.targets.txt"
+if [ -e "$LIBRARY_NAME.uniques.preseq.targets.txt" ]; then
+    upload "$LIBRARY_NAME.uniques.preseq.targets.txt"
+fi

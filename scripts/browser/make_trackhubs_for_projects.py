@@ -171,6 +171,11 @@ class MakeBrowserLoad(object):
             agg_genome_req = requests.get(agg['genome_index'],headers={'Authorization': "Token %s" % self.token})
             if agg_genome_req.ok:
                 agg_genome_result = agg_genome_req.json()
+
+            # change sequins to normal
+            if agg_genome_result['label'] == "GRCh38_no_alts_sequins":
+                agg_genome_result['label'] = "GRCh38_no_alts"
+
             tracks['agg_genome'] = agg_genome_result['label']
 
             # output expected is explicit for type of aggregation template used
@@ -196,7 +201,7 @@ class MakeBrowserLoad(object):
                 else:
                     logging.info("Unable to locate AGG files for: %s" % (agg['id']))
             # rna (processes are seperate for each genome)
-            elif agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/30/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/31/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/35/":
+            elif agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/30/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/31/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/35/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/37/":
                 align_req = requests.get("%s/file/?object_id=%d&purpose__slug=all-alignments-bam" % (self.base_api_url,agg['id']),
                     headers={'Authorization': "Token %s" % self.token})
                 poscov_req = requests.get("%s/file/?object_id=%d&purpose__slug=pos-coverage-bigwig" % (self.base_api_url,agg['id']),
@@ -233,10 +238,8 @@ class MakeBrowserLoad(object):
         for key in self.all_tracks:
             if key == "mm10-encode3-male":
                 self.all_tracks["mm10"] = self.all_tracks.pop("mm10-encode3-male")
-            if key == "GRCh38_no_alts":
+            elif key == "GRCh38_no_alts":
                 self.all_tracks["hg38"] = self.all_tracks.pop("GRCh38_no_alts")
-            if key == "GRCh38_no_alts_sequins":
-                self.all_tracks["hg38"] = self.all_tracks.pop("GRCh38_no_alts_sequins")
 
     def create_ras(self):
         for key in self.all_tracks:
@@ -318,9 +321,9 @@ class MakeBrowserLoad(object):
                     ra.write("\t\ttrack %s_%s_%s\n" % (self.projectname, path, track['agg_id']))
                     ra.write("\t\tbigDataUrl %s\n" % friendly_path)
                     ra.write("\t\tsubTrack %s_%s\n" % (self.projectname, path))
-                    ra.write("\t\tshortLabel %s_%s_%s\n" % (self.projectname, path, track['agg_id']))
+                    ra.write("\t\tshortLabel AG%s_%s_%s\n" % (track['agg_id'], self.projectname, path))
                     ra.write("\t\tsubGroups view=%s sample=%s\n" % (path, track['agg_id']))
-                    ra.write("\t\tlongLabel %s, AG%s, LN%s%s, %s, %s\n" % (self.projectname, track['agg_id'], track['agg_ln'], track['agg_ln_sub'], genome, path))
+                    ra.write("\t\tlongLabel AG%s, LN%s%s, %s, %s, %s\n" % (track['agg_id'], track['agg_ln'], track['agg_ln_sub'], genome, path, self.projectname))
                     ra.write("\t\tgroup %s\n" % self.projectname)
                     if file_format == "bam":
                         ra.write("\t\tpairEndsByName .\n")
