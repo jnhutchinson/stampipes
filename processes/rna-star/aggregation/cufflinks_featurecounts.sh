@@ -46,9 +46,6 @@ if [ ! -s "$GENOME_BAM" ] ; then
   $STAMPIPES/scripts/tophat/merge_or_copy_bam.sh "$GENOME_BAM" $GENOME_BAM_FILES
   samtools index "$GENOME_BAM"
 fi
-# anaquin call on merged BAM
-anaquin RnaAlign -rgtf $SEQUINS_REF -usequin $GENOME_BAM -o anaquin_star
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
 
 density_job=.AG${AGGREGATION_ID}.star_den
 cufflinks_job=.AG${AGGREGATION_ID}.star_cuff
@@ -58,6 +55,7 @@ fcounts_job=.AGG${AGGREGATION_ID}.star_fcounts
 picard_job=.AGG${AGGREGATION_ID}.picard
 tagcounts_job=.AGG${AGGREGATION_ID}.tagcounts
 adaptercounts_job=.AGG${AGGREGATION_ID}.adapter
+anaquin_job=.AGG${AGGREGATION_ID}.anaquinsub
 
 # density information, convoluted, can clean up so we skip a lot of these steps
 if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
@@ -120,7 +118,7 @@ __DEN__
 fi
 
 # cufflinks
-if [ ! -s "anaquin_cufflinks/RnaExpression_summary.stats" ] ; then
+if [ ! -s "isoforms.fpkm_tracking" ] ; then
     jobid=$(sbatch --export=ALL -J "$cufflinks_job" -o "$cufflinks_job.o%A" -e "$cufflinks_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__CUFF__
 #!/bin/bash
 
@@ -144,7 +142,9 @@ date
     mv isoforms.fpkm_tracking.sort isoforms.fpkm_tracking
 
     # quantification with anaquin Rna Expression
-    anaquin RnaExpression -o anaquin_cufflinks -rmix $SEQUINS_ISO_MIX -usequin transcripts.gtf -mix A || (echo "NA" > anaquin_cufflinks/RnaExpression_genes.tsv && echo "NA" > anaquin_cufflinks/RnaExpression_isoforms.tsv && echo "NA" > anaquin_cufflinks/RnaExpression_summary.stats)
+    if [ -n "$SEQUINS_REF" ] ; then
+        anaquin RnaExpression -o anaquin_cufflinks -rmix $SEQUINS_ISO_MIX -usequin transcripts.gtf -mix A || (echo "NA" > anaquin_cufflinks/RnaExpression_genes.tsv && echo "NA" > anaquin_cufflinks/RnaExpression_isoforms.tsv && echo "NA" > anaquin_cufflinks/RnaExpression_summary.stats)
+    fi
 
 echo "FINISH CUFFLINKS: "
 date
@@ -180,7 +180,7 @@ __FC__
 fi
 
 # kallisto
-if [ ! -s "anaquin_kallisto/RnaExpression_summary.stats" ] ; then
+if [ ! -s "kallisto_output/abundance.tsv" ] ; then
     jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
 
@@ -194,10 +194,9 @@ date
 
 kallisto quant -i $KALLISTO_INDEX -o kallisto_output $TRIMS_R1 $TRIMS_R2
 
-anaquin RnaExpression -o anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_kallisto/RnaExpression_summary.stats)
-
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaexp_stats.bash anaquin_kallisto/RnaExpression_summary.stats anaquin_kallisto/RnaExpression_summary.stats.info
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_neat_comparison.bash anaquin_kallisto/RnaExpression_isoforms.tsv anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv $NEAT_MIX_A
+if [ -n "\$SEQUINS_REF" ] ; then
+    anaquin RnaExpression -o anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_kallisto/RnaExpression_summary.stats)
+fi
 
 echo "FINISH KALLISTO: "
 date
@@ -248,7 +247,7 @@ hostname
 echo "START TAGCOUNTS: "
 date
 
-picard MarkDuplicates INPUT=Aligned.toGenome.out.bam OUTPUT=temp.bam METRICS_FILE=picard.MarkDuplicatesWithMateCigar.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+picard MarkDuplicates INPUT=Aligned.toGenome.out.bam OUTPUT=temp.bam METRICS_FILE=picard.MarkDuplicates.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
 python3 $STAMPIPES/scripts/bwa/bamcounts.py temp.bam tagcounts.txt
 rm temp.bam
 
@@ -281,6 +280,56 @@ echo "FINISH: adapter counts"
 date
 
 __SCRIPT__
+)
+    PROCESSING="$PROCESSING,$jobid"
+fi
+
+# anaquin calls and subsampling
+if [[ ! -s "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
+    jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__ANAQUIN__
+#!/bin/bash
+
+set -x -e -o pipefail
+
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
+echo "Hostname: "
+hostname
+
+echo "START ANAQUIN: "
+date
+
+# create subsample
+DILUTION="0.01"
+anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample | samtools view -bS - > \$TMPDIR/temp_subsample.bam
+
+# calculate anaquin align stats on full alignment
+anaquin RnaAlign -rgtf $SEQUINS_REF -usequin $GENOME_BAM -o anaquin_star
+bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
+
+# calculate anaquin align stats on subset alignment
+anaquin RnaAlign -rgtf $SEQUINS_REF -usequin \$TMPDIR/temp_subsample.bam -o anaquin_subsample/anaquin_star
+bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_subsample/anaquin_star/RnaAlign_summary.stats anaquin_subsample/anaquin_star/RnaAlign_summary.stats.info
+
+# turn subset alignment to fastq
+samtools view -uf64 \$TMPDIR/temp_subsample.bam | samtools fastq - > \$TMPDIR/subsample.fq1
+samtools view -uf128 \$TMPDIR/temp_subsample.bam | samtools fastq - > \$TMPDIR/subsample.fq2
+
+# call kallisto on subsampled fastqs
+kallisto quant -i $KALLISTO_INDEX -o anaquin_subsample/kallisto_output \$TMPDIR/subsample.fq1 \$TMPDIR/subsample.fq2
+
+# calculate kallisto stats on subsampled alignment
+anaquin RnaExpression -o anaquin_subsample/anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin anaquin_subsample/kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_subsample/anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats)
+bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaexp_stats.bash anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info
+bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_neat_comparison.bash anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv $NEAT_MIX_A
+
+rm -rf "\$TMPDIR"
+
+echo "FINISH ANAQUIN: "
+date
+
+__ANAQUIN__
 )
     PROCESSING="$PROCESSING,$jobid"
 fi

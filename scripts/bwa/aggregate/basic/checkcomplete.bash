@@ -28,8 +28,6 @@ files=(
     "$LIBRARY_NAME.adaptercounts.txt"
     "$LIBRARY_NAME.$GENOME.uniques.sorted.hotspot2.info"
     "$LIBRARY_NAME.uniques.duphist.txt"
-    "$LIBRARY_NAME.uniques.preseq.txt"
-    "$LIBRARY_NAME.uniques.preseq.targets.txt"
     )
 paired_files=(
     "$LIBRARY_NAME.CollectInsertSizeMetrics.picard"
@@ -65,4 +63,4 @@ if [[ $EXIT -ne 1 ]]; then
     python3 "$STAMPIPES/scripts/lims/upload_data.py" --aggregation_id ${AGGREGATION_ID} --complete_aggregation
 fi
 
-#exit $EXIT
+exit $EXIT

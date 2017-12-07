@@ -13,7 +13,8 @@ upload() {
 }
 
 # Upload anaquin stats
-upload "anaquin_kallisto/RnaExpression_summary.stats.info"
+upload "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info"
+upload "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info"
 upload "anaquin_star/RnaAlign_summary.stats.info"
 upload "tagcounts.txt"
 upload "adapter_counts.info"

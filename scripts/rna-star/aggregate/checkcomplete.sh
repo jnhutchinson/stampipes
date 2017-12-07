@@ -19,13 +19,11 @@ files=( \
     "tagcounts.txt" \
     "trims.R1.fastq.gz" \
     "trims.R2.fastq.gz" \
-    "anaquin_cufflinks/RnaExpression_genes.tsv" \
-    "anaquin_cufflinks/RnaExpression_isoforms.tsv" \
-    "anaquin_cufflinks/RnaExpression_summary.stats" \
-    "anaquin_kallisto/RnaExpression_genes.tsv" \
-    "anaquin_kallisto/RnaExpression_isoforms.tsv" \
-    "anaquin_kallisto/RnaExpression_summary.stats" \
-    "anaquin_star/RnaAlign_summary.stats" \
+    "anaquin_subsample/anaquin_kallisto/RnaExpression_genes.tsv" \
+    "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv" \
+    "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info" \
+    "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats" \
+    "anaquin_star/RnaAlign_summary.stats.info" \
     "kallisto_output/abundance.tsv" \
 )
 
