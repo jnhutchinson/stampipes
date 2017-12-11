@@ -183,7 +183,10 @@ __SCRIPT__
 
    # Keep track of all individual alignments
    FASTQ_PAIR_BAMS="${BAMFILE} ${FASTQ_PAIR_BAMS}"
-   ALIGNMENT_JOBIDS="$ALIGNMENT_JOBIDS,$jobid"
+
+   if [[ -n $jobid ]]; then
+       ALIGNMENT_JOBIDS="$ALIGNMENT_JOBIDS,$jobid"
+   fi
 
    done
    

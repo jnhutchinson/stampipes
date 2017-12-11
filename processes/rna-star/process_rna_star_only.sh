@@ -81,8 +81,6 @@ if ! "$STAMPIPES/scripts/rna-star/checkcomplete.bash" ; then
     cd "$outdir"
     "$script" "$TRIM_R1" "$TRIM_R2" "$STARdir" "$dataType" "\$nThreadsSTAR" 
 
-    anaquin RnaAlign -rgtf $SEQUINS_REF -usequin Aligned.sortedByCoord.out.bam -o anaquin_star
-
 __RNA-STAR__
 )
    PROCESSING="$PROCESSING,$star_jobid"
