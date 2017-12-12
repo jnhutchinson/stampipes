@@ -32,6 +32,7 @@ files=(
 paired_files=(
     "$LIBRARY_NAME.CollectInsertSizeMetrics.picard"
     "$LIBRARY_NAME.CollectInsertSizeMetrics.picard.pdf"
+    "$LIBRARY_NAME.CollectInsertSizeMetrics.picard.info"
     "$LIBRARY_NAME.$GENOME.fragments.sorted.bed.starch"
     "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spotdups.txt"
     "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.out"

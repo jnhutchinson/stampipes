@@ -32,3 +32,8 @@ upload "$LIBRARY_NAME.adaptercounts.txt"
 if [ -e "$LIBRARY_NAME.uniques.preseq.targets.txt" ]; then
     upload "$LIBRARY_NAME.uniques.preseq.targets.txt"
 fi
+
+# Upload Insert Size stats
+if [ -e $LIBRARY_NAME.CollectInsertSizeMetrics.picard.info ]; then
+    upload "$LIBRARY_NAME.CollectInsertSizeMetrics.picard.info"
+fi

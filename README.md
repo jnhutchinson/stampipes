@@ -44,5 +44,9 @@ The current modules to load for working the pipeline are:
 * `samtools/1.3`
 * `STAR/2.4.2a`
 * `tophat/2.0.13`
+* `numpy/1.11.0`
+* `atlas-lapack/3.10.2`
+* `scipy/1.0.0`
+* `scikit-learn/0.18.1`
 
 If $MODULELOAD is set, then the processing scripts should load the required modules automatically.
