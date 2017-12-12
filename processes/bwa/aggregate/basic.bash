@@ -14,6 +14,11 @@ module load python/3.5.1
 module load pysam/0.9.0
 module load htslib/1.6.0
 
+module load numpy/1.11.0
+module load atlas-lapack/3.10.2
+module load scipy/1.0.0
+module load scikit-learn/0.18.1
+
 WIN=75
 BINI=20
 ASSAY=DNAse1 # hardcoded because ASSAY is not given to LNs or AGs, only matters if this happens to be chip-seq data
@@ -54,6 +59,7 @@ ADAPTERCOUNT_JOBNAME=${JOB_BASENAME}_adaptercount
 PRESEQ_JOBNAME=${JOB_BASENAME}_preseq
 DENSITY_JOBNAME=${JOB_BASENAME}_density
 CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
+INSERT_JOBNAME=${JOB_BASENAME}_insert
 
 cd $AGGREGATION_FOLDER
 BAM_COUNT=`ls $BAM_FILES | wc -l`
@@ -135,17 +141,6 @@ fi
 
 samtools index ${FINAL_BAM}
 samtools index ${FINAL_UNIQUES_BAM}
-
-# calculate insert sizes
-if [[ ! -s "$INSERT_FILE" && -n "$PAIRED" ]]; then
-
-    samtools idxstats ${FINAL_UNIQUES_BAM} | cut -f 1 | grep -v chrM | grep -v chrC | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
-    picard CollectInsertSizeMetrics INPUT=\${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam OUTPUT=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard \
-       HISTOGRAM_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.pdf \
-       VALIDATION_STRINGENCY=LENIENT \
-       ASSUME_SORTED=true && echo Picard stats >&2
-
-fi
 
 rm -rf "\$TMPDIR"
 
@@ -365,6 +360,41 @@ date
 __SCRIPT__
 )
 	PROCESSING="$PROCESSING,$jobid"
+fi
+
+
+# calculate insert sizes
+if [[ ! -s "$INSERT_FILE" && -n "$PAIRED" && ! -s "${INSERT_FILE}.info"]]; then
+        jobid=$(sbatch --export=ALL -J "$INSERT_JOBNAME" -o "$INSERT_JOBNAME.o%A" -e "$INSERT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+#!/bin/bash
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START: insert file"
+date
+
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
+samtools idxstats ${FINAL_UNIQUES_BAM} | cut -f 1 | grep -v chrM | grep -v chrC | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
+picard CollectInsertSizeMetrics INPUT=\${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam OUTPUT=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard \
+    HISTOGRAM_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.pdf \
+    VALIDATION_STRINGENCY=LENIENT \
+    ASSUME_SORTED=true && echo Picard stats >&2
+
+cat ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard | awk '/## HISTOGRAM/{x=1;next}x' | sed 1d > \$TMPDIR/temp_hist.txt
+$STAMPIPES/scripts/utility/picard_inserts_process.py \$TMPDIR/temp_hist.txt > ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.info
+
+rm -rf "\$TMPDIR"
+
+echo "FINISH: insert file"
+date
+
+__SCRIPT__
+)
+        PROCESSING="$PROCESSING,$jobid"
 fi
 
 # get complete dependencies and run complete even with some failures

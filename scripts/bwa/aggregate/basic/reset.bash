@@ -11,6 +11,7 @@ files=( \
     "${LIBRARY_NAME}.${GENOME}.uniques.sorted.bam.bai" \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard" \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.pdf" \
+    "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.info" \
     "${LIBRARY_NAME}.MarkDuplicates.picard" \
     "${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch" \
     "${LIBRARY_NAME}.75_20.${GENOME}.bw" \
