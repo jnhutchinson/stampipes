@@ -125,9 +125,8 @@ def main():
     fourier_transform_eleven = f_transform(hist)
     large_small_ratio = get_large_small_ratio(hist)
 
-    print("insert-ls-ratio\t%s" % (large_small_ratio))
-    print("insert-ft-eleven\t%s" % (fourier_transform_eleven.real))
-
+    print("insert-ls-ratio\t%.4f" % (large_small_ratio))
+    print("insert-ft-eleven\t%.4f" % (fourier_transform_eleven.real))
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
