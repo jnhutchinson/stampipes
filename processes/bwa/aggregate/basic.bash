@@ -364,7 +364,7 @@ fi
 
 
 # calculate insert sizes
-if [[ ! -s "$INSERT_FILE" && -n "$PAIRED" && ! -s "${INSERT_FILE}.info"]]; then
+if [[ ! -s "${INSERT_FILE}.info" && -n "$PAIRED" ]]; then
         jobid=$(sbatch --export=ALL -J "$INSERT_JOBNAME" -o "$INSERT_JOBNAME.o%A" -e "$INSERT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
@@ -385,7 +385,7 @@ picard CollectInsertSizeMetrics INPUT=\${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.ba
     ASSUME_SORTED=true && echo Picard stats >&2
 
 cat ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard | awk '/## HISTOGRAM/{x=1;next}x' | sed 1d > \$TMPDIR/temp_hist.txt
-$STAMPIPES/scripts/utility/picard_inserts_process.py \$TMPDIR/temp_hist.txt > ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.info
+python3 $STAMPIPES/scripts/utility/picard_inserts_process.py \$TMPDIR/temp_hist.txt > ${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.info
 
 rm -rf "\$TMPDIR"
 

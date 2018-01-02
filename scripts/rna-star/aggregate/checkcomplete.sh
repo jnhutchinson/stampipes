@@ -3,6 +3,7 @@
 
 EXIT=0
 
+# list of files
 files=( \
     "Aligned.toGenome.out.bam" \
     "Aligned.toTranscriptome.out.bam" \
@@ -19,20 +20,35 @@ files=( \
     "tagcounts.txt" \
     "trims.R1.fastq.gz" \
     "trims.R2.fastq.gz" \
+    "kallisto_output/abundance.tsv" \
+)
+
+# list of sequins files
+sequinsfiles=( \
     "anaquin_subsample/anaquin_kallisto/RnaExpression_genes.tsv" \
     "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv" \
     "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info" \
     "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats" \
     "anaquin_star/RnaAlign_summary.stats.info" \
-    "kallisto_output/abundance.tsv" \
 )
 
+# check files
 for FILE in "${files[@]}"; do
     if [ ! -s $FILE ]; then
 	echo "Missing $FILE"
 	EXIT=1
     fi
 done
+
+# check sequins files
+if [[ -n "$SEQUINS_REF" ]]; then
+    for FILE in "${sequinsfiles[@]}"; do
+        if [ ! -s $FILE ]; then
+            echo "Missing $FILE"
+            EXIT=1
+        fi
+    done
+fi
 
 if [[ $EXIT -ne 1 ]]; then
     python3 "$STAMPIPES/scripts/lims/upload_data.py" --aggregation_id ${AGGREGATION_ID} --complete_aggregation
