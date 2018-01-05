@@ -15,6 +15,7 @@ files=( \
 "picard.CollectInsertSizes.txt" \
 "picard.MarkDuplicates.txt" \
 "picard.RnaSeqMetrics.txt" \
+"rRNA_counts.info" \
 "Signal.UniqueMultiple.str-.bw" \
 "Signal.UniqueMultiple.str+.bw" \
 "Signal.UniqueMultiple.both.bw" \

@@ -13,6 +13,7 @@ module load jdk/1.8.0_92
 module load picard/2.8.1
 source "$PYTHON3_ACTIVATE"
 module load python/2.7.11
+module load bowtie/1.0.0
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
@@ -56,6 +57,7 @@ picard_job=.AGG${AGGREGATION_ID}.picard
 tagcounts_job=.AGG${AGGREGATION_ID}.tagcounts
 adaptercounts_job=.AGG${AGGREGATION_ID}.adapter
 anaquin_job=.AGG${AGGREGATION_ID}.anaquinsub
+bow_rRNA_job=.AGG${AGGREGATION_ID}.rRNA
 
 # density information, convoluted, can clean up so we skip a lot of these steps
 if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
@@ -277,6 +279,39 @@ if [ -n \$adapter_count ]; then
 fi
 
 echo "FINISH: adapter counts"
+date
+
+__SCRIPT__
+)
+    PROCESSING="$PROCESSING,$jobid"
+fi
+
+# rRNA
+if [ ! -s "rRNA_counts.info" ] ; then
+    jobid=$(sbatch --export=ALL -J "$bow_rRNA_job" -o "$bow_rRNA_job.o%A" -e "$bow_rRNA_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
+#!/bin/bash
+
+set -x -e -o pipefail
+
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
+echo "Hostname: "
+hostname
+
+echo "START BOWTIE: "
+date
+
+zcat -f trimssub1 > \$TMPDIR/trims.R1.fastq
+zcat -f trimssub2 > \$TMPDIR/trims.R2.fastq
+num_reads=\$(bowtie -n 3 -e 140 /net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA -1 \$TMPDIR/trims.R1.fastq -2 \$TMPDIR/trims.R2.fastq | wc -l )
+if [ -n \$num_reads ]; then
+    echo -e "ribosomal-RNA\t\$num_reads" > "rRNA_counts.info"
+fi
+
+rm -rf "\$TMPDIR"
+
+echo "FINISH BOWTIE: "
 date
 
 __SCRIPT__
