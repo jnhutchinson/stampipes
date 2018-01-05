@@ -17,6 +17,7 @@ files=( \
     "Signal.UniqueMultiple.str+.bw" \
     "Signal.UniqueMultiple.both.bw" \
     "adapter_counts.info" \
+    "rRNA_counts.info" \
     "tagcounts.txt" \
     "trims.R1.fastq.gz" \
     "trims.R2.fastq.gz" \
