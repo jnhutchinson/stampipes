@@ -21,7 +21,6 @@ module load scikit-learn/0.18.1
 
 WIN=75
 BINI=20
-ASSAY=DNAse1 # hardcoded because ASSAY is not given to LNs or AGs, only matters if this happens to be chip-seq data
 
 export FINAL_BAM=${LIBRARY_NAME}.${GENOME}.sorted.bam
 export FINAL_BAM_MARKED=${LIBRARY_NAME}.${GENOME}.sorted.marked.bam
