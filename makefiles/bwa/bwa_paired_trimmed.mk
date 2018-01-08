@@ -95,7 +95,7 @@ $(OUTBAM) : $(TMPDIR)/align.sorted.bam
 # Note: samtools expects the output name without a .bam suffix and will
 # add it, so take it away to prevent .bam.bam
 $(TMPDIR)/align.sorted.bam : $(TMPDIR)/align.filtered.bam
-	time $(SAMTOOLS) sort $^ > $@ && echo made $@ >&2
+	time $(SAMTOOLS) sort -l 0 -m 1G -@ 8 $^ > $@ && echo made $@ >&2
 
 # Create unsorted filtered BAM files
 $(TMPDIR)/align.filtered.bam : $(TMPDIR)/align.unsorted.bam

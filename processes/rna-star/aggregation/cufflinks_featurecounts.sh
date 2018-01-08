@@ -24,14 +24,6 @@ if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/rna-star/aggregate/reset.bash
 fi
 
-TRIMS_R1=trims.R1.fastq.gz
-TRIMS_R2=trims.R2.fastq.gz
-# create merged fastqs
-if [ ! -s "$TRIMS_R1" ] ; then
-    cat $TRIMMED_R1 > $TRIMS_R1
-    cat $TRIMMED_R2 > $TRIMS_R2
-fi
-
 # create proper merged BAM
 numbam=$(wc -w <<< $BAM_FILES)
 # Temporary
@@ -46,6 +38,16 @@ if [ ! -s "$GENOME_BAM" ] ; then
   GENOME_BAM_FILES=$(sed 's/toTranscriptome/sortedByCoord/g' <<< "$BAM_FILES")
   $STAMPIPES/scripts/tophat/merge_or_copy_bam.sh "$GENOME_BAM" $GENOME_BAM_FILES
   samtools index "$GENOME_BAM"
+fi
+
+TRIMS_R1=trims.R1.fastq.gz
+TRIMS_R2=trims.R2.fastq.gz
+# create merged fastqs
+if [ ! -s "$TRIMS_R1" ] ; then
+samtools sort -n -o sorted.bam $GENOME_BAM
+samtools view -uf64 sorted.bam | samtools fastq - > $TRIMS_R1
+samtools view -uf128 sorted.bam | samtools fastq - > $TRIMS_R2
+rm sorted.bam
 fi
 
 density_job=.AG${AGGREGATION_ID}.star_den
@@ -222,7 +224,8 @@ echo "START PICARD: "
 date
 
 picard CollectInsertSizeMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
-picard CollectRnaSeqMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND="SECOND_READ_TRANSCRIPTION_STRAND"
+# leave hard coded for now to test
+picard CollectRnaSeqMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND="SECOND_READ_TRANSCRIPTION_STRAND" RIBOSOMAL_INTERVALS=/net/seq/data/genomes/human/GRCh38/noalts-sequins/ref/rRNA.jdk.intervallist.txt
 
 cat picard.RnaSeqMetrics.txt | grep -A 1 "METRICS CLASS" | sed 1d | tr '\t' '\n' > rna_stats_summary.info
 cat picard.RnaSeqMetrics.txt | grep -A 2 "METRICS CLASS" | sed 1d | sed 1d | tr '\t' '\n' | paste rna_stats_summary.info - > tmp.txt && mv tmp.txt rna_stats_summary.info
@@ -302,8 +305,8 @@ hostname
 echo "START BOWTIE: "
 date
 
-zcat -f trimssub1 > \$TMPDIR/trims.R1.fastq
-zcat -f trimssub2 > \$TMPDIR/trims.R2.fastq
+zcat -f $TRIMS_R1 > \$TMPDIR/trims.R1.fastq
+zcat -f $TRIMS_R2 > \$TMPDIR/trims.R2.fastq
 num_reads=\$(bowtie -n 3 -e 140 /net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA -1 \$TMPDIR/trims.R1.fastq -2 \$TMPDIR/trims.R2.fastq | wc -l )
 if [ -n \$num_reads ]; then
     echo -e "ribosomal-RNA\t\$num_reads" > "rRNA_counts.info"
@@ -348,8 +351,9 @@ anaquin RnaAlign -rgtf $SEQUINS_REF -usequin \$TMPDIR/temp_subsample.bam -o anaq
 bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_subsample/anaquin_star/RnaAlign_summary.stats anaquin_subsample/anaquin_star/RnaAlign_summary.stats.info
 
 # turn subset alignment to fastq
-samtools view -uf64 \$TMPDIR/temp_subsample.bam | samtools fastq - > \$TMPDIR/subsample.fq1
-samtools view -uf128 \$TMPDIR/temp_subsample.bam | samtools fastq - > \$TMPDIR/subsample.fq2
+samtools sort -n -o \$TMPDIR/temp_subsample.sorted.bam \$TMPDIR/temp_subsample.bam
+samtools view -uf64 \$TMPDIR/temp_subsample.sorted.bam | samtools fastq - > \$TMPDIR/subsample.fq1
+samtools view -uf128 \$TMPDIR/temp_subsample.sorted.bam | samtools fastq - > \$TMPDIR/subsample.fq2
 
 # call kallisto on subsampled fastqs
 kallisto quant -i $KALLISTO_INDEX -o anaquin_subsample/kallisto_output \$TMPDIR/subsample.fq1 \$TMPDIR/subsample.fq2

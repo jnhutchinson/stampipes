@@ -26,7 +26,6 @@ script_options = {
     "qsub_prefix": ".agg",
     "qsub_queue": "queue2",
     "dry_run": False,
-    "sequins": False,
     "aggregation_base_directory": None,
     "aggregation_directory": None,
     "script_template": None,
@@ -72,8 +71,6 @@ def parser_setup():
         help="Name of the SLURM partition to use.")
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
         help="Take no action, only print messages.")
-    parser.add_argument("--sequins",dest="sequins", action="store_true",
-        help="If this is a sequins analysis.")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -96,7 +93,6 @@ class ProcessSetUp(object):
         self.aggregation_directory = args.aggregation_directory
         self.script_template = args.script_template
         self.overwrite = args.overwrite
-        self.sequins = args.sequins
 
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
@@ -249,6 +245,13 @@ class ProcessSetUp(object):
             sys.exit(1)
         return library_info
 
+    def get_sample_info(self, aggregation_info):
+        sample_info = self.api_single_result(url=aggregation_info['library_details']["sample"])
+        if not sample_info:
+            logging.critical("Cannot proceed without sample!  Could not get info from %s (Aggregation %d)" % (aggregation_info["sample"], aggregation_info["id"]))
+            sys.exit(1)
+        return sample_info
+
     def get_genome_index(self, aggregation_info):
         genome_info = self.api_single_result(url=aggregation_info["genome_index"])
         if not genome_info:
@@ -321,6 +324,22 @@ class ProcessSetUp(object):
 
         return flowcell
 
+    def get_all_flowcell_paired(self, aggregation_id, aggregation_lanes):
+        paired_ended = True
+        for aggregation_lane in aggregation_lanes:
+            if aggregation_lane["include"]:
+                lane = self.api_single_result(url=aggregation_lane["lane"])
+                if not lane:
+                    logging.critical("Was not able to fetch lane %s (Aggregation %d)" % (aggregation_lane["lane"], aggregation_id))
+                    sys.exit(1)
+                flowcell = self.api_single_result(url=lane["flowcell"])
+                if not flowcell:
+                    logging.critical("Could not get flowcell at %s (Aggregation %d)" % (lane["flowcell"], aggregation_id))
+                    sys.exit(1)
+                if not flowcell["paired_end"]:
+                    paired_ended = False
+        return paired_ended
+
     def add_script(self, aggregation_id, aggregation_folder, library_number):
 
         if self.overwrite:
@@ -360,10 +379,12 @@ class ProcessSetUp(object):
             return False
 
         library_info = self.get_library_info(aggregation)
+        sample_info = self.get_sample_info(aggregation)
         aggregation_folder = self.set_aggregation_folder(aggregation, library_info)
         genome_index = self.get_genome_index(aggregation)
         genome_index_location = self.get_genome_index_location(aggregation_id, aggregation_lanes)
         flowcell = self.get_example_flowcell(aggregation_id, aggregation_lanes)
+        paired = self.get_all_flowcell_paired(aggregation_id, aggregation_lanes)
 
         logging.info("Aggregation %d folder: %s" % (aggregation_id, aggregation_folder))
         logging.debug(aggregation)
@@ -371,8 +392,6 @@ class ProcessSetUp(object):
         missing = False
 
         files = []
-        r1s = []
-        r2s = []
         for aggregation_lane in aggregation_lanes:
             if not aggregation_lane["include"]:
                 logging.info("Not including lane %s (Aggregation %d)" % (aggregation_lane["lane"], aggregation_id))
@@ -396,20 +415,6 @@ class ProcessSetUp(object):
                 logging.info(bamfile)
                 files.append(bamfile)
 
-            if self.sequins == True:
-                trimmed_R1 = self.get_trimmed_fastq_r1(aggregation_id, alignment_id)
-                trimmed_R2 = self.get_trimmed_fastq_r2(aggregation_id, alignment_id)
-                if not trimmed_R1:
-                    missing = True
-                    logging.critical("No trimmed R1 file for alignment %s for lane %s, skipping (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], aggregation_id))
-                    continue
-                if not trimmed_R2:
-                    missing = True
-                    logging.critical("No trimmed R2 file for alignment %s for lane %s, skipping (Aggregation %d)" % (alignment_endpoint, aggregation_lane["lane"], aggregation_id))
-                    continue
-                r1s.append(trimmed_R1)
-                r2s.append(trimmed_R2)
-
         if missing: return False
 
         (script_contents, process_template) = self.get_script_template(aggregation_id, aggregation["aggregation_process_template"], self.script_template)
@@ -428,19 +433,13 @@ class ProcessSetUp(object):
         env_vars["GENOME_INDEX"] = genome_index_location
         env_vars["AGGREGATION_FOLDER"] = aggregation_folder
         env_vars["READ_LENGTH"] = flowcell["read_length"]
+        env_vars["ASSAY"] = sample_info["assay_name"]
+        env_vars["PAIRED"] = paired
 
         if aggregation["umi"]:
             env_vars["UMI"] = True
         else:
             env_vars["UMI"] = None
-        if flowcell["paired_end"]:
-            env_vars["PAIRED"] = True
-        else:
-            env_vars["PAIRED"] = None
-
-        if self.sequins == True:
-            env_vars["TRIMMED_R1"] = " ".join([trimmed_R1[0] for trimmed_R1 in r1s])
-            env_vars["TRIMMED_R2"] = " ".join([trimmed_R2[0] for trimmed_R2 in r2s])
 
         # Set process template env var overrides
         if 'process_variables' in process_template and process_template['process_variables']:
