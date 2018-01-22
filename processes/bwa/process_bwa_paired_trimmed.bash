@@ -113,7 +113,7 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
-if [[ -n $PAIRED ]]; then
+if [[ -n \$PAIRED ]]; then
 
    fastq1=${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz
    fastq2=${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz
@@ -235,7 +235,7 @@ then
 fi
 
 # mark duplicates
-if [[ -n $PAIRED ]]; then
+if [[ -n \$PAIRED ]]; then
    # filter full BAM and mark duplicates
    if [[ "$UMI" == "True" ]]; then
       make -f "$STAMPIPES/makefiles/picard/dups_cigarumi.mk" SAMPLE_NAME="${SAMPLE_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
@@ -334,7 +334,7 @@ hostname
 echo "START TAG COUNTS: "
 date
 
-if [[ -n "$PAIRED" ]]; then
+if [[ -n "\$PAIRED" ]]; then
    time bash $STAMPIPES/scripts/bwa/tagcounts.bash $SAMPLE_NAME $SAMPLE_NAME.sorted.bam $SAMPLE_NAME.tagcounts.txt $R1_FASTQ $R2_FASTQ
 else
    time bash $STAMPIPES/scripts/bwa/tagcounts.bash $SAMPLE_NAME $SAMPLE_NAME.sorted.bam $SAMPLE_NAME.tagcounts.txt $FASTQ_DIR
@@ -373,7 +373,7 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
    
-if [[ -n "$PAIRED" ]]; then
+if [[ -n "\$PAIRED" ]]; then
    make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
    python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
@@ -453,7 +453,7 @@ hostname
 echo "START COMPLETION: "
 date
 
-if [[ -n "$PAIRED" ]]; then
+if [[ -n "\$PAIRED" ]]; then
    bash $STAMPIPES/scripts/bwa/checkcomplete.bash
 else
    bash $STAMPIPES/scripts/bwa/unpairedcheckcomplete.bash
