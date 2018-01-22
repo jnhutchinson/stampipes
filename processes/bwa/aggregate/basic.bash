@@ -280,7 +280,7 @@ export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
 # get preseq metric
-preseq lc_extrap -hist "$PRESEQ_HIST" -extrap 1.001e9 -s 1e6 -v > "$PRESEQ_RES"
+preseq lc_extrap -hist "$PRESEQ_HIST" -extrap 1.001e9 -s 1e6 -v > "$PRESEQ_RES" || echo "NA" > "$PRESEQ_RES"
 
 # write out preseq targets
 bash "$STAMPIPES/scripts/utility/preseq_targets.sh" "${PRESEQ_RES}" "${PRESEQ_TRGT}"

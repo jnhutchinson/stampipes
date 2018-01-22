@@ -2,6 +2,8 @@ args <- commandArgs(trailingOnly = T)
 infile <- args[1]
 outfile <- args[2]
 
+input <- read.table(infile,header=T)
+
 NEATS <- which(grepl("NEAT",colnames(input)))
 TESTS <- which(grepl("TEST",colnames(input)))
 avgs <- c()
