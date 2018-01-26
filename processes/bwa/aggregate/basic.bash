@@ -47,6 +47,7 @@ export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.starch}
+export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
@@ -130,12 +131,14 @@ elif [[ -n "$PAIRED" ]]; then
 	make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
 	mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
 	samtools view -b -F 512 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
-        python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${FINAL_UNIQUES_BAM}" -o /dev/null --hist "$PRESEQ_HIST"
+        cat ${NUCLEAR_CHR} | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
+        python3 $STAMPIPES/scripts/bam/mark_dups.py -i \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam -o /dev/null --hist "$PRESEQ_HIST"
 else
         make -f $STAMPIPES/makefiles/picard/dups.mk SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM=${FINAL_BAM_MARKED}
         mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
         samtools view -b -F 512 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
-        python3 $STAMPIPES/scripts/bam/mark_dups.py -i "${FINAL_UNIQUES_BAM}" -o /dev/null --hist "$PRESEQ_HIST"
+        cat ${NUCLEAR_CHR} | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
+        python3 $STAMPIPES/scripts/bam/mark_dups.py -i \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam -o /dev/null --hist "$PRESEQ_HIST"
 fi
 
 samtools index ${FINAL_BAM}
@@ -159,7 +162,7 @@ fi
 # Run Hotspot2
 if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
 	HOTSPOT_SPOT=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.SPOT.txt
-	jobid=$(sbatch --export=ALL -J "$HOTSPOT_JOBNAME" -o "$HOTSPOT_JOBNAME.o%A" -e "$HOTSPOT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$HOTSPOT_JOBNAME" -o "$HOTSPOT_JOBNAME.o%A" -e "$HOTSPOT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 echo "Hostname: "
@@ -186,7 +189,7 @@ fi
 
 # SPOT score
 if [[ -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spotdups.txt" ]] || [[ ! -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spotdups.txt" ]]; then
-	jobid=$(sbatch --export=ALL -J "$SPOTSCORE_JOBNAME" -o "$SPOTSCORE_JOBNAME.o%A" -e "$SPOTSCORE_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$SPOTSCORE_JOBNAME" -o "$SPOTSCORE_JOBNAME.o%A" -e "$SPOTSCORE_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -218,7 +221,7 @@ fi
 
 # bam counts
 if [ ! -e $TAGCOUNTS_FILE ]; then
-	jobid=$(sbatch --export=ALL -J "$COUNT_JOBNAME" -o "$COUNT_JOBNAME.o%A" -e "$COUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$COUNT_JOBNAME" -o "$COUNT_JOBNAME.o%A" -e "$COUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -266,7 +269,7 @@ fi
 
 # preseq
 if [[ ! -s "$PRESEQ_TRGT" ]]; then
-        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
+        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
@@ -361,10 +364,9 @@ __SCRIPT__
 	PROCESSING="$PROCESSING,$jobid"
 fi
 
-
 # calculate insert sizes
 if [[ ! -s "${INSERT_FILE}.info" && -n "$PAIRED" ]]; then
-        jobid=$(sbatch --export=ALL -J "$INSERT_JOBNAME" -o "$INSERT_JOBNAME.o%A" -e "$INSERT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+        jobid=$(sbatch --export=ALL -J "$INSERT_JOBNAME" -o "$INSERT_JOBNAME.o%A" -e "$INSERT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
@@ -377,7 +379,7 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
-samtools idxstats ${FINAL_UNIQUES_BAM} | cut -f 1 | grep -v chrM | grep -v chrC | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
+cat ${NUCLEAR_CHR} | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
 picard CollectInsertSizeMetrics INPUT=\${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam OUTPUT=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard \
     HISTOGRAM_FILE=${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.pdf \
     VALIDATION_STRINGENCY=LENIENT \

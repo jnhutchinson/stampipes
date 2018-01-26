@@ -386,7 +386,7 @@ if [[ -n \$bcl_jobid ]]; then
 fi
 
 # demultiplex
-dmx_jobid=\$(sbatch --export=ALL -J "dmx-$flowcell" \$bcl_dependency -o "dmx-$flowcell.o%A" -e "dmx-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<'__DMX__'
+dmx_jobid=\$(sbatch --export=ALL -J "dmx-$flowcell" \$bcl_dependency -o "dmx-$flowcell.o%A" -e "dmx-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<'__DMX__'
 #!/bin/bash
    $demux_cmd
 # Wait for jobs to finish
@@ -401,7 +401,7 @@ if [[ -n \$dmx_jobid ]]; then
 fi
 
 # copy files and prep collation/fastqc
-copy_jobid=\$(sbatch --export=ALL -J "c-$flowcell" \$dmx_dependency -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<'__COPY__'
+copy_jobid=\$(sbatch --export=ALL -J "c-$flowcell" \$dmx_dependency -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COPY__'
 #!/bin/bash
 
 # copy files
