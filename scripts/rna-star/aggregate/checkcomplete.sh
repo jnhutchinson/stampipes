@@ -8,6 +8,7 @@ files=( \
     "Aligned.toGenome.out.bam" \
     "Aligned.toTranscriptome.out.bam" \
     "feature_counts.txt" \
+    "feature_counts.info" \
     "genes.fpkm_tracking" \
     "isoforms.fpkm_tracking" \
     "picard.CollectInsertSizes.txt" \
@@ -18,7 +19,6 @@ files=( \
     "Signal.UniqueMultiple.both.bw" \
     "adapter_counts.info" \
     "rRNA_counts.info" \
-    "tagcounts.txt" \
     "trims.R1.fastq.gz" \
     "trims.R2.fastq.gz" \
     "kallisto_output/abundance.tsv" \

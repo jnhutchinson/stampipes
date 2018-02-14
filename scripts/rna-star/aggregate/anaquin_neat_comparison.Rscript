@@ -11,6 +11,6 @@ for (i in 1:length(NEATS)) {
     print(NEATS[i])
     avgs <- c(avgs,cor(input[,NEATS[i]],input[,TESTS],method='spearman'))
 }
-spmean <- mean(avgs)
+spmean <- round(mean(avgs), digits = 5)
 df <- data.frame(c("neat-mixA-mean-spearman"),c(spmean))
 write.table(df,outfile,sep="\t",quote=F,col.names=F,row.names=F)
