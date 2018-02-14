@@ -337,7 +337,7 @@ class ProcessSetUp(object):
                     logging.critical("Could not get flowcell at %s (Aggregation %d)" % (lane["flowcell"], aggregation_id))
                     sys.exit(1)
                 if not flowcell["paired_end"]:
-                    paired_ended = False
+                    paired_ended = None
         return paired_ended
 
     def add_script(self, aggregation_id, aggregation_folder, library_number):

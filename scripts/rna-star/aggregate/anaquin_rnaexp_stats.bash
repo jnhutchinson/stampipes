@@ -21,8 +21,8 @@ cat $inputfile | grep -A 3 'Linear regression (gene expression)' | grep 'Correla
 
 # Percent Isoforms Found
 echo -ne "sequins-percent-isoforms-found\t" >> $2
-num1=$(cat anaquin_kallisto/RnaExpression_summary.stats | grep -A 3 "Detected Isoforms" | grep "Sequin" | sed -e 's/Sequin://g' | tr -d " \t\n\r")
-denom1=$(cat anaquin_kallisto/RnaExpression_summary.stats | grep -A 3 "Reference Transcript Annotations" | grep 'isoforms' | sed -e 's/Sequin://g' | sed -e 's/isoforms//g' | tr -d " \t\n\r")
+num1=$(cat $inputfile | grep -A 3 "Detected Isoforms" | grep "Sequin" | sed -e 's/Sequin://g' | tr -d " \t\n\r")
+denom1=$(cat $inputfile | grep -A 3 "Reference Transcript Annotations" | grep 'isoforms' | sed -e 's/Sequin://g' | sed -e 's/isoforms//g' | tr -d " \t\n\r")
 echo "scale=5; $num1 / $denom1 " | bc >> $2
 
 # Percent Genes Found
