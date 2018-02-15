@@ -198,10 +198,10 @@ class ClusterMonitor(object):
             log.error("Cannot find \'%s\' key value" % key)
             return
 
-        update = requests.patch(key_value["url"], data={"value": host_usage}, headers=headers)
+        update = requests.patch(key_value["url"], data={"value": host_usage}, headers=self.headers)
 
         if update.ok:
-            log.info(update.results)
+            log.info(update.json())
         else:
             log.error("Could not update %s usage." % host)
             log.error(update.text)
