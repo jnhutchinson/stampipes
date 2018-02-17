@@ -8,7 +8,6 @@ NEATS <- which(grepl("NEAT",colnames(input)))
 TESTS <- which(grepl("TEST",colnames(input)))
 avgs <- c()
 for (i in 1:length(NEATS)) {
-    print(NEATS[i])
     avgs <- c(avgs,cor(input[,NEATS[i]],input[,TESTS],method='spearman'))
 }
 spmean <- round(mean(avgs), digits = 5)

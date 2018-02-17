@@ -160,7 +160,7 @@ class MakeBrowserLoad(object):
             # skip aggregations that are not completed
             if agg['needs_reprocessing'] == True:
                 continue
-            if agg['procesing_completed'] == None:
+            if agg['processing_completed'] == None:
                 continue
 
             tracks = {}

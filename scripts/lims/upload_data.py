@@ -483,7 +483,8 @@ class UploadLIMS(object):
         elif purpose:
             log.debug("File Type: %s" % ftype)
 
-        check_exist_url = "%s/file/?path=%s" % (self.api_url, path)
+        # when checking, replace '+' character with API accessible escape
+        check_exist_url = "%s/file/?path=%s" % (self.api_url, path.replace("+","%2B"))
         exists = self.get_single_result(check_exist_url)
 
 

@@ -131,12 +131,14 @@ elif [[ -n "$PAIRED" ]]; then
 	make -f "$STAMPIPES/makefiles/picard/dups_cigar.mk" SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM="${FINAL_BAM_MARKED}"
 	mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
 	samtools view -b -F 512 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
+        samtools index ${FINAL_UNIQUES_BAM}
         cat ${NUCLEAR_CHR} | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
         python3 $STAMPIPES/scripts/bam/mark_dups.py -i \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam -o /dev/null --hist "$PRESEQ_HIST"
 else
         make -f $STAMPIPES/makefiles/picard/dups.mk SAMPLE_NAME="${LIBRARY_NAME}" BAMFILE="${FINAL_BAM}" OUTBAM=${FINAL_BAM_MARKED}
         mv ${FINAL_BAM_MARKED} ${FINAL_BAM}
         samtools view -b -F 512 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
+        samtools index ${FINAL_UNIQUES_BAM}
         cat ${NUCLEAR_CHR} | xargs samtools view -b ${FINAL_UNIQUES_BAM} > \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam
         python3 $STAMPIPES/scripts/bam/mark_dups.py -i \${TMPDIR}/${FINAL_UNIQUES_BAM}.nuclear.bam -o /dev/null --hist "$PRESEQ_HIST"
 fi
