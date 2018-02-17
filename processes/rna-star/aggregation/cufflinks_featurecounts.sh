@@ -227,8 +227,7 @@ echo "START PICARD: "
 date
 
 picard CollectInsertSizeMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
-# leave hard coded for now to test, i think this works but it doesn't count duplicates so ribosomal bases is always relatively low
-picard CollectRnaSeqMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND="SECOND_READ_TRANSCRIPTION_STRAND" RIBOSOMAL_INTERVALS=/net/seq/data/genomes/human/GRCh38/noalts-sequins/ref/rRNA.jdk.intervallist.txt
+picard CollectRnaSeqMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND="SECOND_READ_TRANSCRIPTION_STRAND"
 
 cat picard.RnaSeqMetrics.txt | grep -A 1 "METRICS CLASS" | sed 1d | tr '\t' '\n' > rna_stats_summary.info
 cat picard.RnaSeqMetrics.txt | grep -A 2 "METRICS CLASS" | sed 1d | sed 1d | tr '\t' '\n' | paste rna_stats_summary.info - > tmp.txt && mv tmp.txt rna_stats_summary.info
@@ -255,7 +254,6 @@ echo "START DUPLICATES: "
 date
 
 picard MarkDuplicates INPUT=Aligned.toGenome.out.bam OUTPUT=/dev/null METRICS_FILE=picard.MarkDuplicates.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
-rm temp.bam
 
 echo "FINISH DUPLICATES: "
 date
@@ -313,7 +311,7 @@ if [ -n \$num_reads ]; then
     echo -e "ribosomal-RNA\t\$num_reads" > "rRNA_counts.info"
 fi
 echo -ne "fastq-total-reads\t" >> rRNA_counts.info
-zcat -f $TRIMS_R1 | wc -l | awk '{print 2*$1/4}' >> rRNA_counts.info
+zcat -f $TRIMS_R1 | wc -l | awk '{print 2*\$1/4}' >> rRNA_counts.info
 
 rm -rf "\$TMPDIR"
 
