@@ -38,6 +38,7 @@ export ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 export VERSION_FILE=${SAMPLE_NAME}.versions.txt
 export FASTQ_TMP=$ALIGN_DIR/fastq
 export HIST=$SAMPLE_NAME.uniques.duphist.txt
+export NUCLEAR_CHR=${NUCLEAR_CHR:-$BWAINDEX.nuclear.txt}
 
 cd "$ALIGN_DIR"
 

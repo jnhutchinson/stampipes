@@ -14,11 +14,17 @@ files=( \
     "${LIBRARY_NAME}.CollectInsertSizeMetrics.picard.info" \
     "${LIBRARY_NAME}.MarkDuplicates.picard" \
     "${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch" \
+    "${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch.bgz" \
+    "${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch.bgz.tbi" \
     "${LIBRARY_NAME}.75_20.${GENOME}.bw" \
     "${LIBRARY_NAME}.75_20.normalized.${GENOME}.bw" \
     "${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch" \ 
+    "${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch.bgz" \
+    "${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch.bgz.tbi" \
     "${LIBRARY_NAME}.${GENOME}.cuts.sorted.bed.starch" \
     "${LIBRARY_NAME}.${GENOME}.cutcounts.sorted.bed.starch" \
+    "${LIBRARY_NAME}.${GENOME}.cutcounts.sorted.bed.starch.bgz" \
+    "${LIBRARY_NAME}.${GENOME}.cutcounts.sorted.bed.starch.bgz.tbi" \
     "${LIBRARY_NAME}.${GENOME}.fragments.sorted.bed.starch" \
     "${LIBRARY_NAME}.${GENOME}.cutcounts.$READ_LENGTH.bw" \
     "${LIBRARY_NAME}.${GENOME}.R1.rand.uniques.sorted.spotdups.txt" \
