@@ -22,11 +22,14 @@ $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.75_20.${GENOME}.bw --attach_fi
 $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch --attach_file_purpose density-bed-starch-windowed --attach_file_type starch
 $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.75_20.normalized.${GENOME}.bw --attach_file_purpose normalized-density-bigwig-windowed --attach_file_type bigwig
 $ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch --attach_file_purpose normalized-density-bed-starch --attach_file_type starch
+$ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.75_20.${GENOME}.uniques-density.bed.starch.bgz --attach_file_purpose density-tabix-bgz --attach_file_type bgz
+$ATTACH_AGGREGATION --attach_file ${LIBRARY_NAME}.75_20.normalized.${GENOME}.uniques-density.bed.starch.bgz --attach_file_purpose normalized-density-tabix-bgz --attach_file_type bgz
 
 # Cut counts
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.$READ_LENGTH.bw --attach_file_type bigwig --attach_file_purpose cutcounts-bw
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cuts.sorted.bed.starch --attach_file_type starch --attach_file_purpose cuts-starch
 $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.starch --attach_file_type starch --attach_file_purpose cutcounts-starch
+$ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.starch.bgz --attach_file_type bgz --attach_file_purpose cutcounts-tabix-bgz
 
 # hotspot2 output
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.allcalls.starch --attach_file_purpose hotspot-per-base --attach_file_type starch

@@ -14,8 +14,5 @@ ATTACH_ALIGNMENT="python3 $UPLOAD_SCRIPT --attach_file_contenttype SequencingDat
 $ATTACH_ALIGNMENT --attach_directory ${ALIGN_DIR} --attach_file_purpose alignment-directory 
 $ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.sorted.bam --attach_file_purpose all-alignments-bam --attach_file_type bam
 $ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.sorted.bam.bai --attach_file_purpose bam-index --attach_file_type bam-index
-#$ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.uniques.sorted.bam --attach_file_purpose filtered-alignments-bam --attach_file_type bam
-#$ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.uniques.sorted.bam.bai --attach_file_purpose bam-index --attach_file_type bam-index
 $ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.75_20.${GENOME}.bw --attach_file_purpose density-bigwig-windowed --attach_file_type bigwig
 $ATTACH_ALIGNMENT --attach_file ${SAMPLE_NAME}.75_20.uniques-density.${READLENGTH}.${GENOME}.bed.starch --attach_file_purpose density-bed-starch-windowed --attach_file_type starch
-
