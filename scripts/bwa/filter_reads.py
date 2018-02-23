@@ -1,5 +1,4 @@
 #!/bin/env python3
-
 """
 filter_reads.py - Set SAM flag 0x200 (QC-fail) for reads failing various criteria.
 
@@ -176,12 +175,13 @@ while(1):
 
             set_qc_fail(read1, qc_fail)
             set_proper_pair(read1, proper_pair)
-            if not read1.reference_name in nuclear_chrs:
+            
+            if read1.reference_id != -1 and not read1.reference_name in nuclear_chrs:
                 set_nonnuclear(read1, True)
 
             set_qc_fail(read2, qc_fail)
             set_proper_pair(read2, proper_pair)
-            if not read2.reference_name in nuclear_chrs:
+            if read2.reference_id != -1 and not read2.reference_name in nuclear_chrs:
                 set_nonnuclear(read2, True)
 
             # Write file
@@ -225,7 +225,7 @@ while(1):
             set_qc_fail(read1, qc_fail)
             set_proper_pair(read1, False)
 
-            if not read1.reference_name in nuclear_chrs:
+            if read1.reference_id != -1 and not read1.reference_name in nuclear_chrs:
                 set_nonnuclear(read1, True)
 
             filtered_alignment.write(read1)
