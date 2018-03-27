@@ -60,7 +60,7 @@ def get_processing_info_project(api_url, token, id, outfile):
 
     logging.info("Setting up project #%s" % id)
     
-    info = requests.get("%s/aggregation/?library__sample__tissue_culture__project=%s&page_size=1000" % (api_url,id),
+    info = requests.get("%s/aggregation/file_detail/?library__sample__tissue_culture__project=%s&page_size=1000" % (api_url,id),
         headers={'Authorization': "Token %s" % token})
 
     if info.ok:

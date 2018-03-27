@@ -26,7 +26,7 @@ INDIR ?= $(shell pwd)
 
 BAMFILE ?= $(INDIR)/$(SAMPLE_NAME).uniques.sorted.bam
 STAMPIPES ?= ~/stampipes
-HOTSPOT_DIR ?= ~/hotspot/hotspot-distr
+HOTSPOT_DIR ?= ~/hotspot-hpc/hotspot-distr
 
 OUTDIR ?= $(shell pwd)
 TMPDIR ?= $(OUTDIR)
