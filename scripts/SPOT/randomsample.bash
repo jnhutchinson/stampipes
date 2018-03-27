@@ -13,7 +13,7 @@ then
     fi
 else
     samtools view ${INBAM} | 
-		random-lines -n${SAMPLE_SIZE} -N${N_READS} | \
+		/home/solexa/bin/random-lines -n${SAMPLE_SIZE} -N${N_READS} | \
 		samtools view -bS -t ${FAI} - > \
 		${OUTBAM}
 fi

@@ -166,71 +166,48 @@ class MakeBrowserLoad(object):
             tracks = {}
             logging.debug("Preparing tracks for AGG: %s" % agg['id'])
             tracks['agg_id'] = agg['id']
-            tracks['agg_ln'] = agg['library_number']
-            tracks['agg_ln_sub'] = agg['library_sublibrary']
+            tracks['agg_ln'] = agg['library_name']
+            tracks['agg_taxonomy'] = agg['taxonomy_name']
+            tracks['agg_stat'] = ""
+            if 'hotspot1-SPOT' in agg['stats']:
+                tracks['agg_stat'] = agg['stats']['hotspot1-SPOT']
             
-            # get genome name
-            agg_genome_req = requests.get(agg['genome_index'],headers={'Authorization': "Token %s" % self.token})
+            # get genome name (not in json)
+            agg_genome_req = requests.get("%s/genome_index/%s" % (self.base_api_url,agg['genome_index_id']),
+                headers={'Authorization': "Token %s" % self.token})
             if agg_genome_req.ok:
                 agg_genome_result = agg_genome_req.json()
-
             # change sequins to normal
             if agg_genome_result['label'] == "GRCh38_no_alts_sequins":
                 agg_genome_result['label'] = "GRCh38_no_alts"
-
             tracks['agg_genome'] = agg_genome_result['label']
 
             # output expected is explicit for type of aggregation template used
             # dna
-            if agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/5/":
-                all_align_req = requests.get("%s/file/?object_id=%d&purpose__slug=all-alignments-bam" % (self.base_api_url,agg['id']),
-                    headers={'Authorization': "Token %s" % self.token})
-                dens_req = requests.get("%s/file/?object_id=%d&purpose__slug=density-bigwig-windowed" % (self.base_api_url,agg['id']),
-                    headers={'Authorization': "Token %s" % self.token})
-                norm_dens_req = requests.get("%s/file/?object_id=%d&purpose__slug=normalized-density-bigwig-windowed" % (self.base_api_url,agg['id']),
-                    headers={'Authorization': "Token %s" % self.token})
-                cutcounts_req = requests.get("%s/file/?object_id=%d&purpose__slug=cutcounts-bw" % (self.base_api_url,agg['id']),
-                    headers={'Authorization': "Token %s" % self.token})
-                if all_align_req.ok and dens_req.ok and norm_dens_req.ok and cutcounts_req.ok:
-                    all_align_results = all_align_req.json()['results']
-                    dens_results = dens_req.json()['results']
-                    norm_dens_results = norm_dens_req.json()['results']
-                    cutcounts_results = cutcounts_req.json()['results']
-                    tracks['align_path'] = all_align_results[0]['path']
-                    tracks['dens_path'] = dens_results[0]['path']
-                    tracks['norm_dens_path'] = norm_dens_results[0]['path']
-                    tracks['cutcounts_path'] = cutcounts_results[0]['path']
+            if agg['aggregation_process_template_id'] == 5:
+                
+                if 'normalized-density-bigwig-windowed' in agg['files'] and 'density-bigwig-windowed' in agg['files'] and 'all-alignments-bam' in agg['files'] and 'cutcounts-bw' in agg['files']:
+                    tracks['dnase_normdens'] = agg['files']['normalized-density-bigwig-windowed']
+                    tracks['dnase_dens'] = agg['files']['density-bigwig-windowed']
+                    tracks['dnase_align'] = agg['files']['all-alignments-bam']
+                    tracks['dnase_cutconts'] = agg['files']['cutcounts-bw']
                 else:
                     logging.info("Unable to locate AGG files for: %s" % (agg['id']))
             # rna (processes are seperate for each genome)
-            elif agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/30/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/31/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/35/" or agg['aggregation_process_template'] == "https://lims.altiusinstitute.org/api/process_template/37/":
-                align_req = requests.get("%s/file/?object_id=%d&purpose__slug=all-alignments-bam" % (self.base_api_url,agg['id']),
-                    headers={'Authorization': "Token %s" % self.token})
-                poscov_req = requests.get("%s/file/?object_id=%d&purpose__slug=pos-coverage-bigwig" % (self.base_api_url,agg['id']),
-                    headers={'Authorization': "Token %s" % self.token})
-                negcov_req = requests.get("%s/file/?object_id=%d&purpose__slug=neg-coverage-bigwig" % (self.base_api_url,agg['id']),
-                    headers={'Authorization': "Token %s" % self.token})
-                bothcov_req = requests.get("%s/file/?object_id=%d&purpose__slug=all-coverage-bigwig" % (self.base_api_url,agg['id']),
-                    headers={'Authorization': "Token %s" % self.token})
-                if align_req.ok and poscov_req.ok and negcov_req.ok:
-                    align_results = align_req.json()['results']
-                    poscov_results = poscov_req.json()['results']
-                    negcov_results = negcov_req.json()['results']
-                    tracks['align_path'] = align_results[0]['path']
-                    tracks['poscov_path'] = poscov_results[0]['path']
-                    tracks['negcov_path'] = negcov_results[0]['path']
+            elif agg['aggregation_process_template_id'] == 30 or agg['aggregation_process_template_id'] == 31 or agg['aggregation_process_template_id'] == 35 or agg['aggregation_process_template_id'] == 37:
+                if 'all-alignments-bam' in agg['files'] and 'neg-coverage-bigwig' in agg['files'] and 'pos-coverage-bigwig' in agg['files']:
+                    tracks['rna_align'] = agg['files']['all-alignments-bam']
+                    tracks['rna_poscov'] = agg['files']['pos-coverage-bigwig']
+                    tracks['rna_negcov'] = agg['files']['neg-coverage-bigwig']
                 else:
-                   logging.info("Unable to locate AGG files for: %s" % (agg['id']))
+                    logging.info("Unable to locate AGG files for: %s" % (agg['id']))
                 # coverage across both strands still new, seperate from the rest for now
-                if bothcov_req.ok:
-                    bothcov_results = bothcov_req.json()['results']
-                    if len(bothcov_results) != 0:
-                        tracks['bothcov_path'] = bothcov_results[0]['path']
+                if 'all-coverage-bigwig' in agg['files']:
+                    tracks['rna_bothcov'] = agg['files']['all-coverage-bigwig']
                 else:
-                   logging.info("Unable to locate combined stranded AGG files for: %s" % (agg['id']))
+                    logging.info("Unable to locate combined stranded AGG files for: %s" % (agg['id']))
             else:
-                logging.info("Unknown template type, %s, for %s" % (agg['aggregation_process_template'], agg['id']))
-            
+                logging.info("Unknown template type, %s, for %s" % (agg['aggregation_process_template_id'], agg['id']))
             if not tracks['agg_genome'] in self.all_tracks:
                 self.all_tracks[tracks['agg_genome']] = []
             self.all_tracks[tracks['agg_genome']].append(tracks)
@@ -257,7 +234,7 @@ class MakeBrowserLoad(object):
         path_names={}
         for agg in subtracks:
             for info_type in agg:
-                if re.match('.*path.*',info_type):
+                if re.match('dnase*',info_type) or re.match('rna*',info_type):
                    path_names[info_type] = 0
         all_samples = set(subtrack['agg_id'] for subtrack in subtracks)
 
@@ -304,9 +281,9 @@ class MakeBrowserLoad(object):
             # change auto display settings for normalized densities and RNA pos/neg densities
             file_format = "bigWig"
             visibility = "hide"
-            if path == "align_path":
+            if path == "dnase_align" or path == "rna_align":
                 file_format = "bam"
-            if path == "norm_dens_path" or path == "poscov_path" or path == "negcov_path" or path == "bothcov_path":
+            if path == "dnase_normdens" or path == "rna_poscov" or path == "rna_negcov" or path == "rna_allcov":
                 visibility = "full\n\tviewLimits 0:5\n\tautoScale off\n\tmaxHeightPixels 100:32:16"
 
             # write path header
@@ -325,7 +302,7 @@ class MakeBrowserLoad(object):
                     ra.write("\t\tsubTrack %s_%s\n" % (self.projectname, path))
                     ra.write("\t\tshortLabel AG%s_%s_%s\n" % (track['agg_id'], self.projectname, path))
                     ra.write("\t\tsubGroups view=%s sample=%s\n" % (path, track['agg_id']))
-                    ra.write("\t\tlongLabel AG%s, LN%s%s, %s, %s, %s\n" % (track['agg_id'], track['agg_ln'], track['agg_ln_sub'], genome, path, self.projectname))
+                    ra.write("\t\tlongLabel AG%s, %s, SPOT1 %s, %s, %s\n" % (track['agg_id'], track['agg_ln'], track['agg_stat'], track['agg_taxonomy'], path))
                     ra.write("\t\tgroup %s\n" % self.projectname)
                     if file_format == "bam":
                         ra.write("\t\tpairEndsByName .\n")

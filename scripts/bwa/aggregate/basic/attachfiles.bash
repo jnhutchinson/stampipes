@@ -33,7 +33,6 @@ $ATTACH_AGGREGATION --attach_file $LIBRARY_NAME.${GENOME}.cutcounts.sorted.bed.s
 
 # hotspot2 output
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.allcalls.starch --attach_file_purpose hotspot-per-base --attach_file_type starch
-$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.fragments.sorted.starch --attach_file_purpose fragments-starch-fragments --attach_file_type starch
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.hotspots.fdr0.05.starch --attach_file_purpose hotspot-calls --attach_file_type starch
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.peaks.starch --attach_file_purpose hotspot-peaks --attach_file_type starch
 

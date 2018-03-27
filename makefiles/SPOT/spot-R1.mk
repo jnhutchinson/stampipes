@@ -23,7 +23,7 @@ FAI ?= $(BWAINDEX).fai
 SAMPLE_SIZE ?= 5000000
 BAMFILE ?= $(SAMPLE_NAME).uniques.sorted.bam
 STAMPIPES ?= ~/stampipes
-HOTSPOT_DIR ?= ~/hotspot/hotspot-distr
+HOTSPOT_DIR ?= ~/hotspot-hpc/hotspot-distr
 
 TMPDIR ?= $(shell pwd)
 OUTDIR ?= $(shell pwd)
