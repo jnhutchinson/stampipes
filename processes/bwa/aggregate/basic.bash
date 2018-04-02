@@ -8,7 +8,7 @@ module load samtools/1.3
 module load git/2.3.3
 module load coreutils/8.25
 module load modwt/1.0
-module load hotspot2/2.0
+module load hotspot2/2.1
 module load bedtools/2.25.0
 module load python/3.5.1
 module load pysam/0.9.0
@@ -46,6 +46,8 @@ export HOTSPOT_CALLS_01=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.01.starch
 export HOTSPOT_CALLS_001=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.001.starch
 export HOTSPOT_DENSITY=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.density.bw
 export HOTSPOT_ALLCALLS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.allcalls.starch
+export HOTSPOT_CUTCOUNTS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cutcounts.starch
+export HOTSPOT_CLEAVAGES=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cleavage.total
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
@@ -179,10 +181,13 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
-"$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT2_DIR"
+"$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -p varWidth_20_${LIBRARY_NAME} -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT2_DIR"
 "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.info"
 hsmerge.sh -f 0.01 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_01
 hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
+
+totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
+bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
 
 echo "FINISH: hotspot2"
 date
