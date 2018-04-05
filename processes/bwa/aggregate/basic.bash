@@ -54,6 +54,9 @@ export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.starch}
 export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 
+# hard-coded until we create individual aggregation templates
+export ALTIUS_MASTERLIST="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.txt"
+
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
 PROCESS_BAM_JOBNAME=${JOB_BASENAME}_pb
@@ -181,13 +184,15 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
-"$HOTSPOT_SCRIPT"  -F 0.5 -s 12345 -p varWidth_20_${LIBRARY_NAME} -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT2_DIR"
+"$HOTSPOT_SCRIPT"  -F 0.5 -p varWidth_20_${LIBRARY_NAME} -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT2_DIR"
 "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.info"
 hsmerge.sh -f 0.01 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_01
 hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
 
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
-bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
+if [[ -n "$ALTIUS_MASTERLIST"]]; then
+    bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
+fi
 
 echo "FINISH: hotspot2"
 date
