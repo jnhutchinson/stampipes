@@ -15,7 +15,7 @@ module load git/2.3.3
 module load coreutils/8.25
 module load pigz/2.3.3
 module load modwt/1.0
-module load hotspot2/2.1
+module load hotspot2/2.1.1
 module load htslib/1.6.0
 
 # Load in this order specifically, currently the python3 activation
