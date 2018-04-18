@@ -196,7 +196,7 @@ hsmerge.sh -f 0.01 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_01
 hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
 
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
-if [[ -n "$ALTIUS_MASTERLIST"]]; then
+if [[ -n "$ALTIUS_MASTERLIST" ]]; then
     bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
 fi
 
