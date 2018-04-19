@@ -51,7 +51,7 @@ export HOTSPOT_CLEAVAGES=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cleavage.total
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
-export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.starch}
+export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.nuclear.starch}
 export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 
 # hard-coded until we create individual aggregation templates
@@ -184,13 +184,19 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
-"$HOTSPOT_SCRIPT"  -F 0.5 -p varWidth_20_${LIBRARY_NAME} -M "$MAPPABLE_REGIONS" -c "$CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT2_DIR"
+NUCLEAR_MAPPABLE_REGIONS=\$(mktemp)
+NUCLEAR_CHROM_SIZES=\$(mktemp)
+
+join <(sort "$NUCLEAR_CHR") "$MAPPABLE_REGIONS" > "\$NUCLEAR_MAPPABLE_REGIONS"
+join <(sort "$NUCLEAR_CHR") "$CHROM_SIZES" > "\$NUCLEAR_CHROM_SIZES"
+
+"$HOTSPOT_SCRIPT"  -F 0.5 -p varWidth_20_${LIBRARY_NAME} -M "\$NUCLEAR_MAPPABLE_REGIONS" -c "\$NUCLEAR_CHROM_SIZES" -C "$CENTER_SITES" "$FINAL_UNIQUES_BAM"  "$HOTSPOT2_DIR"
 "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.info"
 hsmerge.sh -f 0.01 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_01
 hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
 
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
-if [[ -n "$ALTIUS_MASTERLIST"]]; then
+if [[ -n "$ALTIUS_MASTERLIST" ]]; then
     bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
 fi
 
