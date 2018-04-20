@@ -53,6 +53,7 @@ fi
 density_job=.AG${AGGREGATION_ID}.star_den
 cufflinks_job=.AG${AGGREGATION_ID}.star_cuff
 kallisto_job=.AGG${AGGREGATION_ID}.kallisto
+kallisto_adv_job=.AGG${AGGREGATION_ID}.kallisto_adv
 complete_job=.AGG#${AGGREGATION_ID}.complete
 fcounts_job=.AGG${AGGREGATION_ID}.star_fcounts
 picard_job=.AGG${AGGREGATION_ID}.picard
@@ -175,9 +176,6 @@ date
     FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2"
     \$FCOUNTS \$FCOUNTS_COMMON -t 'exon' -g 'gene_id' -a $ANNOTATION -o feature_counts.txt $GENOME_BAM
 
-    echo -ne "fcounts-assigned\t" >> feature_counts.info
-    cat feature_counts.txt.summary | grep 'Assigned' | cut -f 2 >> feature_counts.info
-
 echo "FINISH FEATURECOUNTS: "
 date
 
@@ -199,13 +197,40 @@ hostname
 echo "START KALLISTO: "
 date
 
-kallisto quant -i $KALLISTO_INDEX -o kallisto_output $TRIMS_R1 $TRIMS_R2
+kallisto quant -i $KALLISTO_INDEX -o kallisto_output $TRIMS_R1 $TRIMS_R2 2> kallisto.log
 
 if [ -n "\$SEQUINS_REF" ] ; then
     anaquin RnaExpression -o anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_kallisto/RnaExpression_summary.stats)
 fi
 
 echo "FINISH KALLISTO: "
+date
+
+__KALLISTO__
+)
+    PROCESSING="$PROCESSING,$jobid"
+fi
+
+# kallisto advanced
+if [ ! -s "kallisto_output_adv/abundance.tsv" ] ; then
+    jobid=$(sbatch --export=ALL -J "$kallisto_job_adv" -o "$kallisto_job_adv.o%A" -e "$kallisto_job_adv.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__KALLISTO__
+#!/bin/bash
+
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START KALLISTO ADV: "
+date
+
+kallisto quant --bias -b 100 --rf-stranded -i $KALLISTO_INDEX -o kallisto_output_adv $TRIMS_R1 $TRIMS_R2 2> kallisto_adv.log
+
+if [ -n "\$SEQUINS_REF" ] ; then
+    anaquin RnaExpression -o anaquin_kallisto_adv -rmix $SEQUINS_ISO_MIX -usequin kallisto_output_adv/abundance.tsv -mix A || (echo "NA" > anaquin_kallisto_adv/RnaExpression_genes.tsv && echo "NA" > anaquin_kallisto_adv/RnaExpression_isoforms.tsv && echo "NA" > anaquin_kallisto_adv/RnaExpression_summary.stats)
+fi
+
+echo "FINISH KALLISTO ADV: "
 date
 
 __KALLISTO__
@@ -289,7 +314,7 @@ __SCRIPT__
 fi
 
 # rRNA
-if [ ! -s "rRNA_counts.info" ] ; then
+if [ ! -s "counts.info" ] ; then
     jobid=$(sbatch --export=ALL -J "$bow_rRNA_job" -o "$bow_rRNA_job.o%A" -e "$bow_rRNA_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
@@ -308,10 +333,8 @@ zcat -f $TRIMS_R1 > \$TMPDIR/trims.R1.fastq
 zcat -f $TRIMS_R2 > \$TMPDIR/trims.R2.fastq
 num_reads=\$(bowtie -n 3 -e 140 /net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA -1 \$TMPDIR/trims.R1.fastq -2 \$TMPDIR/trims.R2.fastq | wc -l )
 if [ -n \$num_reads ]; then
-    echo -e "ribosomal-RNA\t\$num_reads" > "rRNA_counts.info"
+    echo -e "ribosomal-RNA\t\$num_reads" > "counts.info"
 fi
-echo -ne "fastq-total-reads\t" >> rRNA_counts.info
-zcat -f $TRIMS_R1 | wc -l | awk '{print 2*\$1/4}' >> rRNA_counts.info
 
 rm -rf "\$TMPDIR"
 
@@ -324,6 +347,7 @@ __SCRIPT__
 fi
 
 # anaquin calls and subsampling
+# will fail if there's nothing to subsample
 if [[ ! -s "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
     jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__ANAQUIN__
 #!/bin/bash
@@ -374,6 +398,7 @@ __ANAQUIN__
     PROCESSING="$PROCESSING,$jobid"
 fi
 
+# will fail if there's nothing to subsample
 if [[ ! -s "anaquin_subsample_005/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
     jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ANAQUIN__
 #!/bin/bash
@@ -411,7 +436,7 @@ __ANAQUIN__
     PROCESSING="$PROCESSING,$jobid"
 fi
 
-# anaquin calls and subsampling
+# will fail if there's nothing to subsample
 if [[ ! -s "anaquin_subsample_0001/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
     jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ANAQUIN__
 #!/bin/bash
@@ -461,6 +486,22 @@ hostname
 
 echo "START COMPLETE: "
 date
+
+# put this into a separate script eventually and maybe make it aware of single/paired
+echo -ne "fastq-total-reads\t" >> counts.info
+zcat -f $TRIMS_R1 | wc -l | awk '{print 2*\$1/4}' >> counts.info
+
+echo -ne "fcounts-assigned\t" >> counts.info
+cat feature_counts.txt.summary | grep 'Assigned' | cut -f 2 | awk '{print $1}' >> counts.info
+
+echo -ne "kallisto-palign-default\t" >> counts.info
+cat kallisto.log | grep 'reads pseudoaligned' | tr ' ' '\t' | cut -f 5 | awk '{print $1*2}' >> counts.info
+
+# manually delete extremely large anaquin star log files (cannot be suppressed)
+rm anaquin_star/anaquin.log
+rm anaquin_subsample/anaquin_star/anaquin.log
+rm anaquin_subsample_0001/anaquin_star/anaquin.log
+rm anaquin_subsample_005/anaquin_star/anaquin.log
 
     bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
     bash $STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash
