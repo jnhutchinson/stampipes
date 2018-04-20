@@ -15,8 +15,7 @@ upload() {
 # upload stats
 upload "adapter_counts.info"
 upload "rna_stats_summary.info"
-upload "rRNA_counts.info"
-upload "feature_counts.info"
+upload "counts.info"
 
 # upload sequins stats
 if [[ -n "$SEQUINS_REF" ]]; then
