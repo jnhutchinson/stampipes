@@ -169,8 +169,10 @@ class MakeBrowserLoad(object):
             tracks['agg_ln'] = agg['library_name']
             tracks['agg_taxonomy'] = agg['taxonomy_name']
             tracks['agg_stat'] = ""
-            if 'hotspot1-SPOT' in agg['stats']:
-                tracks['agg_stat'] = agg['stats']['hotspot1-SPOT']
+
+            if 'stats' in agg and agg['stats'] is not None:
+                if 'hotspot1-SPOT' in agg['stats']:
+                    tracks['agg_stat'] = agg['stats']['hotspot1-SPOT']
             
             # get genome name (not in json)
             agg_genome_req = requests.get("%s/genome_index/%s" % (self.base_api_url,agg['genome_index_id']),
