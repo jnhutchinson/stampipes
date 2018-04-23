@@ -492,10 +492,10 @@ echo -ne "fastq-total-reads\t" >> counts.info
 zcat -f $TRIMS_R1 | wc -l | awk '{print 2*\$1/4}' >> counts.info
 
 echo -ne "fcounts-assigned\t" >> counts.info
-cat feature_counts.txt.summary | grep 'Assigned' | cut -f 2 | awk '{print $1}' >> counts.info
+cat feature_counts.txt.summary | grep 'Assigned' | cut -f 2 | awk '{print \$1}' >> counts.info
 
 echo -ne "kallisto-palign-default\t" >> counts.info
-cat kallisto.log | grep 'reads pseudoaligned' | tr ' ' '\t' | cut -f 5 | awk '{print $1*2}' >> counts.info
+cat kallisto.log | grep 'reads pseudoaligned' | tr ' ' '\t' | cut -f 5 | awk '{print \$1*2}' >> counts.info
 
 # manually delete extremely large anaquin star log files (cannot be suppressed)
 rm anaquin_star/anaquin.log
