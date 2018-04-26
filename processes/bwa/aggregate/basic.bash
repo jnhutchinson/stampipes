@@ -39,7 +39,7 @@ export PRESEQ_HIST=${LIBRARY_NAME}.uniques.duphist.txt
 export PRESEQ_RES=${LIBRARY_NAME}.uniques.preseq.txt
 export PRESEQ_TRGT=${LIBRARY_NAME}.uniques.preseq.targets.txt
 
-export HOTSPOT2_DIR=peaks
+export HOTSPOT2_DIR=peaks_v2_1_1
 HOTSPOT_PREFIX=$(basename "$FINAL_UNIQUES_BAM" .bam)
 export HOTSPOT_CALLS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.05.starch
 export HOTSPOT_CALLS_01=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.hotspots.fdr0.01.starch
