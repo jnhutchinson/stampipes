@@ -9,7 +9,7 @@
 UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
 
 # All peaks files start with this:
-PEAKS_PREFIX="peaks/$LIBRARY_NAME.$GENOME.uniques.sorted"
+PEAKS_PREFIX="peaks_v2_1_1/$LIBRARY_NAME.$GENOME.uniques.sorted"
 
 ATTACH_AGGREGATION="python3 $UPLOAD_SCRIPT --attach_file_contenttype AggregationData.aggregation --attach_file_objectid ${AGGREGATION_ID}"
 

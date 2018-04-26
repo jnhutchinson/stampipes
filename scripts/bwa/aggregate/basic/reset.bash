@@ -47,7 +47,7 @@ for FILE in "${files[@]}"; do
     fi
 done
 
-if [[ -d "$HOTSPOT2_DIR" && "$HOTSPOT2_DIR" = "peaks" ]]; then
+if [[ -d "$HOTSPOT2_DIR" && "$HOTSPOT2_DIR" = "peaks_v2_1_1" ]]; then
     rm -r $HOTSPOT2_DIR
 fi
 

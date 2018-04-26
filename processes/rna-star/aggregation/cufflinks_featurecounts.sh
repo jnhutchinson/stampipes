@@ -213,7 +213,7 @@ fi
 
 # kallisto advanced
 if [ ! -s "kallisto_output_adv/abundance.tsv" ] ; then
-    jobid=$(sbatch --export=ALL -J "$kallisto_job_adv" -o "$kallisto_job_adv.o%A" -e "$kallisto_job_adv.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__KALLISTO__
+    jobid=$(sbatch --export=ALL -J "$kallisto_adv_job" -o "$kallisto_adv_job.o%A" -e "$kallisto_adv_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
 
 set -x -e -o pipefail
