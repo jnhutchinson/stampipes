@@ -187,6 +187,9 @@ mkdir -p \$TMPDIR
 NUCLEAR_MAPPABLE_REGIONS=\$(mktemp)
 NUCLEAR_CHROM_SIZES=\$(mktemp)
 
+join <(sort "$NUCLEAR_CHR") "$MAPPABLE_REGIONS" | sed 's/\\s\\+/\\t/g' > "\$NUCLEAR_MAPPABLE_REGIONS"
+join <(sort "$NUCLEAR_CHR") "$CHROM_SIZES" | sed 's/\\s\\+/\\t/g' > "\$NUCLEAR_CHROM_SIZES"
+
 join <(sort "$NUCLEAR_CHR") "$MAPPABLE_REGIONS" > "\$NUCLEAR_MAPPABLE_REGIONS"
 join <(sort "$NUCLEAR_CHR") "$CHROM_SIZES" > "\$NUCLEAR_CHROM_SIZES"
 
