@@ -1,4 +1,5 @@
 source $MODULELOAD
+module load hotspot2/2.1.1
 module load bedops/2.4.19
 module load jdk/1.8.0_92
 module load gcc/4.7.2
@@ -8,7 +9,6 @@ module load samtools/1.3
 module load git/2.3.3
 module load coreutils/8.25
 module load modwt/1.0
-module load hotspot2/2.1.1
 module load bedtools/2.25.0
 module load python/3.5.1
 module load pysam/0.9.0
