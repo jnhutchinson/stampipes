@@ -40,8 +40,8 @@ if [ ! -s "$GENOME_BAM" ] ; then
   samtools index "$GENOME_BAM"
 fi
 
-TRIMS_R1=trims.R1.fastq.gz
-TRIMS_R2=trims.R2.fastq.gz
+export TRIMS_R1=trims.R1.fastq.gz
+export TRIMS_R2=trims.R2.fastq.gz
 # create merged fastqs
 if [ ! -s "$TRIMS_R1" ] ; then
 samtools sort -n -o sorted.bam $GENOME_BAM
@@ -314,7 +314,7 @@ __SCRIPT__
 fi
 
 # rRNA
-if [ ! -s "counts.info" ] ; then
+if [ ! -s "ribosomal_counts.info" ] ; then
     jobid=$(sbatch --export=ALL -J "$bow_rRNA_job" -o "$bow_rRNA_job.o%A" -e "$bow_rRNA_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
@@ -333,7 +333,7 @@ zcat -f $TRIMS_R1 > \$TMPDIR/trims.R1.fastq
 zcat -f $TRIMS_R2 > \$TMPDIR/trims.R2.fastq
 num_reads=\$(bowtie -n 3 -e 140 /net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA -1 \$TMPDIR/trims.R1.fastq -2 \$TMPDIR/trims.R2.fastq | wc -l )
 if [ -n \$num_reads ]; then
-    echo -e "ribosomal-RNA\t\$num_reads" > "counts.info"
+    echo -e "ribosomal-RNA\t\$num_reads" > "ribosomal_counts.info"
 fi
 
 rm -rf "\$TMPDIR"
@@ -346,8 +346,7 @@ __SCRIPT__
     PROCESSING="$PROCESSING,$jobid"
 fi
 
-# anaquin calls and subsampling
-# will fail if there's nothing to subsample
+# anaquin calls and subsampling, will fail if there's nothing to subsample
 if [[ ! -s "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
     jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__ANAQUIN__
 #!/bin/bash
@@ -364,7 +363,7 @@ echo "START ANAQUIN: "
 date
 
 # create subsample
-DILUTION="0.01"
+DILUTION="0.0001"
 anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample | samtools view -bS - > \$TMPDIR/temp_subsample.bam
 
 # calculate anaquin align stats on full alignment
@@ -398,82 +397,6 @@ __ANAQUIN__
     PROCESSING="$PROCESSING,$jobid"
 fi
 
-# will fail if there's nothing to subsample
-if [[ ! -s "anaquin_subsample_005/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
-    jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ANAQUIN__
-#!/bin/bash
-
-set -x -e -o pipefail
-
-export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
-mkdir -p \$TMPDIR
-
-# create subsample
-DILUTION="0.005"
-anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample_005 | samtools view -bS - > \$TMPDIR/temp_subsample.bam
-
-# calculate anaquin align stats on subset alignment
-anaquin RnaAlign -rgtf $SEQUINS_REF -usequin \$TMPDIR/temp_subsample.bam -o anaquin_subsample_005/anaquin_star
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_subsample_005/anaquin_star/RnaAlign_summary.stats anaquin_subsample_005/anaquin_star/RnaAlign_summary.stats.info
-
-# turn subset alignment to fastq
-samtools sort -n -o \$TMPDIR/temp_subsample.sorted.bam \$TMPDIR/temp_subsample.bam
-samtools view -uf64 \$TMPDIR/temp_subsample.bam | samtools fastq - > \$TMPDIR/subsample.fq1
-samtools view -uf128 \$TMPDIR/temp_subsample.bam | samtools fastq - > \$TMPDIR/subsample.fq2
-
-# call kallisto on subsampled fastqs
-kallisto quant -i $KALLISTO_INDEX -o anaquin_subsample_005/kallisto_output \$TMPDIR/subsample.fq1 \$TMPDIR/subsample.fq2
-
-# calculate kallisto stats on subsampled alignment
-anaquin RnaExpression -o anaquin_subsample_005/anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin anaquin_subsample_005/kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_subsample_005/anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_subsample_005/anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_subsample_005/anaquin_kallisto/RnaExpression_summary.stats)
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaexp_stats.bash anaquin_subsample_005/anaquin_kallisto/RnaExpression_summary.stats anaquin_subsample_005/anaquin_kallisto/RnaExpression_summary.stats.info
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_neat_comparison.bash anaquin_subsample_005/anaquin_kallisto/RnaExpression_isoforms.tsv anaquin_subsample_005/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv $NEAT_MIX_A
-
-rm -rf "\$TMPDIR"
-
-__ANAQUIN__
-)
-    PROCESSING="$PROCESSING,$jobid"
-fi
-
-# will fail if there's nothing to subsample
-if [[ ! -s "anaquin_subsample_0001/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
-    jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ANAQUIN__
-#!/bin/bash
-
-set -x -e -o pipefail
-
-export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
-mkdir -p \$TMPDIR
-
-# create subsample
-DILUTION="0.0001"
-anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample_0001 | samtools view -bS - > \$TMPDIR/temp_subsample.bam
-
-# calculate anaquin align stats on subset alignment
-anaquin RnaAlign -rgtf $SEQUINS_REF -usequin \$TMPDIR/temp_subsample.bam -o anaquin_subsample_0001/anaquin_star
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_subsample_0001/anaquin_star/RnaAlign_summary.stats anaquin_subsample_0001/anaquin_star/RnaAlign_summary.stats.info
-
-# turn subset alignment to fastq
-samtools sort -n -o \$TMPDIR/temp_subsample.sorted.bam \$TMPDIR/temp_subsample.bam
-samtools view -uf64 \$TMPDIR/temp_subsample.bam | samtools fastq - > \$TMPDIR/subsample.fq1
-samtools view -uf128 \$TMPDIR/temp_subsample.bam | samtools fastq - > \$TMPDIR/subsample.fq2
-
-# call kallisto on subsampled fastqs
-kallisto quant -i $KALLISTO_INDEX -o anaquin_subsample_0001/kallisto_output \$TMPDIR/subsample.fq1 \$TMPDIR/subsample.fq2
-
-# calculate kallisto stats on subsampled alignment
-anaquin RnaExpression -o anaquin_subsample_0001/anaquin_kallisto -rmix $SEQUINS_ISO_MIX -usequin anaquin_subsample_0001/kallisto_output/abundance.tsv -mix A || (echo "NA" > anaquin_subsample_0001/anaquin_kallisto/RnaExpression_genes.tsv && echo "NA" > anaquin_subsample_0001/anaquin_kallisto/RnaExpression_isoforms.tsv && echo "NA" > anaquin_subsample_0001/anaquin_kallisto/RnaExpression_summary.stats)
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaexp_stats.bash anaquin_subsample_0001/anaquin_kallisto/RnaExpression_summary.stats anaquin_subsample_0001/anaquin_kallisto/RnaExpression_summary.stats.info
-bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_neat_comparison.bash anaquin_subsample_0001/anaquin_kallisto/RnaExpression_isoforms.tsv anaquin_subsample_0001/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv $NEAT_MIX_A
-
-rm -rf "\$TMPDIR"
-
-__ANAQUIN__
-)
-    PROCESSING="$PROCESSING,$jobid"
-fi
-
 # complete
 dependencies_full=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterok/g')
 sbatch --export=ALL -J "$complete_job" -o "$complete_job.o%A" -e "$complete_job.e%A" $dependencies_full --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__COMPLETE__
@@ -487,21 +410,11 @@ hostname
 echo "START COMPLETE: "
 date
 
-# put this into a separate script eventually and maybe make it aware of single/paired
-echo -ne "fastq-total-reads\t" >> counts.info
-zcat -f $TRIMS_R1 | wc -l | awk '{print 2*\$1/4}' >> counts.info
-
-echo -ne "fcounts-assigned\t" >> counts.info
-cat feature_counts.txt.summary | grep 'Assigned' | cut -f 2 | awk '{print \$1}' >> counts.info
-
-echo -ne "kallisto-palign-default\t" >> counts.info
-cat kallisto.log | grep 'reads pseudoaligned' | tr ' ' '\t' | cut -f 5 | awk '{print \$1*2}' >> counts.info
-
 # manually delete extremely large anaquin star log files (cannot be suppressed)
 rm anaquin_star/anaquin.log
 rm anaquin_subsample/anaquin_star/anaquin.log
-rm anaquin_subsample_0001/anaquin_star/anaquin.log
-rm anaquin_subsample_005/anaquin_star/anaquin.log
+
+bash $STAMPIPES/scripts/rna-star/aggregate/concat_metrics.sh
 
     bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
     bash $STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash
