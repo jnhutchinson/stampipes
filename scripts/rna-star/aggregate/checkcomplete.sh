@@ -17,7 +17,8 @@ files=( \
     "Signal.UniqueMultiple.str+.bw" \
     "Signal.UniqueMultiple.both.bw" \
     "adapter_counts.info" \
-    "counts.info" \
+    "ribosomal_counts.info" \
+    "metrics.info" \
     "trims.R1.fastq.gz" \
     "trims.R2.fastq.gz" \
     "kallisto_output/abundance.tsv" \

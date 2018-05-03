@@ -12,10 +12,11 @@ files=( \
 "feature_counts.txt.summary" \
 "genes.fpkm_tracking" \
 "isoforms.fpkm_tracking" \
+"metrics.info" \
 "picard.CollectInsertSizes.txt" \
 "picard.MarkDuplicates.txt" \
 "picard.RnaSeqMetrics.txt" \
-"counts.info" \
+"ribosomal_counts.info" \
 "Signal.UniqueMultiple.str-.bw" \
 "Signal.UniqueMultiple.str+.bw" \
 "Signal.UniqueMultiple.both.bw" \
