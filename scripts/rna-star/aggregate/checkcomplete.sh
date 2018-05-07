@@ -8,17 +8,18 @@ files=( \
     "Aligned.toGenome.out.bam" \
     "Aligned.toTranscriptome.out.bam" \
     "feature_counts.txt" \
+    "feature_counts.txt.summary" \
     "genes.fpkm_tracking" \
     "isoforms.fpkm_tracking" \
+    "kallisto.log" \
     "picard.CollectInsertSizes.txt" \
     "picard.MarkDuplicates.txt" \
     "picard.RnaSeqMetrics.txt" \
-    "Signal.UniqueMultiple.str-.bw" \
-    "Signal.UniqueMultiple.str+.bw" \
-    "Signal.UniqueMultiple.both.bw" \
+    "Signal.Unique.both.bw" \
+    "Signal.Unique.str-.bw" \
+    "Signal.Unique.str+.bw" \
     "adapter_counts.info" \
     "ribosomal_counts.info" \
-    "metrics.info" \
     "trims.R1.fastq.gz" \
     "trims.R2.fastq.gz" \
     "kallisto_output/abundance.tsv" \

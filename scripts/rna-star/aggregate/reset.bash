@@ -8,15 +8,22 @@ files=( \
 "Aligned.toGenome.out.bam" \
 "Aligned.toGenome.out.bam.bai" \
 "Aligned.toTranscriptome.out.bam" \
+"chrNL.txt" \
+"feature_counts.info" \
 "feature_counts.txt" \
 "feature_counts.txt.summary" \
 "genes.fpkm_tracking" \
 "isoforms.fpkm_tracking" \
+"kallisto.log" \
+"kallisto_adv.log" \ 
 "metrics.info" \
 "picard.CollectInsertSizes.txt" \
 "picard.MarkDuplicates.txt" \
 "picard.RnaSeqMetrics.txt" \
 "ribosomal_counts.info" \
+"rna_stats_summary.info" \
+"Signal.Unique.both.starch.bgz" \
+"Signal.Unique.both.starch.bgz.tbi" \
 "Signal.UniqueMultiple.str-.bw" \
 "Signal.UniqueMultiple.str+.bw" \
 "Signal.UniqueMultiple.both.bw" \
@@ -37,10 +44,13 @@ files=( \
 )
 
 dirs=( \
-    "anaquin_cufflinks" \
-    "anaquin_kallisto"  \
-    "anaquin_star"      \
-    "kallisto_output"   \
+    "anaquin_cufflinks"     \
+    "anaquin_kallisto"      \
+    "anaquin_kallisto_adv"  \
+    "anaquin_star"          \
+    "kallisto_output"       \
+    "anaquin_subsample"     \
+    "kallisto_output_adv"   \
 )
 
 for FILE in "${files[@]}"; do
