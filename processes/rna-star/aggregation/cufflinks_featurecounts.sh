@@ -346,7 +346,7 @@ __SCRIPT__
     PROCESSING="$PROCESSING,$jobid"
 fi
 
-# anaquin calls and subsampling, will fail if there's nothing to subsample
+# anaquin calls and subsampling, will fail if there's nothing to subsample... could mean it was set up wrong but also if sequins were added extremely poorly
 if [[ ! -s "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
     jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__ANAQUIN__
 #!/bin/bash
@@ -411,14 +411,17 @@ echo "START COMPLETE: "
 date
 
 # manually delete extremely large anaquin star log files (cannot be suppressed)
-rm anaquin_star/anaquin.log
-rm anaquin_subsample/anaquin_star/anaquin.log
+if [[ -s "anaquin_star/anaquin.log" ]] ; then
+   rm anaquin_star/anaquin.log
+fi
+if [[ -s "anaquin_subsample/anaquin_star/anaquin.log" ]] ; then
+   rm anaquin_subsample/anaquin_star/anaquin.log
+fi
 
+bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
 bash $STAMPIPES/scripts/rna-star/aggregate/concat_metrics.sh
-
-    bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
-    bash $STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash
-    bash $STAMPIPES/scripts/rna-star/aggregate/attachfiles.sh
+bash $STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash
+bash $STAMPIPES/scripts/rna-star/aggregate/attachfiles.sh
 
 echo "FINISH COMPLETE: "
 date
