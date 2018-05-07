@@ -72,6 +72,9 @@ INSERT_JOBNAME=${JOB_BASENAME}_insert
 cd $AGGREGATION_FOLDER
 BAM_COUNT=`ls $BAM_FILES | wc -l`
 
+# record version
+cp $STAMPIPES/version.json .
+
 if [ -n "$REDO_AGGREGATION" ]; then
         bash $STAMPIPES/scripts/bwa/aggregate/basic/reset.bash
 fi
