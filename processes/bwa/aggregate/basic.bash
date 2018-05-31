@@ -56,6 +56,8 @@ export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 
 # hard-coded until we create individual aggregation templates
 export ALTIUS_MASTERLIST="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.txt"
+export FIMO_TRANSFAC_1E4="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.combined.1e-4.parsed.starch"
+export FIMO_NAMES="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.transfac.names.txt"
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
@@ -68,6 +70,7 @@ PRESEQ_JOBNAME=${JOB_BASENAME}_preseq
 DENSITY_JOBNAME=${JOB_BASENAME}_density
 CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 INSERT_JOBNAME=${JOB_BASENAME}_insert
+MOTIF_JOBNAME=${JOB_BASENAME}_motifs
 
 cd $AGGREGATION_FOLDER
 BAM_COUNT=`ls $BAM_FILES | wc -l`
@@ -422,6 +425,34 @@ date
 __SCRIPT__
 )
         PROCESSING="$PROCESSING,$jobid"
+fi
+
+# create motif sparse matrix
+if [[ ! -s "hs_motifs_svmlight.txt" ]]; then
+    jobid=$(sbatch --export=ALL -J "$MOTIF_JOBNAME" -o "$MOTIF_JOBNAME.o%A" -e "$MOTIF_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__SCRIPT__
+#!/bin/bash
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START: sparse motifs"
+date
+
+export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
+mkdir -p \$TMPDIR
+
+bedmap --echo --echo-map-id --fraction-map 1 --delim '\t' $HOTSPOT_CALLS $FIMO_TRANSFAC_1E4 > \$TMPDIR/temp.bedmap.txt
+python $STAMPIPES/scripts/bwa/aggregate/basic/sparse_motifs.py $FIMO_NAMES \$TMPDIR/temp.bedmap.txt
+
+rm -rf "\$TMPDIR"
+
+echo "FINISH: sparse motifs"
+date
+
+__SCRIPT__
+)
+    PROCESSING="$PROCESSING,$jobid"
 fi
 
 # get complete dependencies and run complete even with some failures
