@@ -56,6 +56,7 @@ export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 
 # hard-coded until we create individual aggregation templates
 export ALTIUS_MASTERLIST="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.txt"
+export ALTIUS_MASTERLIST_COMPONENTS="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.components.txt"
 export FIMO_TRANSFAC_1E4="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.combined.1e-4.parsed.starch"
 export FIMO_NAMES="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.transfac.names.txt"
 
@@ -201,10 +202,15 @@ join <(sort "$NUCLEAR_CHR") "$CHROM_SIZES" | sed 's/\\s\\+/\\t/g' > "\$NUCLEAR_C
 hsmerge.sh -f 0.01 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_01
 hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
 
+# create iSPOT
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
 if [[ -n "$ALTIUS_MASTERLIST" ]]; then
     bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
 fi
+
+# create component scores
+bedops -e 1 $ALTIUS_MASTERLIST_COMPONENTS $HOTSPOT_CALLS > \$TMPDIR/mlcomponents.txt
+Rscript $STAMPIPES/scripts/bwa/aggregate/basic/mlcomponents.Rscript \$TMPDIR/mlcomponents.txt $HOTSPOT_PREFIX.mlcomponents.info
 
 echo "FINISH: hotspot2"
 date
