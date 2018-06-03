@@ -71,7 +71,6 @@ PRESEQ_JOBNAME=${JOB_BASENAME}_preseq
 DENSITY_JOBNAME=${JOB_BASENAME}_density
 CUTCOUNTS_JOBNAME=${JOB_BASENAME}_cutcounts
 INSERT_JOBNAME=${JOB_BASENAME}_insert
-MOTIF_JOBNAME=${JOB_BASENAME}_motifs
 
 cd $AGGREGATION_FOLDER
 BAM_COUNT=`ls $BAM_FILES | wc -l`
@@ -211,6 +210,10 @@ fi
 # create component scores
 bedops -e 1 $ALTIUS_MASTERLIST_COMPONENTS $HOTSPOT_CALLS > \$TMPDIR/mlcomponents.txt
 Rscript $STAMPIPES/scripts/bwa/aggregate/basic/mlcomponents.Rscript \$TMPDIR/mlcomponents.txt $HOTSPOT_PREFIX.mlcomponents.info
+
+# create sparse motifs
+bedmap --echo --echo-map-id --fraction-map 1 --delim '\t' $HOTSPOT_CALLS $FIMO_TRANSFAC_1E4 > \$TMPDIR/temp.bedmap.txt
+python $STAMPIPES/scripts/bwa/aggregate/basic/sparse_motifs.py $FIMO_NAMES \$TMPDIR/temp.bedmap.txt
 
 echo "FINISH: hotspot2"
 date
@@ -431,34 +434,6 @@ date
 __SCRIPT__
 )
         PROCESSING="$PROCESSING,$jobid"
-fi
-
-# create motif sparse matrix
-if [[ ! -s "hs_motifs_svmlight.txt" ]]; then
-    jobid=$(sbatch --export=ALL -J "$MOTIF_JOBNAME" -o "$MOTIF_JOBNAME.o%A" -e "$MOTIF_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__SCRIPT__
-#!/bin/bash
-set -x -e -o pipefail
-
-echo "Hostname: "
-hostname
-
-echo "START: sparse motifs"
-date
-
-export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
-mkdir -p \$TMPDIR
-
-bedmap --echo --echo-map-id --fraction-map 1 --delim '\t' $HOTSPOT_CALLS $FIMO_TRANSFAC_1E4 > \$TMPDIR/temp.bedmap.txt
-python $STAMPIPES/scripts/bwa/aggregate/basic/sparse_motifs.py $FIMO_NAMES \$TMPDIR/temp.bedmap.txt
-
-rm -rf "\$TMPDIR"
-
-echo "FINISH: sparse motifs"
-date
-
-__SCRIPT__
-)
-    PROCESSING="$PROCESSING,$jobid"
 fi
 
 # get complete dependencies and run complete even with some failures
