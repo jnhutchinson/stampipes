@@ -35,6 +35,7 @@ The current modules to load for working the pipeline are:
 * `htslib/1.6.0`
 * `jdk/1.8.0_92`
 * `kallisto/0.43.1`
+* `kentutil/302
 * `picard/2.8.1`
 * `pigz/2.3.3`
 * `pysam/0.9.0`
