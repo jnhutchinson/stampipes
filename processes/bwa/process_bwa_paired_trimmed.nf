@@ -9,6 +9,8 @@ params.chunk_size = 5000  //TODO: raise
 params.UMI = false
 params.genome = ""
 
+params.outdir = "output"
+
 nuclear_chroms = "$params.genome" + ".nuclear.txt"
 
 def helpMessage() {
@@ -56,7 +58,7 @@ process trim_adapters {
 
     script:
     """
-    time trim-adapters-illumina \
+    trim-adapters-illumina \
       -f "$adapters" \
       -1 P7 -2 P5 \
       --threads=${params.threads} \
@@ -84,14 +86,14 @@ process align {
 
   script:
   """
-  time bwa aln \
+  bwa aln \
     -Y -l 32 -n 0.04 \
     -t "${params.threads}" \
     "$genome" \
     "$trimmed_r1" \
     > out1.sai
 
-  time bwa aln \
+  bwa aln \
     -Y -l 32 -n 0.04 \
     -t "$params.threads" \
     "$genome" \
@@ -167,6 +169,7 @@ process merge_bam {
   script:
   """
   samtools merge merged.bam sorted_bam*
+  samtools index merged.bam
   """
 }
 
@@ -177,14 +180,14 @@ process mark_duplicates {
 
   module 'jdk/1.8.0_92'
   module 'picard/2.8.1'
+  module 'samtools/1.3'
 
   memory '40 GB'
 
-  publishDir 'dup_marked'
-
+  publishDir params.outdir
 
   input:
-  file merged_bam
+  file(merged_bam) from merged_bam
 
   output:
   file 'marked.bam' into marked_bam
@@ -212,4 +215,158 @@ process mark_duplicates {
       METRICS_FILE=metrics.duplicate.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
     """
+}
+
+/*
+ * Step 5: Filter bam file
+ */
+filter_flag = 512
+if (params.UMI)
+  filter_flag = 1536
+
+process filter_bam_to_unique {
+
+  module 'samtools/1.3'
+
+  publishDir params.outdir
+
+  input:
+  file marked_bam
+
+  output:
+  set file('filtered.bam'), file('filtered.bam.bai') into uniquely_mapping_bam
+
+  script:
+  """
+  samtools view $marked_bam -b -F $filter_flag > filtered.bam
+  samtools index filtered.bam
+  """
+
+}
+
+// Marked bam file is used by several downstream results
+uniquely_mapping_bam.into { bam_for_insert; bam_for_counts; bam_for_spot; bam_for_density }
+
+/*
+ * Metrics: Insert size
+ */
+process insert_size {
+  module 'jdk/1.8.0_92'
+  module 'picard/2.8.1'
+  module 'samtools/1.3'
+  module 'R/3.2.5'
+
+  publishDir params.outdir
+
+  input:
+  set file(bam), file(bai) from bam_for_insert
+
+  output:
+  file 'CollectInsertSizeMetrics.picard'
+  file 'CollectInsertSizeMetrics.picard.pdf'
+
+  script:
+  """
+  samtools idxstats "$bam" \
+  | cut -f 1 \
+  | grep -v chrM \
+  | grep -v chrC \
+  | xargs samtools view -b "$bam" \
+  > nuclear.bam
+
+  picard CollectInsertSizeMetrics \
+    INPUT=nuclear.bam \
+    OUTPUT=CollectInsertSizeMetrics.picard \
+    HISTOGRAM_FILE=CollectInsertSizeMetrics.picard.pdf \
+    VALIDATION_STRINGENCY=LENIENT \
+    ASSUME_SORTED=true
+  """
+}
+
+/*
+ * Metrics: SPOT score
+ */
+
+process spot_score {
+
+  module 'samtools/1.3'
+  module 'python/2.7.11'
+  module 'python/3.5.1'
+  module 'pysam/0.9.0'
+  module 'bedops/2.4.19'
+  module 'bedtools/2.25.0'
+  module "R/3.2.5"
+
+  publishDir params.outdir
+
+  input:
+  set file(bam), file(bai) from bam_for_spot
+
+  output:
+  file 'subsample.spot.out'
+
+  script:
+  """
+  # random sample
+	samtools view -h -F 12 -f 3 "$bam" \
+		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
+		| samtools view -uS - \
+		> paired.bam
+	bash \$STAMPIPES/scripts/bam/random_sample.sh paired.bam subsample.bam 5000000
+
+  # hotspot
+  bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
+    /home/solexa/hotspot-hpc/hotspot-distr \
+    \$PWD \
+    \$PWD/subsample.bam \
+    GRCh38_no_alts \
+    36 \
+    DNaseI
+  """
+}
+
+win = 75
+bini = 20
+process density_files {
+
+  module 'bedops/2.4.19'
+  module 'samtools/1.3'
+  module 'htslib/1.6.0'
+  module 'kentutil/302'
+
+  publishDir params.outdir
+
+  input:
+  set file(bam), file(bai) from bam_for_density
+
+  output:
+  file 'density.bed.starch'
+  file 'density.bw'
+  file 'density.bed.bgz'
+
+
+  script:
+  """
+	bam2bed -d \
+	  < $bam \
+	  | cut -f1-6 \
+    | awk '{ if( \$6=="+" ){ s=\$2; e=\$2+1 } else { s=\$3-1; e=\$3 } print \$1 "\t" s "\t" e "\tid\t" 1 }' \
+    | sort-bed - \
+    > sample.bed
+
+	unstarch "\$STAMPIPES_DATA/densities/chrom-buckets.GRCh38_no_alts.${win}_${bini}.bed.starch" \
+    | bedmap --faster --echo --count --delim "\t" - sample.bed \
+    | awk -v binI=$bini -v win=$win \
+        'BEGIN{ halfBin=binI/2; shiftFactor=win-halfBin } { print \$1 "\t" \$2 + shiftFactor "\t" \$3-shiftFactor "\tid\t" i \$4}' \
+    | starch - \
+    > density.bed.starch
+
+  unstarch density.bed.starch | awk -v binI=$bini -f \$STAMPIPES/awk/bedToWig.awk > density.wig
+
+  wigToBigWig -clip density.wig "${genome}.fai" density.bw
+
+
+  unstarch density.bed.starch | bgzip > density.bed.bgz
+  tabix -p bed density.bed.bgz
+  """
 }
