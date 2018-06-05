@@ -1,5 +1,5 @@
 source $MODULELOAD
-module load kenutil/302
+module load kentutil/302
 module load bedops/2.4.19
 module load jdk/1.8.0_92
 module load gcc/4.7.2
