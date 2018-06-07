@@ -5,68 +5,126 @@
 
 params.help = false
 params.threads = 1
-params.chunk_size = 5000  //TODO: raise
+params.chunk_size = 16000000
+
 params.UMI = false
 params.genome = ""
-
+params.r1 = ""
+params.r2 = ""
 params.outdir = "output"
 
 nuclear_chroms = "$params.genome" + ".nuclear.txt"
 
 def helpMessage() {
   log.info"""
-    Usage: nextflow run process_bwa_paired_trimmed.nf --r1 r1.fastq.gz --r2 r2.fastq.gz --adapter_file adapters.txt --genome /path/to/genome
+    Usage: nextflow run process_bwa_paired_trimmed.nf \\
+             --r1 r1.fastq.gz \\
+             --r2 r2.fastq.gz \\
+             --adapter_file adapters.txt \\
+             --genome /path/to/genome \\
     Options:
     --threads [count]     The number of threads that will be used for child applications  (1)
-    --chunk_size [count]  How many reads to process per chunk                             (5000)
+    --chunk_size [count]  How many reads to process per chunk                             (16000000)
     --UMI                 The reads contain UMI markers                                   (false)
+    --outdir [dir]        Where to write results to                                       (output)
     """.stripIndent();
 }
 
-if (params.help){
+if (params.help || !params.r1 || !params.r2 || !params.genome){
   helpMessage();
   exit 0;
 }
-
-// Split input files into chunks to process in parallel
-split_r1 = Channel
-  .from( file(params.r1) )
-  .splitFastq( by: params.chunk_size)
-split_r2 = Channel
-  .from( file(params.r2) )
-  .splitFastq( by: params.chunk_size)
-
 
 // Some renaming for easier usage later
 genome = params.genome
 threads = params.threads
 adapters = file(params.adapter_file)
 
+/*
+ * Step 0: Split Fastq into chunks
+ */
+fastq_line_chunks = 4 * params.chunk_size
+process split_r1_fastq {
+
+  input:
+  file(r1) from Channel.fromPath(params.r1)
+
+  output:
+  file('split_r1*gz') into split_r1 mode flatten
+
+  script:
+  """
+  zcat $r1 \
+  | split -l $fastq_line_chunks \
+    --filter='gzip -1 > \$FILE.gz' - 'split_r1'
+  """
+}
+process split_r2_fastq {
+  input:
+  file(r2) from Channel.fromPath(params.r2)
+
+  output:
+  file('split_r2*gz') into split_r2 mode flatten
+
+  script:
+  """
+  zcat $r2 \
+  | split -l $fastq_line_chunks \
+    --filter='gzip -1 > \$FILE.gz' - 'split_r2'
+  """
+}
 
 /*
  * Step 1: For each fastqc chunk, trim adapters
  */
 process trim_adapters {
 
-    input:
-    file split_r1
-    file split_r2
+  cpus params.threads
 
-    output:
-    file 'trim.R1.fastq.gz' into trimmed_r1
-    file 'trim.R2.fastq.gz' into trimmed_r2
+  input:
+  file split_r1
+  file split_r2
 
-    script:
-    """
-    trim-adapters-illumina \
-      -f "$adapters" \
-      -1 P7 -2 P5 \
-      --threads=${params.threads} \
-      "$split_r1" \
-      "$split_r2"  \
-      "trim.R1.fastq.gz" \
-      "trim.R2.fastq.gz"
-    """
+  output:
+  set file('trim.R1.fastq.gz'), file('trim.R2.fastq.gz') into trimmed
+  file('trim.counts.txt') into trim_counts
+
+  script:
+  """
+  trim-adapters-illumina \
+    -f "$adapters" \
+    -1 P5 -2 P7 \
+    --threads=${params.threads} \
+    "$split_r1" \
+    "$split_r2"  \
+    "trim.R1.fastq.gz" \
+    "trim.R2.fastq.gz" \
+  &> trimstats.txt
+
+  awk '{print "adapter-trimmed\t" \$NF * 2}' \
+  < trimstats.txt \
+  > trim.counts.txt
+  """
+}
+
+/*
+ * Metrics: Fastq counts
+ */
+process fastq_counts {
+
+  input:
+  file(r1) from Channel.fromPath(params.r1)
+  file(r2) from Channel.fromPath(params.r2)
+
+  output:
+  file 'fastq.counts' into fastq_counts
+
+  script:
+  """
+  zcat $r1 \
+  | awk -v paired=1 -f \$STAMPIPES/awk/illumina_fastq_count.awk \
+  > fastq.counts
+  """
 }
 
 /*
@@ -77,9 +135,10 @@ process align {
   module 'bwa/0.7.12'
   module 'samtools/1.3'
 
+  cpus params.threads
+
   input:
-  file trimmed_r1
-  file trimmed_r2
+  set file(trimmed_r1), file(trimmed_r2) from trimmed
 
   output:
   file 'out.bam' into unfiltered_bam
@@ -140,6 +199,8 @@ process filter_bam {
 process sort_bam {
   module 'samtools/1.3';
 
+  cpus params.threads
+
   input:
   file filtered_bam
 
@@ -191,7 +252,8 @@ process mark_duplicates {
 
   output:
   file 'marked.bam' into marked_bam
-  file 'metrics.duplicate.picard' into duplicate_report
+  file 'marked.bam' into marked_bam_for_counts
+  file 'metrics.duplicate.picard'
 
 
   script:
@@ -245,7 +307,29 @@ process filter_bam_to_unique {
 }
 
 // Marked bam file is used by several downstream results
-uniquely_mapping_bam.into { bam_for_insert; bam_for_counts; bam_for_spot; bam_for_density }
+uniquely_mapping_bam.into { bam_for_insert; bam_for_spot; bam_for_density }
+
+/*
+ * Metrics: bam counts
+ */
+process bam_counts {
+
+  module "python/3.5.1"
+  module "pysam/0.9.0"
+
+  input:
+  file(sorted_bam) from marked_bam_for_counts
+
+  output:
+  file('bam.counts.txt') into bam_counts
+
+  script:
+  """
+  python3 \$STAMPIPES/scripts/bwa/bamcounts.py \
+    "$sorted_bam" \
+    bam.counts.txt
+  """
+}
 
 /*
  * Metrics: Insert size
@@ -325,6 +409,9 @@ process spot_score {
   """
 }
 
+/*
+ * Density tracks (for browser)
+ */
 win = 75
 bini = 20
 process density_files {
@@ -368,5 +455,32 @@ process density_files {
 
   unstarch density.bed.starch | bgzip > density.bed.bgz
   tabix -p bed density.bed.bgz
+  """
+}
+
+/*
+ * Metrics: total counts
+ */
+process total_counts {
+
+  publishDir params.outdir
+
+  input:
+  file 'fastqcounts*' from fastq_counts.collect()
+  file 'trimcounts*' from trim_counts.collect()
+  file 'bamcounts*' from bam_counts.collect()
+
+  output:
+  file 'all.counts.txt'
+
+  script:
+  """
+  cat *counts* \
+  | awk '
+  { x[\$1] += \$2 }
+  END {for (i in x) print i "\t" x[i]}
+  ' \
+  | sort \
+  > all.counts.txt
   """
 }
