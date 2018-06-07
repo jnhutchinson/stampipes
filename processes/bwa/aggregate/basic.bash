@@ -39,7 +39,6 @@ export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
 export PRESEQ_HIST=${LIBRARY_NAME}.uniques.duphist.txt
 export PRESEQ_RES=${LIBRARY_NAME}.uniques.preseq.txt
 export PRESEQ_TRGT=${LIBRARY_NAME}.uniques.preseq.targets.txt
-export PROXDIST_FILE=${LIBRARY_NAME}.proximaldistal.txt
 
 export HOTSPOT2_DIR=peaks_v2_1_1
 HOTSPOT_PREFIX=$(basename "$FINAL_UNIQUES_BAM" .bam)
@@ -50,16 +49,19 @@ export HOTSPOT_DENSITY=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.density.bw
 export HOTSPOT_ALLCALLS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.allcalls.starch
 export HOTSPOT_CUTCOUNTS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cutcounts.starch
 export HOTSPOT_CLEAVAGES=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cleavage.total
+export HOTSPOT_ISPOT=$HOTSPOT_PREFIX.ispot.total
+export PROXDIST_FILE=$HOTSPOT_PREFIX.proxdist.txt
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.nuclear.starch}
 export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 
-# hard-coded until we create individual aggregation templates
+# hard-coded until we retroactively change aggregation templates to their genome-specific template
 export ALTIUS_MASTERLIST="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.txt"
 export FIMO_TRANSFAC_1E4="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.combined.1e-4.parsed.starch"
 export FIMO_NAMES="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.transfac.names.txt"
+export TSS="/net/seq/data/genomes/human/GRCh38/noalts/ref/refGene.CombinedTxStarts.bed"
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
 MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
@@ -205,11 +207,11 @@ hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
 # create iSPOT
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
 if [[ -n "$ALTIUS_MASTERLIST" ]]; then
-    bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
+    bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_ISPOT
 fi
 
 # create prox/distal estimates
-closest-features --dist --delim '\t' --closest $HOTSPOT_CALLS /net/seq/data/genomes/human/GRCh38/noalts/ref/refGene.CombinedTxStarts.bed > \$TMPDIR/closest.txt
+closest-features --dist --delim '\t' --closest $HOTSPOT_CALLS $TSS > \$TMPDIR/closest.txt
 cat \$TMPDIR/closest.txt | grep -v "NA$" | awk -F"\t" '{print \$NF}' | sed -e 's/-//g' > \$TMPDIR/closest.clean.txt
 echo -ne "percent-proximal-0bp\npercent-proximal-1000bp\npercent-proximal-2500bp\npercent-proximal-5000bp\npercent-proximal-10000bp\n" > \$TMPDIR/row_one.txt
 cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 0) sum+= 1 } END {print sum/NR}' > \$TMPDIR/row_two.txt
@@ -217,11 +219,15 @@ cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 1000) sum+= 1 } END {print sum
 cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 2500) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
 cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 5000) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
 cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 10000) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
-paste \$TMPDIR/row_one.txt \$TMPDIR/row_two.txt > $PROXDIST_FILE
+paste \$TMPDIR/row_one.txt \$TMPDIR/row_two.txt > $HOTSPOT_PROXDIST
 
 # create sparse motifs
 bedmap --echo --echo-map-id --fraction-map 1 --delim '\t' $HOTSPOT_CALLS $FIMO_TRANSFAC_1E4 > \$TMPDIR/temp.bedmap.txt
 python $STAMPIPES/scripts/bwa/aggregate/basic/sparse_motifs.py $FIMO_NAMES \$TMPDIR/temp.bedmap.txt
+# temporary name change here
+mv hs_motifs_svmlight.txt $HOTSPOT_PREFIX.hs_motifs_svmlight.txt
+mv hs_motifs_svmlight.rows.txt $HOTSPOT_PREFIX.hs_motifs_svmlight.rows.txt
+mv hs_motifs_svmlight.cols.txt $HOTSPOT_PREFIX.hs_motifs_svmlight.cols.txt
 
 echo "FINISH: hotspot2"
 date
