@@ -11,6 +11,12 @@ checkfile(){
     fi
 }
 
+# add these eventually:
+# #LIBRARY_NAME.proximaldistal.txt
+# $LIBRARY_NAME.$GENOME.cutcounts.sorted.bed.starch.bgz
+# $LIBRARY_NAME.75_20.normalized.$GENOME.uniques-density.bed.starch.bgz
+# $LIBRARY_NAME.75_20.$GENOME.uniques-density.bed.starch.bgz
+
 files=(
     "$LIBRARY_NAME.$GENOME.sorted.bam"
     "$LIBRARY_NAME.$GENOME.sorted.bam.bai"
@@ -19,13 +25,10 @@ files=(
     "$LIBRARY_NAME.tagcounts.txt" 
     "$LIBRARY_NAME.75_20.$GENOME.bw" 
     "$LIBRARY_NAME.75_20.$GENOME.uniques-density.bed.starch" 
-    "$LIBRARY_NAME.75_20.$GENOME.uniques-density.bed.starch.bgz"
     "$LIBRARY_NAME.75_20.normalized.$GENOME.bw" 
     "$LIBRARY_NAME.75_20.normalized.$GENOME.uniques-density.bed.starch" 
-    "$LIBRARY_NAME.75_20.normalized.$GENOME.uniques-density.bed.starch.bgz"
     "$LIBRARY_NAME.$GENOME.cuts.sorted.bed.starch" 
     "$LIBRARY_NAME.$GENOME.cutcounts.sorted.bed.starch" 
-    "$LIBRARY_NAME.$GENOME.cutcounts.sorted.bed.starch.bgz"
     "$LIBRARY_NAME.$GENOME.cutcounts.$READ_LENGTH.bw" 
     "$LIBRARY_NAME.MarkDuplicates.picard"
     "$LIBRARY_NAME.adaptercounts.txt"

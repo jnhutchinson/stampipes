@@ -39,6 +39,7 @@ export DUPS_FILE=${LIBRARY_NAME}.MarkDuplicates.picard
 export PRESEQ_HIST=${LIBRARY_NAME}.uniques.duphist.txt
 export PRESEQ_RES=${LIBRARY_NAME}.uniques.preseq.txt
 export PRESEQ_TRGT=${LIBRARY_NAME}.uniques.preseq.targets.txt
+export PROXDIST_FILE=${LIBRARY_NAME}.proximaldistal.txt
 
 export HOTSPOT2_DIR=peaks_v2_1_1
 HOTSPOT_PREFIX=$(basename "$FINAL_UNIQUES_BAM" .bam)
@@ -57,7 +58,6 @@ export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 
 # hard-coded until we create individual aggregation templates
 export ALTIUS_MASTERLIST="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.txt"
-export ALTIUS_MASTERLIST_COMPONENTS="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.components.txt"
 export FIMO_TRANSFAC_1E4="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.combined.1e-4.parsed.starch"
 export FIMO_NAMES="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.transfac.names.txt"
 
@@ -208,9 +208,16 @@ if [[ -n "$ALTIUS_MASTERLIST" ]]; then
     bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
 fi
 
-# create component scores
-bedops -e 1 $ALTIUS_MASTERLIST_COMPONENTS $HOTSPOT_CALLS > \$TMPDIR/mlcomponents.txt
-Rscript $STAMPIPES/scripts/bwa/aggregate/basic/mlcomponents.Rscript \$TMPDIR/mlcomponents.txt $HOTSPOT_PREFIX.mlcomponents.info
+# create prox/distal estimates
+closest-features --dist --delim '\t' --closest $HOTSPOT_CALLS /net/seq/data/genomes/human/GRCh38/noalts/ref/refGene.CombinedTxStarts.bed > \$TMPDIR/closest.txt
+cat \$TMPDIR/closest.txt | grep -v "NA$" | awk -F"\t" '{print \$NF}' | sed -e 's/-//g' > \$TMPDIR/closest.clean.txt
+echo -ne "percent-proximal-0bp\npercent-proximal-1000bp\npercent-proximal-2500bp\npercent-proximal-5000bp\npercent-proximal-10000bp\n" > \$TMPDIR/row_one.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 0) sum+= 1 } END {print sum/NR}' > \$TMPDIR/row_two.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 1000) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 2500) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 5000) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 10000) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
+paste \$TMPDIR/row_one.txt \$TMPDIR/row_two.txt > $PROXDIST_FILE
 
 # create sparse motifs
 bedmap --echo --echo-map-id --fraction-map 1 --delim '\t' $HOTSPOT_CALLS $FIMO_TRANSFAC_1E4 > \$TMPDIR/temp.bedmap.txt
