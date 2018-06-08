@@ -39,6 +39,6 @@ if [ -e $LIBRARY_NAME.CollectInsertSizeMetrics.picard.info ]; then
 fi
 
 # Upload Proximal / Distal
-if [ -e $LIBRARY_NAME.$GENOME.uniques.sorted.proxdist.txt ]; then
-    upload "$LIBRARY_NAME.$GENOME.uniques.sorted.proxdist.txt"
+if [ -e $LIBRARY_NAME.$GENOME.uniques.sorted.proxdist.info ]; then
+    upload "$LIBRARY_NAME.$GENOME.uniques.sorted.proxdist.info"
 fi
