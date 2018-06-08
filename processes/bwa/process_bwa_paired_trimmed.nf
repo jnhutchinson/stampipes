@@ -253,7 +253,7 @@ process mark_duplicates {
   output:
   file 'marked.bam' into marked_bam
   file 'marked.bam' into marked_bam_for_counts
-  file 'metrics.duplicate.picard'
+  file 'MarkDuplicates.picard'
 
 
   script:
@@ -264,7 +264,7 @@ process mark_duplicates {
       VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
 
     picard UmiAwareMarkDuplicatesWithMateCigar INPUT=cigar.bam OUTPUT=marked.bam \
-      METRICS_FILE=metrics.duplicate.picard UMI_TAG_NAME=XD ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
+      METRICS_FILE=MarkDuplicates.picard UMI_TAG_NAME=XD ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
     """
   else
@@ -274,7 +274,7 @@ process mark_duplicates {
       VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
 
     picard MarkDuplicatesWithMateCigar INPUT=cigar.bam OUTPUT=marked.bam \
-      METRICS_FILE=metrics.duplicate.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
+      METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
     """
 }
@@ -471,7 +471,7 @@ process total_counts {
   file 'bamcounts*' from bam_counts.collect()
 
   output:
-  file 'all.counts.txt'
+  file 'tagcounts.txt'
 
   script:
   """
@@ -481,6 +481,6 @@ process total_counts {
   END {for (i in x) print i "\t" x[i]}
   ' \
   | sort \
-  > all.counts.txt
+  > tagcounts.txt
   """
 }
