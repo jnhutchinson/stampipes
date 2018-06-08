@@ -12,7 +12,7 @@ checkfile(){
 }
 
 # add these eventually:
-# $LIBRARY_NAME.$GENOME.uniques.sorted.proxdist.txt
+# $LIBRARY_NAME.$GENOME.uniques.sorted.proxdist.info
 # $LIBRARY_NAME.$GENOME.cutcounts.sorted.bed.starch.bgz
 # $LIBRARY_NAME.75_20.normalized.$GENOME.uniques-density.bed.starch.bgz
 # $LIBRARY_NAME.75_20.$GENOME.uniques-density.bed.starch.bgz

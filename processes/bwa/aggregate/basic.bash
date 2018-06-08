@@ -49,8 +49,8 @@ export HOTSPOT_DENSITY=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.density.bw
 export HOTSPOT_ALLCALLS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.allcalls.starch
 export HOTSPOT_CUTCOUNTS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cutcounts.starch
 export HOTSPOT_CLEAVAGES=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cleavage.total
-export HOTSPOT_ISPOT=$HOTSPOT_PREFIX.ispot.total
-export PROXDIST_FILE=$HOTSPOT_PREFIX.proxdist.txt
+export HOTSPOT_ISPOT=$HOTSPOT_PREFIX.ispot.info
+export PROXDIST_FILE=$HOTSPOT_PREFIX.proxdist.info
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
@@ -207,7 +207,8 @@ hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
 # create iSPOT
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
 if [[ -n "$ALTIUS_MASTERLIST" ]]; then
-    bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_ISPOT
+    echo -ne "ispot\t" > $HOTSPOT_ISPOT
+    bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' >> $HOTSPOT_ISPOT
 fi
 
 # create prox/distal estimates
