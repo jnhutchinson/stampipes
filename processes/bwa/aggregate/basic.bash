@@ -1,6 +1,6 @@
 source $MODULELOAD
 module load kentutil/302
-module load bedops/2.4.19
+module load bedops/2.4.35-typical
 module load jdk/1.8.0_92
 module load gcc/4.7.2
 module load R/3.2.5
@@ -50,7 +50,7 @@ export HOTSPOT_ALLCALLS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.allcalls.starch
 export HOTSPOT_CUTCOUNTS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cutcounts.starch
 export HOTSPOT_CLEAVAGES=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cleavage.total
 export HOTSPOT_ISPOT=$HOTSPOT_PREFIX.ispot.info
-export PROXDIST_FILE=$HOTSPOT_PREFIX.proxdist.info
+export HOTSPOT_PROXDIST=$HOTSPOT_PREFIX.proxdist.info
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}

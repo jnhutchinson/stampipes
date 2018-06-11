@@ -11,11 +11,11 @@ checkfile(){
     fi
 }
 
-# add these eventually:
-# $LIBRARY_NAME.$GENOME.uniques.sorted.proxdist.info
+# add these tabix eventually:
 # $LIBRARY_NAME.$GENOME.cutcounts.sorted.bed.starch.bgz
 # $LIBRARY_NAME.75_20.normalized.$GENOME.uniques-density.bed.starch.bgz
 # $LIBRARY_NAME.75_20.$GENOME.uniques-density.bed.starch.bgz
+# motifs and ispots are also hanging out
 
 files=(
     "$LIBRARY_NAME.$GENOME.sorted.bam"
@@ -35,6 +35,7 @@ files=(
     "$LIBRARY_NAME.$GENOME.uniques.sorted.hotspot2.info"
     "$LIBRARY_NAME.uniques.duphist.txt"
     "$LIBRARY_NAME.uniques.preseq.targets.txt"
+    "$LIBRARY_NAME.$GENOME.uniques.sorted.proxdist.info"
     )
 paired_files=(
     "$LIBRARY_NAME.CollectInsertSizeMetrics.picard"

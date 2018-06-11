@@ -32,6 +32,7 @@ files=( \
     "${LIBRARY_NAME}.${GENOME}.R1.rand.uniques.sorted.spot.out" \
     "${LIBRARY_NAME}.${GENOME}.uniques.sorted.hotspot2.info" \ 
     "${LIBRARY_NAME}.adaptercounts.txt" \
+    "${LIBRARY_NAME}.${GENOME}.uniques.sorted.proxdist.info" \
     "${LIBRARY_NAME}.${GENOME}.rand.uniques.sorted.spotdups.txt" \
     "${LIBRARY_NAME}.${GENOME}.rand.uniques.sorted.spot.out" \
     "${LIBRARY_NAME}.${GENOME}.rand.uniques.sorted.spot.info" \
