@@ -8,6 +8,7 @@ params.threads = 1
 params.chunk_size = 16000000
 
 params.UMI = false
+params.trim_to = 0
 params.genome = ""
 params.r1 = ""
 params.r2 = ""
@@ -25,7 +26,8 @@ def helpMessage() {
     Options:
     --threads [count]     The number of threads that will be used for child applications  (1)
     --chunk_size [count]  How many reads to process per chunk                             (16000000)
-    --UMI                 The reads contain UMI markers                                   (false)
+    --UMI                 The reads contain UMI markers ('single-strand', 'True')         (false)
+    --trim_to [length]    Trim fastq reads to [length] bp (0 for no trimming)             (0)
     --outdir [dir]        Where to write results to                                       (output)
     """.stripIndent();
 }
@@ -108,6 +110,64 @@ process trim_adapters {
 }
 
 /*
+ * Step 1.1: Trim to the appropriate length
+ */
+process trim_to_length {
+
+  input:
+  set file(r1), file(r2) from trimmed
+
+  output:
+  set file('r1.trim.fastq.gz'), file('r2.trim.fastq.gz') into trimmed_fastq
+
+  script:
+  if (params.trim_to != 0)
+    // TODO: Add padding to length with N's
+    """
+    zcat $r1 | awk 'NR%2==0 {print substr(\$0, 1, $params.trim_to)} NR%2!=0' | gzip -c -1 > r1.trim.fastq.gz
+    zcat $r2 | awk 'NR%2==0 {print substr(\$0, 1, $params.trim_to)} NR%2!=0' | gzip -c -1 > r2.trim.fastq.gz
+    """
+  else
+    """
+    ln -s $r1 r1.trim.fastq.gz
+    ln -s $r2 r2.trim.fastq.gz
+    """
+
+}
+
+process add_umi_info {
+
+  input:
+  set file(r1), file(r2) from trimmed_fastq
+
+  output:
+  set file('r1.fastq.umi.gz'), file('r2.fastq.umi.gz') into with_umi
+
+  script:
+  if (params.UMI == 'thruplex')
+    """
+    python3 \$STAMPIPES/scripts/umi/extract_umt.py \
+      <(zcat $r1) \
+      <(zcat $r2) \
+      >(gzip -c -1 > r1.fastq.umi.gz) \
+      >(gzip -c -1 > r2.fastq.umi.gz)
+    """
+  else if (params.UMI == 'True') // TODO: Is this right?
+    """
+    python3 \$STAMPIPES/scripts/umi/fastq_umi_add.py $r1 r1.fastq.umi.gz
+    python3 \$STAMPIPES/scripts/umi/fastq_umi_add.py $r2 r2.fastq.umi.gz
+    """
+
+  else if (params.UMI == false || params.UMI == "")
+    """
+    ln -s $r1 r1.fastq.umi.gz
+    ln -s $r2 r2.fastq.umi.gz
+    """
+  else
+    error "--UMI must be `thruplex`, `True` (for single-strand preparation), or false"
+}
+
+/*
  * Metrics: Fastq counts
  */
 process fastq_counts {
@@ -138,7 +198,7 @@ process align {
   cpus params.threads
 
   input:
-  set file(trimmed_r1), file(trimmed_r2) from trimmed
+  set file(trimmed_r1), file(trimmed_r2) from with_umi
 
   output:
   file 'out.bam' into unfiltered_bam
