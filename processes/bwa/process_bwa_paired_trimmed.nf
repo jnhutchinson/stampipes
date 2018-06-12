@@ -15,6 +15,7 @@ params.r2 = ""
 params.outdir = "output"
 
 nuclear_chroms = "$params.genome" + ".nuclear.txt"
+dataDir = "$baseDir/../../data"
 
 def helpMessage() {
   log.info"""
@@ -39,8 +40,8 @@ if (params.help || !params.r1 || !params.r2 || !params.genome){
 
 // Some renaming for easier usage later
 genome = params.genome
+genome_name = file(params.genome).baseName
 threads = params.threads
-adapters = file(params.adapter_file)
 
 /*
  * Step 0: Split Fastq into chunks
@@ -86,6 +87,7 @@ process trim_adapters {
   input:
   file split_r1
   file split_r2
+  file adapters from Channel.fromPath(params.adapter_file)
 
   output:
   set file('trim.R1.fastq.gz'), file('trim.R2.fastq.gz') into trimmed
@@ -199,6 +201,13 @@ process align {
 
   input:
   set file(trimmed_r1), file(trimmed_r2) from with_umi
+  file(genome) from Channel.fromPath(params.genome)
+  file('*') from Channel.fromPath(params.genome + ".amb")
+  file('*') from Channel.fromPath(params.genome + ".ann")
+  file('*') from Channel.fromPath(params.genome + ".bwt")
+  file('*') from Channel.fromPath(params.genome + ".fai")
+  file('*') from Channel.fromPath(params.genome + ".pac")
+  file('*') from Channel.fromPath(params.genome + ".sa")
 
   output:
   file 'out.bam' into unfiltered_bam
@@ -240,6 +249,7 @@ process filter_bam {
 
   input:
   file unfiltered_bam
+  file nuclear_chroms from Channel.fromPath(nuclear_chroms)
 
   output:
   file 'filtered.bam' into filtered_bam
@@ -303,7 +313,7 @@ process mark_duplicates {
   module 'picard/2.8.1'
   module 'samtools/1.3'
 
-  memory '40 GB'
+  memory '10 GB'
 
   publishDir params.outdir
 
@@ -445,6 +455,8 @@ process spot_score {
 
   input:
   set file(bam), file(bai) from bam_for_spot
+  file('*') from Channel.fromPath("${dataDir}/annotations/${genome_name}.K36.mappable_only.bed")
+  file('*') from Channel.fromPath("${dataDir}/annotations/${genome_name}.chromInfo.bed")
 
   output:
   file 'subsample.spot.out'
@@ -460,10 +472,10 @@ process spot_score {
 
   # hotspot
   bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
-    /home/solexa/hotspot-hpc/hotspot-distr \
+    \$HOTSPOT_DIR \
     \$PWD \
     \$PWD/subsample.bam \
-    GRCh38_no_alts \
+    "${genome_name}" \
     36 \
     DNaseI
   """
@@ -485,6 +497,10 @@ process density_files {
 
   input:
   set file(bam), file(bai) from bam_for_density
+  file fai from Channel.fromPath(params.genome + ".fai")
+  file density_buckets from Channel.fromPath(
+    "$baseDir/../../data/densities/chrom-buckets.${genome_name}.${win}_${bini}.bed.starch"
+  )
 
   output:
   file 'density.bed.starch'
@@ -501,7 +517,7 @@ process density_files {
     | sort-bed - \
     > sample.bed
 
-	unstarch "\$STAMPIPES_DATA/densities/chrom-buckets.GRCh38_no_alts.${win}_${bini}.bed.starch" \
+	unstarch "${density_buckets}" \
     | bedmap --faster --echo --count --delim "\t" - sample.bed \
     | awk -v binI=$bini -v win=$win \
         'BEGIN{ halfBin=binI/2; shiftFactor=win-halfBin } { print \$1 "\t" \$2 + shiftFactor "\t" \$3-shiftFactor "\tid\t" i \$4}' \
@@ -510,7 +526,7 @@ process density_files {
 
   unstarch density.bed.starch | awk -v binI=$bini -f \$STAMPIPES/awk/bedToWig.awk > density.wig
 
-  wigToBigWig -clip density.wig "${genome}.fai" density.bw
+  wigToBigWig -clip density.wig "${fai}" density.bw
 
 
   unstarch density.bed.starch | bgzip > density.bed.bgz
@@ -540,7 +556,7 @@ process total_counts {
   { x[\$1] += \$2 }
   END {for (i in x) print i "\t" x[i]}
   ' \
-  | sort \
+  | sort -k 1,1 \
   > tagcounts.txt
   """
 }

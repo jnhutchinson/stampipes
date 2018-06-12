@@ -74,9 +74,9 @@ _GENOME_ = $GENOME
 _K_ = $K
 
 ## Chromosome coordinates, bed format.
-_CHROM_FILE_ = /net/fileserv0/vol7/annotations/data/%(_GENOME_)s/bed/mapping/chromInfo.bed
+_CHROM_FILE_ = $(readlink -f "$GENOME.chromInfo.bed")
 ## Location of uniquely mappable positions in the genome for this tag length.
-_MAPPABLE_FILE_ = /net/fileserv0/vol7/annotations/data/%(_GENOME_)s/%(_GENOME_)s.K%(_K_)s.mappable_only.bed
+_MAPPABLE_FILE_ = $(readlink -f "$GENOME.K$K.mappable_only.bed")
 
 ## Set DUPOK to T for DNaseI data, F for ChIP-seq data (DUPOK = T means allow duplicate reads)
 _DUPOK_ = $DUPOK

@@ -5,7 +5,7 @@ set -e
 here=$(dirname "$0")
 cd "$here"
 
-STAMPIPES=$(readlink -f ../..)
+STAMPIPES=$PWD/../..
 export STAMPIPES
 nextflow run ../../processes/bwa/process_bwa_paired_trimmed.nf -profile test
 
@@ -52,3 +52,5 @@ cmp_starch "density.bed.starch"
 
 cmp_bam "filtered.bam"
 cmp_bam "marked.bam"
+
+echo "Testing completed successfully"
