@@ -64,7 +64,8 @@ export FIMO_NAMES="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.transfac.n
 export TSS="/net/seq/data/genomes/human/GRCh38/noalts/ref/refGene.CombinedTxStarts.bed"
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
-MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
+MERGE_JOBNAME=${JOB_BASENAME}_merge
+DUP_JOBNAME=${JOB_BASENAME}_dup
 PROCESS_BAM_JOBNAME=${JOB_BASENAME}_pb
 HOTSPOT_JOBNAME=${JOB_BASENAME}_hotspot
 SPOTSCORE_JOBNAME=${JOB_BASENAME}_spotscore
@@ -92,7 +93,7 @@ PROCESSING=""
 
 # merge bams
 if [[ ! -s "$FINAL_BAM.bai" ]]; then
-	merge_jobid=$(sbatch --export=ALL -J "$MERGE_DUP_JOBNAME" -o "$MERGE_DUP_JOBNAME.o%A" -e "$MERGE_DUP_JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
+	merge_jobid=$(sbatch --export=ALL -J "$MERGE_JOBNAME" -o "$MERGE_JOBNAME.o%A" -e "$MERGE_JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -125,7 +126,7 @@ fi
 	
 # process BAM file
 if [[ ! -s "$FINAL_UNIQUES_BAM.bai" ]]; then	
-	pb_jobid=$(sbatch --export=ALL -J "$MERGE_DUP_JOBNAME" -o "$MERGE_DUP_JOBNAME.o%A" -e "$MERGE_DUP_JOBNAME.e%A" $dependencies_merge --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
+	pb_jobid=$(sbatch --export=ALL -J "$DUP_JOBNAME" -o "$DUP_JOBNAME.o%A" -e "$DUP_JOBNAME.e%A" $dependencies_merge --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -179,7 +180,7 @@ if [[ -n $pb_jobid ]]; then
 fi
 
 # Run Hotspot2
-if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
+if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_CALLS_001" ]] ; then
 	HOTSPOT_SPOT=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.SPOT.txt
 	jobid=$(sbatch --export=ALL -J "$HOTSPOT_JOBNAME" -o "$HOTSPOT_JOBNAME.o%A" -e "$HOTSPOT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
@@ -241,7 +242,7 @@ __SCRIPT__
 fi
 
 # SPOT score
-if [[ -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spotdups.txt" ]] || [[ ! -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spotdups.txt" ]]; then
+if [[ -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.info" ]] || [[ ! -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spot.info" ]]; then
 	jobid=$(sbatch --export=ALL -J "$SPOTSCORE_JOBNAME" -o "$SPOTSCORE_JOBNAME.o%A" -e "$SPOTSCORE_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
