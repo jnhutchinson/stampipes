@@ -7,7 +7,9 @@ cd "$here"
 
 STAMPIPES=$PWD/../..
 export STAMPIPES
-nextflow run ../../processes/bwa/process_bwa_paired_trimmed.nf -profile test
+nextflow run ../../processes/bwa/process_bwa_paired_trimmed.nf \
+  -profile test \
+  "$@"
 
 # Verify
 
