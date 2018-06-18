@@ -720,7 +720,7 @@ class UploadLIMS(object):
 
         else:
             # make this more flexible eventually
-            flowcell_label = re.search( '.*_[AB]([A-Z0-9]{5}[AB][BNG]X[XY235])$', jsondata['BaseDir'] ).group(1)
+            flowcell_label = re.search( '.*_[AB]([A-Z0-9]{5}[AB][BNG]X[XY1234567890])$', jsondata['BaseDir'] ).group(1)
 
         flowcell_url = self.get_flowcell_url_by_label(flowcell_label)
 
