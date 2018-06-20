@@ -50,7 +50,7 @@ fastq_line_chunks = 4 * params.chunk_size
 process split_r1_fastq {
 
   input:
-  file(r1) from Channel.fromPath(params.r1)
+  file(r1) from file(params.r1)
 
   output:
   file('split_r1*gz') into split_r1 mode flatten
@@ -64,7 +64,7 @@ process split_r1_fastq {
 }
 process split_r2_fastq {
   input:
-  file(r2) from Channel.fromPath(params.r2)
+  file(r2) from file(params.r2)
 
   output:
   file('split_r2*gz') into split_r2 mode flatten
@@ -87,7 +87,7 @@ process trim_adapters {
   input:
   file split_r1
   file split_r2
-  file adapters from Channel.fromPath(params.adapter_file)
+  file adapters from file(params.adapter_file)
 
   output:
   set file('trim.R1.fastq.gz'), file('trim.R2.fastq.gz') into trimmed
@@ -175,8 +175,8 @@ process add_umi_info {
 process fastq_counts {
 
   input:
-  file(r1) from Channel.fromPath(params.r1)
-  file(r2) from Channel.fromPath(params.r2)
+  file(r1) from file(params.r1)
+  file(r2) from file(params.r2)
 
   output:
   file 'fastq.counts' into fastq_counts
@@ -201,19 +201,22 @@ process align {
 
   input:
   set file(trimmed_r1), file(trimmed_r2) from with_umi
-  file(genome) from Channel.fromPath(params.genome)
-  file('*') from Channel.fromPath(params.genome + ".amb")
-  file('*') from Channel.fromPath(params.genome + ".ann")
-  file('*') from Channel.fromPath(params.genome + ".bwt")
-  file('*') from Channel.fromPath(params.genome + ".fai")
-  file('*') from Channel.fromPath(params.genome + ".pac")
-  file('*') from Channel.fromPath(params.genome + ".sa")
+
+  file genome from file(params.genome)
+  file '*' from file("${params.genome}.amb")
+  file '*' from file("${params.genome}.ann")
+  file '*' from file("${params.genome}.bwt")
+  file '*' from file("${params.genome}.fai")
+  file '*' from file("${params.genome}.pac")
+  file '*' from file("${params.genome}.sa")
+
 
   output:
   file 'out.bam' into unfiltered_bam
 
   script:
   """
+  ls
   bwa aln \
     -Y -l 32 -n 0.04 \
     -t "${params.threads}" \
@@ -249,7 +252,7 @@ process filter_bam {
 
   input:
   file unfiltered_bam
-  file nuclear_chroms from Channel.fromPath(nuclear_chroms)
+  file nuclear_chroms from file(nuclear_chroms)
 
   output:
   file 'filtered.bam' into filtered_bam
@@ -455,8 +458,8 @@ process spot_score {
 
   input:
   set file(bam), file(bai) from bam_for_spot
-  file('*') from Channel.fromPath("${dataDir}/annotations/${genome_name}.K36.mappable_only.bed")
-  file('*') from Channel.fromPath("${dataDir}/annotations/${genome_name}.chromInfo.bed")
+  file('*') from file("${dataDir}/annotations/${genome_name}.K36.mappable_only.bed")
+  file('*') from file("${dataDir}/annotations/${genome_name}.chromInfo.bed")
 
   output:
   file 'subsample.spot.out'
@@ -497,8 +500,8 @@ process density_files {
 
   input:
   set file(bam), file(bai) from bam_for_density
-  file fai from Channel.fromPath(params.genome + ".fai")
-  file density_buckets from Channel.fromPath(
+  file fai from file("${params.genome}.fai")
+  file density_buckets from file(
     "$baseDir/../../data/densities/chrom-buckets.${genome_name}.${win}_${bini}.bed.starch"
   )
 
