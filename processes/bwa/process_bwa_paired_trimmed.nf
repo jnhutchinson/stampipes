@@ -51,6 +51,7 @@ process split_r1_fastq {
 
   input:
   file(r1) from file(params.r1)
+  val fastq_line_chunks
 
   output:
   file('split_r1*gz') into split_r1 mode flatten
@@ -65,6 +66,7 @@ process split_r1_fastq {
 process split_r2_fastq {
   input:
   file(r2) from file(params.r2)
+  val fastq_line_chunks
 
   output:
   file('split_r2*gz') into split_r2 mode flatten
