@@ -146,6 +146,17 @@ RUN wget --quiet https://github.com/arq5x/bedtools2/releases/download/v2.25.0/be
       && cd bedtools2 \
       && make
 
+########
+# Preseq
+from build-base as build-preseq
+RUN apt-get install -y \
+      libgsl-dev
+RUN git clone --recurse-submodules https://github.com/smithlabcode/preseq.git \
+   && cd preseq \
+   && git checkout v2.0.1 \
+   && make
+
+
 #############
 # Final image
 from ubuntu:18.04 as stampipes
@@ -188,6 +199,7 @@ ENV HOTSPOT_DIR /hotspot
 COPY --from=build-hotspot1 /hotspot/hotspot-distr/ $HOTSPOT_DIR
 COPY --from=build-kentutils /kentUtils-302.0.0/bin/ /usr/local/bin/
 COPY --from=build-bedtools /bedtools2/bin/ /usr/local/bin/
+COPY --from=build-preseq /preseq/preseq /usr/local/bin/
 COPY --from=get-picard /picard.jar /usr/local/lib/picard.jar
 
 # Make alias for picard
