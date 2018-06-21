@@ -62,7 +62,7 @@ process dups {
 
   picard "${cmd}" \
       INPUT=cigar.bam OUTPUT=marked.bam \
-      "${extra}" \
+      $extra \
       METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
   """
@@ -77,8 +77,9 @@ process filter {
   file "filtered.bam" into filtered_bam
 
   script:
+  flag = params.UMI ? 1536 : 512
   """
-  samtools view -b -F 512 marked.bam > filtered.bam
+  samtools view -b -F "${flag}" marked.bam > filtered.bam
   """
 }
 filtered_bam.into { bam_for_hotspot2; bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear }
@@ -166,7 +167,7 @@ process bam_counts {
   file(bam) from bam_for_counts
 
   output:
-  file('tagcounts.txt') into bam_counts
+  file('tagcounts.txt')
 
   script:
   """
@@ -183,7 +184,7 @@ process count_adapters {
   file(bam) from bam_for_adapter_counts
 
   output:
-  file('adapter.counts.txt') into adapter_counts
+  file('adapter.counts.txt')
 
   script:
   """
