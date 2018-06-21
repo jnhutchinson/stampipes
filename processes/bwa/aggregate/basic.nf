@@ -46,8 +46,6 @@ process dups {
 
   output:
   file 'marked.bam' into marked_bam
-  file 'filtered.bam' into filtered_bam
-  file 'dups.hist' into dup_histogram
   file 'MarkDuplicates.picard'
 
   script:
@@ -67,15 +65,41 @@ process dups {
       "${extra}" \
       METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
-
-  samtools view -b -F 512 marked.bam > filtered.bam
-  samtools view -b filtered.bam > nuclear.bam
-  python3 \$STAMPIPES/scripts/bam/mark_dups.py -i nuclear.bam -o /dev/null --hist dups.hist
   """
 }
 
-marked_bam.into { bam_for_counts; bam_for_adapter_counts }
-filtered_bam.into { bam_for_hotspot2; bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts }
+marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter }
+process filter {
+  input:
+  file bam from bam_for_filter
+
+  output:
+  file "filtered.bam" into filtered_bam
+
+  script:
+  """
+  samtools view -b -F 512 marked.bam > filtered.bam
+  """
+}
+filtered_bam.into { bam_for_hotspot2; bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear }
+
+process filter_nuclear {
+  input:
+  file bam from bam_for_nuclear
+  file nuclear_chroms from file("${params.genome}.nuclear.txt")
+
+  output:
+  file 'nuclear.bam' into nuclear_bam
+
+  script:
+  """
+  samtools index "${bam}"
+  cat "${nuclear_chroms}" \
+  | xargs samtools view -b "${bam}" \
+  > nuclear.bam
+  """
+}
+
 
 process hotspot2 {
 
@@ -109,8 +133,8 @@ process spot_score {
 
   input:
   file(bam) from bam_for_spot_score
-  file('*') from file("${dataDir}/annotations/${genome_name}.K36.mappable_only.bed")
-  file('*') from file("${dataDir}/annotations/${genome_name}.chromInfo.bed")
+  file(mappable) from file("${dataDir}/annotations/${genome_name}.K36.mappable_only.bed")
+  file(chromInfo) from file("${dataDir}/annotations/${genome_name}.chromInfo.bed")
 
   output:
   file 'subsample.spot.out'
@@ -170,15 +194,17 @@ process count_adapters {
 process preseq {
   publishDir params.outdir
   input:
-  file(dup_histogram)
+  file nuclear_bam
 
   output:
   file 'preseq.txt'
   file 'preseq_targets.txt'
+  file 'dups.hist'
 
   script:
   """
-  preseq lc_extrap -hist "${dup_histogram}" -extrap 1.001e9 -s 1e6 -v > preseq.txt
+  python3 \$STAMPIPES/scripts/bam/mark_dups.py -i "${nuclear_bam}" -o /dev/null --hist dups.hist
+  preseq lc_extrap -hist dups.hist -extrap 1.001e9 -s 1e6 -v > preseq.txt
 
   # write out preseq targets
   bash "\$STAMPIPES/scripts/utility/preseq_targets.sh" preseq.txt preseq_targets.txt
@@ -272,7 +298,7 @@ process insert_sizes {
   publishDir params.outdir
 
   input:
-  file filtered_bam from bam_for_inserts
+  file nuclear_bam from bam_for_inserts
   file nuclear_chroms from file("${params.genome}.nuclear.txt")
 
   output:
@@ -280,13 +306,8 @@ process insert_sizes {
 
   script:
   """
-  samtools index "${filtered_bam}"
-  cat "${nuclear_chroms}" \
-  | xargs samtools view -b "${filtered_bam}" \
-  > nuclear.bam
-
   picard CollectInsertSizeMetrics \
-    INPUT=nuclear.bam \
+    "INPUT=${nuclear_bam}" \
     OUTPUT=CollectInsertSizeMetrics.picard \
     HISTOGRAM_FILE=CollectInsertSizeMetrics.picard.pdf \
     VALIDATION_STRINGENCY=LENIENT \
