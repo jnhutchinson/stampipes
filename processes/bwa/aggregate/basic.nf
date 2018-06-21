@@ -136,30 +136,34 @@ process spot_score {
 }
 
 process bam_counts {
+  publishDir params.outdir
+
   input:
   file(bam) from bam_for_counts
 
   output:
-  file('bam.counts.txt') into bam_counts
+  file('tagcounts.txt') into bam_counts
 
   script:
   """
   python3 \$STAMPIPES/scripts/bwa/bamcounts.py \
     "$bam" \
-    bam.counts.txt
+    tagcounts.txt
   """
 }
 
 process count_adapters {
+  publishDir params.outdir
+
   input:
   file(bam) from bam_for_adapter_counts
 
   output:
-  stdout adapter_counts
+  file('adapter.counts.txt') into adapter_counts
 
   script:
   """
-  bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${bam}"
+  bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${bam}" > adapter.counts.txt
   """
 }
 
@@ -295,5 +299,4 @@ process insert_sizes {
 
   python3 "\$STAMPIPES/scripts/utility/picard_inserts_process.py" hist.txt > CollectInsertSizeMetrics.picard.info
   """
-
 }
