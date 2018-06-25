@@ -32,6 +32,10 @@ fi
 
 echo "Creating $CONFIGOUT"
 
+chromFile=$(readlink -f "$GENOME.chromInfo.bed")
+mappableFile=$(readlink -f "$GENOME.K$K.mappable_only.bed")
+chkchr=$(awk 'BEGIN {print $1}' < "$chromFile")
+
 # Create the configuration file for the SPOT program
 cat > $CONFIGOUT <<EOF
 [script-tokenizer]
@@ -74,9 +78,9 @@ _GENOME_ = $GENOME
 _K_ = $K
 
 ## Chromosome coordinates, bed format.
-_CHROM_FILE_ = $(readlink -f "$GENOME.chromInfo.bed")
+_CHROM_FILE_ = $chromFile
 ## Location of uniquely mappable positions in the genome for this tag length.
-_MAPPABLE_FILE_ = $(readlink -f "$GENOME.K$K.mappable_only.bed")
+_MAPPABLE_FILE_ = $mappableFile
 
 ## Set DUPOK to T for DNaseI data, F for ChIP-seq data (DUPOK = T means allow duplicate reads)
 _DUPOK_ = $DUPOK
@@ -98,7 +102,7 @@ _CHECK_ = F
 
 ## If _CHECK_ = T, outputs are checked for completeness by searching
 ## for results for the following chromsome.
-_CHKCHR_ = chrX
+_CHKCHR_ = $chkchr
 
 ## Hotspot program binary
 _HOTSPOT_ = $HOTSPOT_DISTR/hotspot-deploy/bin/hotspot
