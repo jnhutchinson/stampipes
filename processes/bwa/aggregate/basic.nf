@@ -1,9 +1,7 @@
 params.help = false
 params.threads = 1
-params.chunk_size = 16000000
 
 params.UMI = false
-params.trim_to = 0
 params.genome = ""
 params.outdir = "output"
 
@@ -12,6 +10,8 @@ def helpMessage() {
     Usage: nextflow run basic.nf \\
              --genome /path/to/genome \\
              --bams '1.bam,2.bam...' \\
+             --UMI true/false        \\
+             --outdir /path/to/output
 
   """.stripIndent();
 }
@@ -33,7 +33,6 @@ process merge {
 
   script:
   """
-  echo hi
   samtools merge 'merged.bam' in*.bam
   """
 }
@@ -67,8 +66,8 @@ process dups {
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
   """
 }
-
 marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter }
+
 process filter {
   input:
   file bam from bam_for_filter
@@ -100,7 +99,6 @@ process filter_nuclear {
   > nuclear.bam
   """
 }
-
 
 process hotspot2 {
 
@@ -138,7 +136,7 @@ process spot_score {
   file(chromInfo) from file("${dataDir}/annotations/${genome_name}.chromInfo.bed")
 
   output:
-  file 'subsample.spot.out'
+  file 'r1.spot.out'
 
   script:
   """
@@ -146,14 +144,15 @@ process spot_score {
 	samtools view -h -F 12 -f 3 "$bam" \
 		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
 		| samtools view -uS - \
-		> paired.bam
-	bash \$STAMPIPES/scripts/bam/random_sample.sh paired.bam subsample.bam 5000000
+		> nuclear.bam
+	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
+  samtools view -b -f 0x0040 subsample.bam > r1.bam
 
   # hotspot
   bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
     \$HOTSPOT_DIR \
     \$PWD \
-    \$PWD/subsample.bam \
+    \$PWD/r1.bam \
     "${genome_name}" \
     36 \
     DNaseI
