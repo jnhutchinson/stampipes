@@ -25,6 +25,7 @@ script_options = {
     "debug": False,
 
     "aggregation_id": None,
+    "start_aggregation": False,
     "complete_aggregation": False,
     "clear_aggregation_stats": False,
 
@@ -80,8 +81,10 @@ def parser_setup():
     parser.add_argument("--aggregation_id", dest="aggregation_id", type=int)
     parser.add_argument("--clear_aggregation_stats", dest="clear_aggregation_stats", action="store_true",
         help="Clear the statistics/files for a given aggregation.")
+    parser.add_argument("--start_aggregation", dest="start_aggregation", action="store_true",
+        help="Set the current time for the alignment's start time.")
     parser.add_argument("--complete_aggregation", dest="complete_aggregation", action="store_true",
-        help="Set the aggregation to completed.")
+        help="Set the current time for the alignment's complete time.")
 
     parser.add_argument("--clear_align_stats", dest="clear_align_stats", action="store_true",
         help="Clear the statistics/files for a given alignment.")
@@ -285,6 +288,19 @@ class UploadLIMS(object):
            log.info(results.json())
         else:
            log.error(results)
+
+    def start_aggregation(self, aggregation_id):
+        url = "aggregation/%d/" % aggregation_id
+        data = {
+            "processing_started": datetime.datetime.now(),
+        }
+        results = requests.patch("%s/%s" % (self.api_url, url),
+                                 headers=self.headers,
+                                 data=data)
+        if results.ok:
+            log.info(results.json())
+        else:
+            log.error(results)
 
     def complete_aggregation(self, aggregation_id):
         url = "aggregation/%d/" % aggregation_id
@@ -1134,6 +1150,9 @@ from the command line."""
 
     if poptions.aggregation_id and poptions.clear_aggregation_stats:
         uploader.clear_aggregation_stats(poptions.aggregation_id)
+
+    if poptions.aggregation_id and poptions.start_aggregation:
+        uploader.start_aggregation(poptions.aggregation_id)
 
     if poptions.aggregation_id and poptions.complete_aggregation:
         uploader.complete_aggregation(poptions.aggregation_id)
