@@ -1,4 +1,64 @@
-source $MODULELOAD
+#!/bin/bash
+
+cd "$(dirname "$0")"
+
+source "$MODULELOAD"
+module purge
+module load jdk
+module load nextflow
+module load python3
+
+bamfiles="{$(sed 's/\s\+/,/g' <<< "$BAM_FILES")}"
+outdir="output"
+workdir="work"
+
+# Remove old stuff if necessary
+if [[ -n "$REDO_AGGREGATION" ]] ; then
+  rm -rf "$outdir"
+  rm -rf "$workdir"
+  echo \
+  python3 "$STAMPIPES/scripts/lims/upload_data.py" \
+    --clear_aggregation_stats \
+    --aggregation_id "$AGGREGATION_ID"
+fi
+
+# Tell LIMS we're starting alignment
+echo \
+python3 "$STAMPIPES/scripts/lims/upload_data.py" \
+  -a "$LIMS_API_URL" \
+  -t "$LIMS_API_TOKEN" \
+  --aggregation_id "$AGGREGATION_ID" \
+  --start_aggregation
+
+# Run the whole process
+nextflow run \
+  "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
+  -c "$STAMPIPES/nextflow.config" \
+  -w "$workdir" \
+  --bams "$bamfiles"
+  --genome "$BWAINDEX" \
+  --outdir "$outdir" \
+  --threads 3 \
+  -profile cluster \
+  -with-report nextflow.report.html \
+  -with-dag nextflow.flowchart.html \
+  -with-timeline nextflow.timeline.html \
+  -resume
+
+# Upload results
+echo \
+python3 "$STAMPIPES/scripts/lims/upload_data.py" \
+  -a "$LIMS_API_URL" \
+  -t "$LIMS_API_TOKEN" \
+  --aggregation_id "$AGGREGATION_ID" \
+  --finish_aggregation
+
+# TODO: remove below this line
+####
+exit
+####
+
+
 module load hotspot2/2.1.1
 module load bedops/2.4.19
 module load jdk/1.8.0_92
