@@ -40,6 +40,8 @@ process merge {
 // TODO: single end
 process dups {
   publishDir params.outdir
+  memory '16 GB'
+
   input:
   file(merged)
 

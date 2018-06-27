@@ -6,11 +6,25 @@ source "$MODULELOAD"
 module purge
 module load jdk
 module load nextflow
-module load python3
+module load python/3.5.1
 
-bamfiles="{$(sed 's/\s\+/,/g' <<< "$BAM_FILES")}"
+if [[ $(wc -w <<< "$BAM_FILES") -gt 1 ]] ; then
+  bamfiles="{$(sed 's/\s\+/,/g' <<< "$BAM_FILES")}"
+else
+  bamfiles=$BAM_FILES
+fi
 outdir="output"
 workdir="work"
+
+WIN=75
+BINI=20
+
+
+export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
+export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
+export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.nuclear.starch}
+export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
+export CHROM_BUCKET=$STAMPIPES_DATA/densities/chrom-buckets.$GENOME.${WIN}_${BINI}.bed.starch
 
 # Remove old stuff if necessary
 if [[ -n "$REDO_AGGREGATION" ]] ; then
@@ -35,11 +49,15 @@ nextflow run \
   "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
   -c "$STAMPIPES/nextflow.config" \
   -w "$workdir" \
-  --bams "$bamfiles"
-  --genome "$BWAINDEX" \
+  --bams "$bamfiles" \
+  --genome "$GENOME_INDEX" \
+  --mappable "$MAPPABLE_REGIONS" \
+  --chrom_sizes "$CHROM_SIZES" \
+  --centers "$CENTER_SITES" \
+  --chrom_bucket "$CHROM_BUCKET" \
   --outdir "$outdir" \
   --threads 3 \
-  -profile cluster \
+  -profile cluster,modules \
   -with-report nextflow.report.html \
   -with-dag nextflow.flowchart.html \
   -with-timeline nextflow.timeline.html \
