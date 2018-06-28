@@ -166,6 +166,7 @@ RUN apt-get update
 RUN apt-get install -y \
       bash \
       bc \
+      bowtie \
       build-essential \
       libboost-dev \
       coreutils \
