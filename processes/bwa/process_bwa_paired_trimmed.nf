@@ -196,9 +196,6 @@ process fastq_counts {
  */
 process align {
 
-  module 'bwa/0.7.12'
-  module 'samtools/1.3'
-
   cpus params.threads
 
   input:
@@ -248,9 +245,6 @@ process align {
  * Step 2b: filter bam files to have only good reads
  */
 process filter_bam {
-  module 'samtools/1.3';
-  module 'python/3.5.1';
-  module 'pysam/0.9.0';
 
   input:
   file unfiltered_bam
@@ -272,7 +266,6 @@ process filter_bam {
  * Step 2c: sort bam files
  */
 process sort_bam {
-  module 'samtools/1.3';
 
   cpus params.threads
 
@@ -294,8 +287,6 @@ process sort_bam {
  * Step 3: Merge alignments into one big ol' file
  */
 process merge_bam {
-  module 'samtools/1.3'
-
   input:
   file 'sorted_bam_*' from sorted_bam.collect()
 
@@ -314,9 +305,6 @@ process merge_bam {
  */
 process mark_duplicates {
 
-  module 'jdk/1.8.0_92'
-  module 'picard/2.8.1'
-  module 'samtools/1.3'
 
   memory '10 GB'
 
@@ -363,8 +351,6 @@ if (params.UMI)
 
 process filter_bam_to_unique {
 
-  module 'samtools/1.3'
-
   publishDir params.outdir
 
   input:
@@ -389,8 +375,6 @@ uniquely_mapping_bam.into { bam_for_insert; bam_for_spot; bam_for_density }
  */
 process bam_counts {
 
-  module "python/3.5.1"
-  module "pysam/0.9.0"
 
   input:
   file(sorted_bam) from marked_bam_for_counts
@@ -410,10 +394,6 @@ process bam_counts {
  * Metrics: Insert size
  */
 process insert_size {
-  module 'jdk/1.8.0_92'
-  module 'picard/2.8.1'
-  module 'samtools/1.3'
-  module 'R/3.2.5'
 
   publishDir params.outdir
 
@@ -447,14 +427,6 @@ process insert_size {
  */
 
 process spot_score {
-
-  module 'samtools/1.3'
-  module 'python/2.7.11'
-  module 'python/3.5.1'
-  module 'pysam/0.9.0'
-  module 'bedops/2.4.19'
-  module 'bedtools/2.25.0'
-  module "R/3.2.5"
 
   publishDir params.outdir
 
@@ -492,11 +464,6 @@ process spot_score {
 win = 75
 bini = 20
 process density_files {
-
-  module 'bedops/2.4.19'
-  module 'samtools/1.3'
-  module 'htslib/1.6.0'
-  module 'kentutil/302'
 
   publishDir params.outdir
 
