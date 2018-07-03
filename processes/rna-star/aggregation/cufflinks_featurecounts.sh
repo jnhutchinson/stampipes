@@ -19,10 +19,15 @@ export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
 export TARGET_BAM=Aligned.toTranscriptome.out.bam
 export GENOME_BAM=Aligned.toGenome.out.bam
+export TRIMS_R1=trims.R1.fastq.gz
+export TRIMS_R2=trims.R2.fastq.gz
 
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/rna-star/aggregate/reset.bash
 fi
+
+# record version
+cp $STAMPIPES/version.json .
 
 # create proper merged BAM
 numbam=$(wc -w <<< $BAM_FILES)
@@ -40,8 +45,6 @@ if [ ! -s "$GENOME_BAM" ] ; then
   samtools index "$GENOME_BAM"
 fi
 
-export TRIMS_R1=trims.R1.fastq.gz
-export TRIMS_R2=trims.R2.fastq.gz
 # create merged fastqs
 if [ ! -s "$TRIMS_R1" ] ; then
 samtools sort -n -o sorted.bam $GENOME_BAM
@@ -63,7 +66,7 @@ anaquin_job=.AGG${AGGREGATION_ID}.anaquinsub
 bow_rRNA_job=.AGG${AGGREGATION_ID}.rRNA
 
 # density information, convoluted, can clean up so we skip a lot of these steps
-if [ ! -s "Signal.UniqueMultiple.str+.starch" ] ; then
+if [ ! -s "Signal.Unique.both.starch.bgz.tbi" ] ; then
     jobid=$(sbatch --export=ALL -J "$density_job" -o "$density_job.o%A" -e "$density_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__DEN__
 #!/bin/bash
 
@@ -239,7 +242,7 @@ __KALLISTO__
 fi
 
 # picard
-if [[ ! -s "picard.CollectInsertSizes.txt" || ! -s "picard.RnaSeqMetrics.txt" ]] ; then
+if [[ ! -s "picard.CollectInsertSizes.txt" || ! -s "picard.RnaSeqMetrics.txt" || ! -s "rna_stats_summary.info" ]] ; then
     jobid=$(sbatch --export=ALL -J "$picard_job" -o "$picard_job.o%A" -e "$picard_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__PIC__
 #!/bin/bash
 

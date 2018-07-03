@@ -47,7 +47,7 @@ sort-bed --max-mem 16G $CUTSTMP | starch - > $CUTS_BED
 
 fi
 
-if [ ! -s $CUTCOUNTS ]; then
+if [ ! -s $CUTCOUNTS_BIGWIG ]; then
 
 time unstarch $CUTS_BED \
   | cut -f1-3 \
@@ -61,10 +61,6 @@ time unstarch $CUTS_BED | \
   > ${COUNTFILETMP}
 
 time starch $COUNTFILETMP > $CUTCOUNTS
-
-fi
-
-if [ ! -s $CUTCOUNTS_BIGWIG ]; then
 
 # removing mitochonrial, very large chrM datasets can cause problems with the browser.
 time awk 'BEGIN{OFS="\t"}{print $1,$2,$3,$5}' $COUNTFILETMP | grep -v chrM > $WIGTMP

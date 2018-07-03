@@ -1,0 +1,26 @@
+args <- commandArgs(trailingOnly = T)
+infile <- args[1]
+outfile <- args[2]
+
+input <- read.table(infile)
+input <- input[,-c(1,2,3,4)]
+
+sums <- c()
+for (i in 1:15) {
+    sums <- c(sums, sum(as.numeric(input[,i])))
+}
+
+dominant <- rep(0,15)
+for (i in 1:nrow(input)) {
+    dominant[which.max(as.numeric(input[i,]))] <- dominant[which.max(as.numeric(input[i,]))]+1
+}
+
+df <- data.frame(sums, dominant)
+rownames(df) <- c("MLcomp-1","MLcomp-2","MLcomp-3","MLcomp-4","MLcomp-5","MLcomp-6","MLcomp-7","MLcomp-8","MLcomp-9","MLcomp-10","MLcomp-11","MLcomp-12","MLcomp-13","MLcomp-14","MLcomp-15")
+write.table(df,paste(outfile,".full.txt",sep=""),sep="\t",quote=F,row.names=T,col.names=T)
+
+MLcomp_sum_1 <- df[1,1]/sum(df$sums)
+MLcomp_dominant_1 <- df[1,2]/sum(df$dominant)
+df2 <- data.frame(c(MLcomp_sum_1,MLcomp_dominant_1))
+rownames(df2) <- c("MLcomp-sum-1","MLcomp-dominant-1")
+write.table(df2,outfile,sep="\t",quote=F,row.names=T,col.names=F)

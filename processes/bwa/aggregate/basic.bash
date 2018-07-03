@@ -77,8 +77,9 @@ exit
 ####
 
 
-module load hotspot2/2.1.1
-module load bedops/2.4.19
+source $MODULELOAD
+module load kentutil/302
+module load bedops/2.4.35-typical
 module load jdk/1.8.0_92
 module load gcc/4.7.2
 module load R/3.2.5
@@ -91,6 +92,7 @@ module load bedtools/2.25.0
 module load python/3.5.1
 module load pysam/0.9.0
 module load htslib/1.6.0
+module load hotspot2/2.1.1
 
 module load numpy/1.11.0
 module load atlas-lapack/3.10.2
@@ -126,17 +128,23 @@ export HOTSPOT_DENSITY=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.density.bw
 export HOTSPOT_ALLCALLS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.allcalls.starch
 export HOTSPOT_CUTCOUNTS=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cutcounts.starch
 export HOTSPOT_CLEAVAGES=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.cleavage.total
+export HOTSPOT_ISPOT=$HOTSPOT_PREFIX.ispot.info
+export HOTSPOT_PROXDIST=$HOTSPOT_PREFIX.proxdist.info
 export HOTSPOT_SCRIPT="hotspot2.sh"
 export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappable_only.bed}
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.nuclear.starch}
 export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 
-# hard-coded until we create individual aggregation templates
+# hard-coded until we retroactively change aggregation templates to their genome-specific template
 export ALTIUS_MASTERLIST="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.txt"
+export FIMO_TRANSFAC_1E4="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.combined.1e-4.parsed.starch"
+export FIMO_NAMES="/net/seq/data/genomes/human/GRCh38/noalts/ref/fimo.transfac.names.txt"
+export TSS="/net/seq/data/genomes/human/GRCh38/noalts/ref/refGene.CombinedTxStarts.bed"
 
 JOB_BASENAME=".AGG#${AGGREGATION_ID}"
-MERGE_DUP_JOBNAME=${JOB_BASENAME}_merge_dup
+MERGE_JOBNAME=${JOB_BASENAME}_merge
+DUP_JOBNAME=${JOB_BASENAME}_dup
 PROCESS_BAM_JOBNAME=${JOB_BASENAME}_pb
 HOTSPOT_JOBNAME=${JOB_BASENAME}_hotspot
 SPOTSCORE_JOBNAME=${JOB_BASENAME}_spotscore
@@ -164,7 +172,7 @@ PROCESSING=""
 
 # merge bams
 if [[ ! -s "$FINAL_BAM.bai" ]]; then
-	merge_jobid=$(sbatch --export=ALL -J "$MERGE_DUP_JOBNAME" -o "$MERGE_DUP_JOBNAME.o%A" -e "$MERGE_DUP_JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
+	merge_jobid=$(sbatch --export=ALL -J "$MERGE_JOBNAME" -o "$MERGE_JOBNAME.o%A" -e "$MERGE_JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -197,7 +205,7 @@ fi
 	
 # process BAM file
 if [[ ! -s "$FINAL_UNIQUES_BAM.bai" ]]; then	
-	pb_jobid=$(sbatch --export=ALL -J "$MERGE_DUP_JOBNAME" -o "$MERGE_DUP_JOBNAME.o%A" -e "$MERGE_DUP_JOBNAME.e%A" $dependencies_merge --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
+	pb_jobid=$(sbatch --export=ALL -J "$DUP_JOBNAME" -o "$DUP_JOBNAME.o%A" -e "$DUP_JOBNAME.e%A" $dependencies_merge --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -251,7 +259,7 @@ if [[ -n $pb_jobid ]]; then
 fi
 
 # Run Hotspot2
-if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_DENSITY" ]] ; then
+if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_CALLS_001" ]] ; then
 	HOTSPOT_SPOT=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.SPOT.txt
 	jobid=$(sbatch --export=ALL -J "$HOTSPOT_JOBNAME" -o "$HOTSPOT_JOBNAME.o%A" -e "$HOTSPOT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
@@ -276,10 +284,31 @@ join <(sort "$NUCLEAR_CHR") "$CHROM_SIZES" | sed 's/\\s\\+/\\t/g' > "\$NUCLEAR_C
 hsmerge.sh -f 0.01 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_01
 hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
 
+# create iSPOT
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
 if [[ -n "$ALTIUS_MASTERLIST" ]]; then
-    bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' > $HOTSPOT_PREFIX.iSPOT.info
+    echo -ne "ispot\t" > $HOTSPOT_ISPOT
+    bedops -e 1 ${HOTSPOT_CUTCOUNTS} ${ALTIUS_MASTERLIST} | awk -v total=\$totalcuts '{sum += \$5} END {print sum/total}' >> $HOTSPOT_ISPOT
 fi
+
+# create prox/distal estimates
+closest-features --dist --delim '\t' --closest $HOTSPOT_CALLS $TSS > \$TMPDIR/closest.txt
+cat \$TMPDIR/closest.txt | grep -v "NA$" | awk -F"\t" '{print \$NF}' | sed -e 's/-//g' > \$TMPDIR/closest.clean.txt
+echo -ne "percent-proximal-0bp\npercent-proximal-1000bp\npercent-proximal-2500bp\npercent-proximal-5000bp\npercent-proximal-10000bp\n" > \$TMPDIR/row_one.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 0) sum+= 1 } END {print sum/NR}' > \$TMPDIR/row_two.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 1000) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 2500) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 5000) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
+cat \$TMPDIR/closest.clean.txt | awk '{ if (\$1 > 10000) sum+= 1 } END {print sum/NR}' >> \$TMPDIR/row_two.txt
+paste \$TMPDIR/row_one.txt \$TMPDIR/row_two.txt > $HOTSPOT_PROXDIST
+
+# create sparse motifs
+bedmap --echo --echo-map-id --fraction-map 1 --delim '\t' $HOTSPOT_CALLS $FIMO_TRANSFAC_1E4 > \$TMPDIR/temp.bedmap.txt
+python $STAMPIPES/scripts/bwa/aggregate/basic/sparse_motifs.py $FIMO_NAMES \$TMPDIR/temp.bedmap.txt
+# temporary name change here
+mv hs_motifs_svmlight.txt $HOTSPOT_PREFIX.hs_motifs_svmlight.txt
+mv hs_motifs_svmlight.rows.txt $HOTSPOT_PREFIX.hs_motifs_svmlight.rows.txt
+mv hs_motifs_svmlight.cols.txt $HOTSPOT_PREFIX.hs_motifs_svmlight.cols.txt
 
 echo "FINISH: hotspot2"
 date
@@ -292,7 +321,7 @@ __SCRIPT__
 fi
 
 # SPOT score
-if [[ -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spotdups.txt" ]] || [[ ! -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spotdups.txt" ]]; then
+if [[ -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.info" ]] || [[ ! -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spot.info" ]]; then
 	jobid=$(sbatch --export=ALL -J "$SPOTSCORE_JOBNAME" -o "$SPOTSCORE_JOBNAME.o%A" -e "$SPOTSCORE_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 

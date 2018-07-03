@@ -6,12 +6,14 @@ EXIT=0
 # list of files
 files=( \
     "Aligned.toGenome.out.bam" \
+    "Aligned.toGenome.out.bam.bai" \
     "Aligned.toTranscriptome.out.bam" \
     "feature_counts.txt" \
     "feature_counts.txt.summary" \
     "genes.fpkm_tracking" \
     "isoforms.fpkm_tracking" \
     "kallisto.log" \
+    "kallisto_adv.log" \
     "picard.CollectInsertSizes.txt" \
     "picard.MarkDuplicates.txt" \
     "picard.RnaSeqMetrics.txt" \
@@ -23,6 +25,7 @@ files=( \
     "trims.R1.fastq.gz" \
     "trims.R2.fastq.gz" \
     "kallisto_output/abundance.tsv" \
+    "kallisto_output_adv/abundance.tsv" \
 )
 
 # list of sequins files
