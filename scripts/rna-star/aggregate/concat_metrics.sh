@@ -15,10 +15,17 @@ cat kallisto.log | grep 'reads pseudoaligned' | tr ' ' '\t' | cut -f 5 | sed -e 
 cat ribosomal_counts.info | grep 'ribosomal' >> metrics.info
 cat adapter_counts.info | grep 'adapter' >> metrics.info
 
+if [ -s anaquin_star/RnaAlign_summary.stats.info ]; then
 cat anaquin_star/RnaAlign_summary.stats.info | grep 'sequins-dilution' >> metrics.info
 cat anaquin_star/RnaAlign_summary.stats.info | grep 'sequins-base-level-sensitivity' >> metrics.info
 cat anaquin_star/RnaAlign_summary.stats.info | grep 'sequins-base-level-precision' >> metrics.info
+fi
+
+if [ -s anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info ]; then
 cat anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info | grep 'neat-mixA-mean-spearman' >> metrics.info
+fi
+
+if [ -s anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info ]; then
 cat anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info | grep 'sequins-isoforms-slope' >> metrics.info
 cat anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info | grep 'sequins-isoforms-log2-pearson-cor' >> metrics.info
 cat anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info | grep 'sequins-genes-slope' >> metrics.info
@@ -27,3 +34,4 @@ cat anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info | grep '
 cat anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info | grep 'sequins-percent-genes-found' >> metrics.info
 cat anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info | grep 'sequins-detection-sensitivity-isoforms' >> metrics.info
 cat anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info | grep 'sequins-detection-sensitivity-genes' >> metrics.info
+fi
