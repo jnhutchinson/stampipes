@@ -6,6 +6,7 @@ module load bwa/0.7.12
 module load samtools/1.3
 module load jdk/1.8.0_92
 module load picard/2.8.1
+module load pigz/2.3.3
 
 # job suffix
 JOB_BASENAME=${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}
@@ -31,6 +32,9 @@ export NUCLEAR_CHR=${NUCLEAR_CHR:-$BWAINDEX.nuclear.txt}
 ###
 
 cd "$ALIGN_DIR"
+
+export TMPDIR=/tmp/slurm.$SLURM_JOB_ID
+mkdir -p $TMPDIR
 
 # versions
 bash "$STAMPIPES/scripts/versions.bash" &>"$VERSION_FILE"
@@ -77,7 +81,7 @@ mkdir -p \$TMPDIR
 fastq1=${FASTQ_TMP}/${SAMPLE_NAME}_R1_${filenum}.fastq.gz
 fastq2=${FASTQ_TMP}/${SAMPLE_NAME}_R2_${filenum}.fastq.gz
 
-time trim-adapters-illumina -f $ADAPTER_FILE -1 P5 -2 P7 --threads=$THREAD_NUM $fastq1 $fastq2 \$TMPDIR/trimmed.R1.fastq.gz \$TMPDIR/trimmed.R2.fastq.gz \
+time trim-adapters-illumina -f $ADAPTER_FILE -1 P5 -2 P7 --threads=$THREAD_NUM \$fastq1 \$fastq2 \$TMPDIR/trimmed.R1.fastq.gz \$TMPDIR/trimmed.R2.fastq.gz \
 &> ${SAMPLE_NAME}_${filenum}.trimstats.txt \
 && echo trimmed ${SAMPLE_NAME} >&2
 time bwa aln $BWA_ALN_PARAM $BWAINDEX \$TMPDIR/trimmed.R1.fastq.gz > \$TMPDIR/R1.sai && echo made \$TMPDIR/R1.sai >&2
@@ -144,6 +148,11 @@ then
    rm -f $FASTQ_PAIR_BAMS
 fi
 
+if [[ ! -e ${FINAL_UNIQUES_BAM} ]];then
+   samtools view -b -F 512 ${FINAL_BAM} > ${FINAL_UNIQUES_BAM}
+   samtools index ${FINAL_UNIQUES_BAM}
+fi
+
 rm -rf "\$TMPDIR"
 
 echo "FINISH BAM PROCESS: "
@@ -176,7 +185,7 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
-samtools idxstats ${SAMPLE_NAME}.uniques.sorted.bam | cut -f 1 | grep -v chrM | grep -v chrC | xargs samtools view -b ${SAMPLE_NAME}.uniques.sorted.bam > ${TMPDIR}/${SAMPLE_NAME}.nuclear.bam
+samtools idxstats ${FINAL_UNIQUES_BAM} | cut -f 1 | grep -v chrM | grep -v chrC | xargs samtools view -b ${FINAL_UNIQUES_BAM} > ${TMPDIR}/${SAMPLE_NAME}.nuclear.bam
 
 picard CollectInsertSizeMetrics INPUT=${TMPDIR}/${SAMPLE_NAME}.nuclear.bam OUTPUT=$INSERT_FILE \
     HISTOGRAM_FILE=$INSERT_HIST \
@@ -211,5 +220,7 @@ sleep 10
 __SCRIPT__
 )
 fi
+
+rm -rf "$TMPDIR"
 
 echo "$upload_id" > last_complete_job_id.txt
