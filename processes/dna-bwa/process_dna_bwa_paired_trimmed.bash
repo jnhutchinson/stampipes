@@ -7,6 +7,7 @@ module load samtools/1.3
 module load jdk/1.8.0_92
 module load picard/2.8.1
 module load pigz/2.3.3
+module load R/3.2.5
 
 # job suffix
 JOB_BASENAME=${SAMPLE_NAME}_${FLOWCELL}_ALIGN#${ALIGNMENT_ID}

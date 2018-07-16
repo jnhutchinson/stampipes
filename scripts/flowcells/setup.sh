@@ -307,6 +307,7 @@ esac
 copy_from_dir="$fastq_dir"
 if [ -n "$demux" ] ; then
   copy_from_dir="$(pwd)/Demultiplexed/"
+  # obsolete now?
   demux_cmd="$STAMPIPES/scripts/flowcells/demux_flowcell.sh -i $fastq_dir -o $copy_from_dir -p $json -q $queue -m $dmx_mismatches"
   link_command="#Demuxing happened, no linking to do"
 fi
@@ -386,18 +387,35 @@ if [[ -n \$bcl_jobid ]]; then
 fi
 
 # demultiplex
-dmx_jobid=\$(sbatch --export=ALL -J "dmx-$flowcell" \$bcl_dependency -o "dmx-$flowcell.o%A" -e "dmx-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<'__DMX__'
-#!/bin/bash
-   $demux_cmd
-# Wait for jobs to finish
-while ( squeue -o "%j" | grep -q '^.dmx') ; do
-   sleep 60
-done
-__DMX__
-)
+if [ -d "$fastq_dir.L001" ] ; then
+else
+fi
+run_type=\$(jq -r .flowcell.run_type < "$json")
 
-if [[ -n \$dmx_jobid ]]; then
-   dmx_dependency=\$(echo \$dmx_jobid | sed -e 's/^/--dependency=afterok:/g')
+for i in "\${inputfiles[@]}" ; do
+   lane=\$(sed 's/.*_L\(00[0-9]\)_.*/\1/' <(basename "\$i" ))
+   if [[ "\$run_type" == "NextSeq 500" ]] ; then
+      suffix="--autosuffix"
+   else
+      suffix="--suffix \$(sed 's/.*_L00[0-9]\(_R[12]_.*\).fastq.gz/\1/' <(basename "\$i" ))"
+   fi
+
+#!/bin/bash
+   python3 $STAMPIPES/scripts/flowcells/demux_fastq.py   \
+     \$dmx_suffix                     \
+     --processing "$json"             \
+     --outdir "$copy_from_dir"        \
+     --mismatches "$dmx_mismatches"   \
+     --lane "\$lane"                  \
+     --ignore_failed_lanes            \
+     "\$i"
+__DEMUX__
+   )
+   DEMUX_JOBIDS="\$DEMUX_JOBIDS,\$jobid"
+done
+
+if [[ -n \$DEMUX_JOBIDS ]]; then
+   dmx_dependency=\$(echo \$DEMUX_JOBIDS | sed -e 's/,/,afterok:/g' | sed -e 's/^,afterok/--dependency=afterok/g')
 fi
 
 # copy files and prep collation/fastqc
