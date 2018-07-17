@@ -100,7 +100,7 @@ if [[ ! -e "$FINAL_BAM" ]]; then
       BAMFILE="${SAMPLE_NAME}_${filenum}.sorted.bam"
       filenum=$filenum
       if [[ ! -e "$BAMFILE" ]]; then
-         jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+         jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=10000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -324,7 +324,7 @@ fi
 # tag counting
 if [[ ! -e "$SAMPLE_NAME.tagcounts.txt" || -n "$FORCE_COUNTS" ]]; then
    JOBNAME=".ct${JOB_BASENAME}"
-   jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__SCRIPT__
+   jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail

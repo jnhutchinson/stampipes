@@ -182,7 +182,7 @@ fi
 # Run Hotspot2
 if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_CALLS_001" ]] ; then
 	HOTSPOT_SPOT=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.SPOT.txt
-	jobid=$(sbatch --export=ALL -J "$HOTSPOT_JOBNAME" -o "$HOTSPOT_JOBNAME.o%A" -e "$HOTSPOT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$HOTSPOT_JOBNAME" -o "$HOTSPOT_JOBNAME.o%A" -e "$HOTSPOT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 echo "Hostname: "
@@ -275,7 +275,7 @@ fi
 
 # bam counts
 if [ ! -e $TAGCOUNTS_FILE ]; then
-	jobid=$(sbatch --export=ALL -J "$COUNT_JOBNAME" -o "$COUNT_JOBNAME.o%A" -e "$COUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$COUNT_JOBNAME" -o "$COUNT_JOBNAME.o%A" -e "$COUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=4000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -298,7 +298,7 @@ fi
 
 # adapter counts
 if [[ ! -s "$ADAPTER_COUNT_FILE" ]]; then
-	jobid=$(sbatch --export=ALL -J "$ADAPTERCOUNT_JOBNAME" -o "$ADAPTERCOUNT_JOBNAME.o%A" -e "$ADAPTERCOUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$ADAPTERCOUNT_JOBNAME" -o "$ADAPTERCOUNT_JOBNAME.o%A" -e "$ADAPTERCOUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=10000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
@@ -323,7 +323,7 @@ fi
 
 # preseq
 if [[ ! -s "$PRESEQ_TRGT" ]]; then
-        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__SCRIPT__
+        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=4000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 

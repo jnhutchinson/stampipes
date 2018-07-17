@@ -321,7 +321,7 @@ flowcell_id=$( curl \
 )
 
 # The final script is below:
-cat > run_bcl2fastq.sh <<__BCL2FASTQ__
+cat > run_bcl2fastq_1.sh <<__BCL2FASTQ__
 #!/bin/bash
 
 source $MODULELOAD
@@ -386,6 +386,20 @@ if [[ -n \$bcl_jobid ]]; then
    bcl_dependency=\$(echo \$bcl_jobid | sed -e 's/^/--dependency=afterok:/g')
 fi
 
+sbatch --export=ALL -J queuedemux-$fc \$bcl_dependency --partition $queue --ntasks=1 --cpus-per-task=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__PART2__
+#!/bin/bash
+bash run_bcl2fastq_2.sh
+__PART2__
+
+__BCL2FASTQ__
+
+cat > run_bcl2fastq_2.sh <<__BCL2FASTQ__
+# !/bin/bash
+source $MODULELOAD
+module load bcl2fastq2/2.17.1.14
+source $PYTHON3_ACTIVATE
+source $STAMPIPES/scripts/lims/api_functions.sh
+
 # demultiplex
 if [ -d "$fastq_dir.L001" ] ; then
   inputfiles=(\$(find $fastq_dir.L00[1-9] -name "*Undetermined_*fastq.gz" -size +0 ))
@@ -402,10 +416,10 @@ for i in "\${inputfiles[@]}" ; do
       suffix="--suffix \$(sed 's/.*_L00[0-9]\(_R[12]_.*\).fastq.gz/\1/' <(basename "\$i" ))"
    fi
 
-   jobid=\$(sbatch --export=ALL -J dmx\$(basename "\$i") \$bcl_dependency -o dmx\$(basename "\$i").o%A -e dmx\$(basename "\$i").e%A --partition $queue --ntasks=1 --cpus-per-task=1 --mem-per-cpu=4000 --parsable --oversubscribe <<__DEMUX__
+   jobid=\$(sbatch --export=ALL -J dmx\$(basename "\$i") -o .dmx\$(basename "\$i").o%A -e .dmx\$(basename "\$i").e%A --partition $queue --ntasks=1 --cpus-per-task=1 --mem-per-cpu=4000 --parsable --oversubscribe <<__DEMUX__
 #!/bin/bash
    python3 $STAMPIPES/scripts/flowcells/demux_fastq.py   \
-     \$dmx_suffix                     \
+     \$suffix                     \
      --processing "$json"             \
      --outdir "$copy_from_dir"        \
      --mismatches "$dmx_mismatches"   \
