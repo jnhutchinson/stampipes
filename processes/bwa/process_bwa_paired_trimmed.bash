@@ -15,7 +15,6 @@ module load git/2.3.3
 module load coreutils/8.25
 module load pigz/2.3.3
 module load modwt/1.0
-module load hotspot2/2.1.1
 module load htslib/1.6.0
 
 # Load in this order specifically, currently the python3 activation
@@ -360,7 +359,7 @@ fi
 # SPOT SCORE
 if [[ -n "$PAIRED" && ! -e "$SAMPLE_NAME.R1.rand.uniques.sorted.spot.info" ]] || [[ ! -n "$PAIRED" && ! -e "$SAMPLE_NAME.rand.uniques.sorted.spot.txt" ]]; then
    JOBNAME=".sp${JOB_BASENAME}"
-   jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+   jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -427,8 +426,8 @@ make -f $STAMPIPES/makefiles/densities/density.mk BWAINDEX=$BWAINDEX ASSAY=$ASSA
    READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
 
 # write tabix
-unstarch $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch | bgzip > $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch.bgz
-tabix -p bed $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch.bgz
+unstarch $SAMPLE_NAME.75_20.uniques-density.$READLENGTH.$GENOME.bed.starch | bgzip > $SAMPLE_NAME.75_20.uniques-density.$READLENGTH.$GENOME.bed.starch.bgz
+tabix -p bed $SAMPLE_NAME.75_20.uniques-density.$READLENGTH.$GENOME.bed.starch.bgz
 
 rm -rf "\$TMPDIR"
 
@@ -448,7 +447,7 @@ if [[ -n "$PROCESSING" ]]; then
 
 set -x -e -o pipefail
 
-echo "Hostname: "11
+echo "Hostname: "
 hostname
 
 echo "START COMPLETION: "
