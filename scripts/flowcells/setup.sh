@@ -353,13 +353,10 @@ for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; 
 #!/bin/bash
 bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
 python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
-
-if [ "\$bcmask" = "y36,i8,i8,y36" ];
-then
-    bctest=\$(python $STAMPIPES/scripts/flowcells/barcode_check.py --barcodes barcodes.\$bcmask.json --processing processing.json)
-    if [ \$bctest = "FALSE" ];
+bctest=\$(python $STAMPIPES/scripts/flowcells/barcode_check.py --barcodes barcodes.\$bcmask.json --processing processing.json --bcmask \$bcmask)
+if [ \$bctest = "FALSE" ];
     then
-       exit 1
+        exit 1
     fi
 fi
 

@@ -14,6 +14,7 @@ module load picard/2.8.1
 source "$PYTHON3_ACTIVATE"
 module load python/2.7.11
 module load bowtie/1.0.0
+module load stringtie/1.3.4d
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
@@ -55,15 +56,16 @@ fi
 
 density_job=.AG${AGGREGATION_ID}.star_den
 cufflinks_job=.AG${AGGREGATION_ID}.star_cuff
-kallisto_job=.AGG${AGGREGATION_ID}.kallisto
-kallisto_adv_job=.AGG${AGGREGATION_ID}.kallisto_adv
-complete_job=.AGG#${AGGREGATION_ID}.complete
-fcounts_job=.AGG${AGGREGATION_ID}.star_fcounts
-picard_job=.AGG${AGGREGATION_ID}.picard
-dupes_job=.AGG${AGGREGATION_ID}.dupes
-adaptercounts_job=.AGG${AGGREGATION_ID}.adapter
-anaquin_job=.AGG${AGGREGATION_ID}.anaquinsub
-bow_rRNA_job=.AGG${AGGREGATION_ID}.rRNA
+kallisto_job=.AG${AGGREGATION_ID}.kallisto
+kallisto_adv_job=.AG${AGGREGATION_ID}.kallisto_adv
+complete_job=.AG${AGGREGATION_ID}.complete
+fcounts_job=.AG${AGGREGATION_ID}.star_fcounts
+stringtie_job=.AG${AGGREGATION_ID}.stringtie
+picard_job=.AG${AGGREGATION_ID}.picard
+dupes_job=.AG${AGGREGATION_ID}.dupes
+adaptercounts_job=.AG${AGGREGATION_ID}.adapter
+anaquin_job=.AG${AGGREGATION_ID}.anaquinsub
+bow_rRNA_job=.AG${AGGREGATION_ID}.rRNA
 
 # density information, convoluted, can clean up so we skip a lot of these steps
 if [ ! -s "Signal.Unique.both.starch.bgz.tbi" ] ; then
@@ -158,6 +160,29 @@ echo "FINISH CUFFLINKS: "
 date
 
 __CUFF__
+)
+   PROCESSING="$PROCESSING,$jobid"
+fi
+
+# stringtie
+if [ ! -s "stringtie_rf/abundances.txt" ] ; then
+    jobid=$(sbatch --export=ALL -J "$stringtie_job" -o "$stringtie_job.o%A" -e "$stringtie_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__ST__
+#!/bin/bash
+
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START STRINGTIE: "
+date
+
+stringtie $GENOME_BAM --rf -p 4 -G $ANNOTATION -o stringtie_rf/transcripts.gtf -A stringtie_rf/abundances.txt
+
+echo "FINISH STRINGTIE: "
+date
+
+__ST__
 )
    PROCESSING="$PROCESSING,$jobid"
 fi

@@ -50,5 +50,6 @@ The current modules to load for working the pipeline are:
 * `atlas-lapack/3.10.2`
 * `scipy/1.0.0`
 * `scikit-learn/0.18.1`
+* `stringtie/1.3.4d`
 
 If $MODULELOAD is set, then the processing scripts should load the required modules automatically.
