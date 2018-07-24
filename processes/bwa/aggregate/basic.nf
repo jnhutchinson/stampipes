@@ -116,6 +116,7 @@ process hotspot2 {
 
   output:
   file('peaks/filtered*')
+  file('peaks/filtered.hotspots.fdr0.05.starch') into hotspot_calls
 
   script:
   """
@@ -321,5 +322,63 @@ process insert_sizes {
   > hist.txt
 
   python3 "\$STAMPIPES/scripts/utility/picard_inserts_process.py" hist.txt > CollectInsertSizeMetrics.picard.info
+  """
+}
+
+process motif_matrix {
+
+  publishDir params.outdir
+
+  input:
+  file hotspot_calls
+  file fimo_transfac from file("${dataDir}/motifs/${genome_name}.fimo.starch")
+  file fimo_names from file("${dataDir}/motifs/${genome_name}.fimo.transfac.names.txt")
+
+  output:
+  file 'hs_motifs*.txt'
+
+  script:
+  """
+  # create sparse motifs
+  bedmap --echo --echo-map-id --fraction-map 1 --delim '\t' "${hotspot_calls}" "${fimo_transfac}" > temp.bedmap.txt
+  python \$STAMPIPES/scripts/bwa/aggregate/basic/sparse_motifs.py "${fimo_names}" temp.bedmap.txt
+  """
+}
+
+process closest_features {
+
+  publishDir params.outdir
+
+  input:
+  file hotspot_calls
+  file transcript_starts from file("${dataDir}/features/${genome_name}.CombinedTxStarts.bed")
+  val thresholds from "0 1000 2500 5000 10000"
+
+  output:
+  file 'prox_dist.info'
+
+  script:
+  """
+  ls -1
+  closest-features \
+    --dist \
+    --delim '\t' \
+    --closest \
+    "${hotspot_calls}" \
+    "${transcript_starts}" \
+  > closest.txt
+  cat closest.txt \
+  | grep -v "NA\$" \
+  | awk -F"\t" '{print \$NF}' \
+  | sed -e 's/-//g' \
+  > closest.clean.txt
+
+  for t in $thresholds ; do
+    awk \
+      -v t=\$t \
+      '\$1 > t {sum+=1} END {print "percent-proximal-" t "bp " sum/NR}' \
+      closest.clean.txt \
+    >> prox_dist.info
+  done
   """
 }
