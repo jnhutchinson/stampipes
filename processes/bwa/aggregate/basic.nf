@@ -4,6 +4,8 @@ params.threads = 1
 params.UMI = false
 params.genome = ""
 params.outdir = "output"
+params.domotifs = false
+params.dofeatures = false
 
 def helpMessage() {
   log.info"""
@@ -337,6 +339,9 @@ process motif_matrix {
   output:
   file 'hs_motifs*.txt'
 
+  when:
+  params.domotifs
+
   script:
   """
   # create sparse motifs
@@ -353,6 +358,9 @@ process closest_features {
   file hotspot_calls
   file transcript_starts from file("${dataDir}/features/${genome_name}.CombinedTxStarts.bed")
   val thresholds from "0 1000 2500 5000 10000"
+
+  when:
+  params.dofeatures
 
   output:
   file 'prox_dist.info'
