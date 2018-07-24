@@ -102,7 +102,7 @@ RUN apt-get install -y \
       libbz2-dev
 RUN git clone https://github.com/bedops/bedops.git \
       && cd bedops \
-      && git checkout v2.4.19 \
+      && git checkout v2.4.35 \
       && make \
       && make install
 
