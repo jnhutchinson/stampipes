@@ -69,7 +69,8 @@ process dups {
       INPUT=cigar.bam OUTPUT=marked.bam \
       $extra \
       METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
-      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
+      MINIMUM_DISTANCE=300
   """
 }
 marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter }
