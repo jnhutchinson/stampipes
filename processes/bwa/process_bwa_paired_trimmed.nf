@@ -13,6 +13,7 @@ params.genome = ""
 params.r1 = ""
 params.r2 = ""
 params.outdir = "output"
+params.readlength = 36
 
 nuclear_chroms = "$params.genome" + ".nuclear.txt"
 dataDir = "$baseDir/../../data"
@@ -432,7 +433,7 @@ process spot_score {
 
   input:
   set file(bam), file(bai) from bam_for_spot
-  file('*') from file("${dataDir}/annotations/${genome_name}.K36.mappable_only.bed")
+  file('*') from file("${dataDir}/annotations/${genome_name}.K${params.readlength}.mappable_only.bed")
   file('*') from file("${dataDir}/annotations/${genome_name}.chromInfo.bed")
 
   output:
@@ -453,7 +454,7 @@ process spot_score {
     \$PWD \
     \$PWD/subsample.bam \
     "${genome_name}" \
-    36 \
+    "${params.readlength}" \
     DNaseI
   """
 }

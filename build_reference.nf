@@ -5,10 +5,11 @@
  */
 
 params.genome = ""
-params.read_length = 36
+params.readlength = 36
 params.outdir = "output"
 
 genome_name = file(params.genome).baseName
+readlengths = params.readlength.split(',')
 
 process bwa {
 
@@ -63,18 +64,18 @@ process mappability {
 
   input:
   file genome from file(params.genome)
-  val read_length from params.read_length
+  val read_length from Channel.from(readlengths)
   file '*' from bowtie_indices
 
   output:
   file "*bed"
-  file "${genome_name}.K${params.read_length}.mappable_only.bed" into mappable
+  set val(read_length), file("${genome_name}.K${read_length}.mappable_only.bed") into mappable
 
   script:
   """
   awk '/^>/ {\$0=\$1} 1' < "$genome" > cleaned.fa
   perl /hotspot/hotspot-deploy/bin/enumerateUniquelyMappableSpace.pl "$read_length" "$genome" cleaned.fa \
-  > "${genome_name}.K${params.read_length}.mappable_only.bed"
+  > "${genome_name}.K${read_length}.mappable_only.bed"
   """
 }
 
@@ -117,8 +118,7 @@ process hotspot2 {
 
   input:
   file chrom_sizes
-  file mappable
-  val read_length from params.read_length
+  set val(read_length), file(mappable) from mappable
   val n from 100
 
   output:
@@ -129,7 +129,7 @@ process hotspot2 {
   extractCenterSites.sh \
     -c "$chrom_sizes" \
     -M "$mappable" \
-    -o "${genome_name}.K${read_length}.center_sites.n100.starch" \
+    -o "${genome_name}.K${read_length}.center_sites.n${n}.starch" \
     -n "$n"
   """
 }

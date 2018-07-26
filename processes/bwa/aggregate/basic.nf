@@ -7,6 +7,8 @@ params.outdir = "output"
 params.domotifs = false
 params.dofeatures = false
 
+params.readlength = 36
+
 def helpMessage() {
   log.info"""
     Usage: nextflow run basic.nf \\
@@ -137,7 +139,7 @@ process spot_score {
 
   input:
   file(bam) from bam_for_spot_score
-  file(mappable) from file("${dataDir}/annotations/${genome_name}.K36.mappable_only.bed")
+  file(mappable) from file("${dataDir}/annotations/${genome_name}.K${params.readlength}.mappable_only.bed")
   file(chromInfo) from file("${dataDir}/annotations/${genome_name}.chromInfo.bed")
 
   output:
@@ -159,7 +161,7 @@ process spot_score {
     \$PWD \
     \$PWD/r1.bam \
     "${genome_name}" \
-    36 \
+    "${params.readlength}" \
     DNaseI
   """
 }
@@ -367,7 +369,6 @@ process closest_features {
 
   script:
   """
-  ls -1
   closest-features \
     --dist \
     --delim '\t' \
