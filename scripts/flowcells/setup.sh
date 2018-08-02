@@ -321,7 +321,7 @@ flowcell_id=$( curl \
 )
 
 # The final script is below:
-cat > run_bcl2fastq_1.sh <<__BCL2FASTQ__
+cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 #!/bin/bash
 
 source $MODULELOAD
@@ -383,7 +383,7 @@ if [[ -n \$bcl_jobid ]]; then
    bcl_dependency=\$(echo \$bcl_jobid | sed -e 's/^/--dependency=afterok:/g')
 fi
 
-sbatch --export=ALL -J queuedemux-$fc \$bcl_dependency --partition $queue --ntasks=1 --cpus-per-task=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__PART2__
+sbatch --export=ALL -J queuedemux-$flowcell -o "queuedemux-$flowcell.o%A" -e "queuedemux-$flowcell.e%A" \$bcl_dependency --partition $queue --ntasks=1 --cpus-per-task=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__PART2__
 #!/bin/bash
 bash run_bcl2fastq_2.sh
 __PART2__
