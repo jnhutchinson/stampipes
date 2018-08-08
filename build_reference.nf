@@ -9,11 +9,11 @@ params.readlength = 36
 params.outdir = "output"
 
 genome_name = file(params.genome).baseName
-readlengths = params.readlength.split(',')
+readlengths = params.readlength.tokenize(',')
 
 process bwa {
 
-  publishDir params.outdir
+  publishDir "${params.outdir}/bwa"
 
   input:
   file genome from file(params.genome)
@@ -28,7 +28,7 @@ process bwa {
 }
 
 process samtools {
-  publishDir params.outdir
+  publishDir "${params.outdir}/samtools"
 
   input:
   file genome from file(params.genome)
@@ -60,7 +60,7 @@ process bowtie_index {
 
 process mappability {
 
-  publishDir params.outdir
+  publishDir "${params.outdir}/annotations"
 
   input:
   file genome from file(params.genome)
@@ -81,6 +81,8 @@ process mappability {
 
 process density {
 
+  publishDir "${params.outdir}/densities"
+
   input:
   file genome from file(params.genome)
 
@@ -98,6 +100,8 @@ process density {
 
 process chrom_sizes {
 
+  publishDir "${params.outdir}/hotspot2"
+
   input:
   file fai
 
@@ -114,7 +118,7 @@ process hotspot2 {
 
   container "fwip/hotspot2:latest"
 
-  publishDir params.outdir
+  publishDir "${params.outdir}/hotspot2"
 
   input:
   file chrom_sizes
