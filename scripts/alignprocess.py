@@ -80,6 +80,7 @@ def parser_setup():
         action="store_true")
     parser.add_argument("--auto_aggregate", dest="auto_aggregate", help="Script created will also run auto-aggregations after alignments finished.",
         action="store_true")
+    parser.add_argument("--align_base_dir", dest="align_base_dir", help="Create the alignment directory in this directory")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -103,6 +104,7 @@ class ProcessSetUp(object):
         self.qsub_priority = args.qsub_priority
         self.qsub_queue = args.qsub_queue
         self.auto_aggregate = args.auto_aggregate
+        self.align_base_dir = args.align_base_dir
 
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
@@ -237,6 +239,9 @@ class ProcessSetUp(object):
            lane = aln["libraries"][0]
            alignment = lane["alignments"][0]
            full_path = os.path.join(lane["directory"], alignment["align_dir"], "last_complete_job_id.txt")
+           if self.align_base_dir:
+               full_path = os.path.join(self.align_base_dir, alignment["align_dir"], "last_complete_job_id.txt")
+
            alignment_string = alignment_string + " " + full_path
         aggregationrun = "sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 \$upload_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG2__\n#!/bin/bash\npython /home/solexa/stampipes-hpc/scripts/aggregateprocessflowcell.py --flowcell %s --outfile run_aggregations.bash\nbash run_aggregations.bash\n__AUTOAGG2__" % (aaname_run,aaname_run,aaname_run,self.qsub_queue,flowcell_label)
         sleep = "sleep 60"
@@ -303,7 +308,9 @@ class ProcessSetUp(object):
         if alignment['aligner_version']:
             align_dir = "%s-%s" % (align_dir, alignment['aligner_version'])
 
-        script_directory = "%s/%s" % (fastq_directory, align_dir)
+        script_directory = os.path.join(fastq_directory, align_dir)
+        if self.align_base_dir:
+            script_directory = os.path.join(self.align_base_dir, align_dir)
 
         r1_fastq = self.get_lane_file(lane["id"], "r1-fastq")
 
