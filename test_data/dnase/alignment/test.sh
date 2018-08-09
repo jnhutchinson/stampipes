@@ -8,7 +8,7 @@ cd "$here"
 STAMPIPES=$PWD/../../..
 export STAMPIPES
 nextflow run $STAMPIPES/processes/bwa/process_bwa_paired_trimmed.nf \
-  -profile test \
+  -profile test,docker \
   "$@"
 
 # Verify
