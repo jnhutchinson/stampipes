@@ -26,6 +26,7 @@ fi
 
 # Set up adapters
 if [[ (-n "$ADAPTER_P7") && (-n "$ADAPTER_P5") ]]; then
+  # Only update adapterfile if changed, to avoid needlessly recomputing work
   tmpfile=$(mktemp)
   echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > "$tmpfile"
   rsync --checksum "$tmpfile" "$adapterfile"
@@ -49,14 +50,12 @@ nextflow run \
   -w "$workdir" \
   --r1 "$R1_FASTQ" \
   --r2 "$R2_FASTQ" \
-  --adapter_file adapters.txt  \
+  --adapter_file "$adapterfile"  \
   --genome "$BWAINDEX" \
   --outdir "$outdir" \
   --threads 3 \
-  -profile cluster \
-  -with-report nextflow.report.html \
-  -with-dag nextflow.flowchart.html \
-  -with-timeline nextflow.timeline.html \
+  --readlength "$READLENGTH" \
+  -profile cluster,modules \
   -resume
 
 # Upload results
