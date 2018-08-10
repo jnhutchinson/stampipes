@@ -74,7 +74,7 @@ process mappability {
   script:
   """
   awk '/^>/ {\$0=\$1} 1' < "$genome" > cleaned.fa
-  perl /hotspot/hotspot-deploy/bin/enumerateUniquelyMappableSpace.pl "$read_length" "$genome" cleaned.fa \
+  perl "\$HOTSPOT_DIR/hotspot-deploy/bin/enumerateUniquelyMappableSpace.pl" "$read_length" "$genome" cleaned.fa \
   > "${genome_name}.K${read_length}.mappable_only.bed"
   """
 }
