@@ -151,6 +151,9 @@ class ProcessSetUp(object):
         return results
 
     def set_aggregation_folder(self, aggregation_info, library_info):
+        dir_name = os.path.join("LN%d" % library_info["number"], "aggregation-%d" % aggregation_info["id"])
+        if self.aggregation_base_directory:
+            return os.path.join(self.aggregation_base_directory, dir_name)
 
         url = "directory/?purpose__slug=all-alignments-bam&filetype__slug=bam&content_type=%d&object_id=%d" % (aggregation_info["object_content_type"], aggregation_info["id"])
         results = self.api_list_result(url)
@@ -173,7 +176,7 @@ class ProcessSetUp(object):
 
             file_purpose = results[0]["url"]
 
-            path = os.path.join(self.aggregation_base_directory, "LN%d" % library_info["number"], "aggregation-%d" % aggregation_info["id"])
+            path = os.path.join(self.aggregation_base_directory, dir_name)
 
             logging.info("Setting aggregation folder to %s" % path)
 
