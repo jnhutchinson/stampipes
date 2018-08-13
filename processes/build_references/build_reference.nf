@@ -84,7 +84,7 @@ process density {
   publishDir "${params.outdir}/densities"
 
   input:
-  file genome from file(params.genome)
+  file fai
 
   output:
   file '*'
@@ -92,7 +92,7 @@ process density {
   script:
   """
   make all -f "\$STAMPIPES/makefiles/densities/chrombuckets.mk" \
-    BWAINDEX="$genome" \
+    FAI="$fai" \
     GENOME="$genome_name" \
     BUCKETS_DIR=.
   """
