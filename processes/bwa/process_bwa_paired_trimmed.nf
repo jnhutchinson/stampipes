@@ -306,8 +306,7 @@ process merge_bam {
  */
 process mark_duplicates {
 
-
-  memory '10 GB'
+  label "high_mem"
 
   publishDir params.outdir
 
