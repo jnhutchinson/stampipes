@@ -186,7 +186,7 @@ class MakeBrowserLoad(object):
 
             # output expected is explicit for type of aggregation template used
             # dna
-            if agg['aggregation_process_template_id'] == 5:
+            if agg['aggregation_process_template_id'] == 5 or agg['aggregation_process_template_id'] == 43 or agg['aggregation_process_template_id'] == 44:
                 
                 if 'normalized-density-bigwig-windowed' in agg['files'] and 'density-bigwig-windowed' in agg['files'] and 'all-alignments-bam' in agg['files'] and 'cutcounts-bw' in agg['files']:
                     tracks['dnase_normdens'] = agg['files']['normalized-density-bigwig-windowed']
