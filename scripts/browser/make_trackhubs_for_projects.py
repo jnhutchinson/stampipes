@@ -124,7 +124,6 @@ class MakeBrowserLoad(object):
 
         # prepare tracks for writing
         self.prepare_tracks()
-        self.prepare_genomes()
 
        # write tracks and hub files
         self.create_ras()
@@ -174,15 +173,7 @@ class MakeBrowserLoad(object):
                 if 'hotspot1-SPOT' in agg['stats']:
                     tracks['agg_stat'] = agg['stats']['hotspot1-SPOT']
             
-            # get genome name (not in json)
-            agg_genome_req = requests.get("%s/genome_index/%s" % (self.base_api_url,agg['genome_index_id']),
-                headers={'Authorization': "Token %s" % self.token})
-            if agg_genome_req.ok:
-                agg_genome_result = agg_genome_req.json()
-            # change sequins to normal
-            if agg_genome_result['label'] == "GRCh38_no_alts_sequins":
-                agg_genome_result['label'] = "GRCh38_no_alts"
-            tracks['agg_genome'] = agg_genome_result['label']
+            tracks['agg_genome'] = agg['genome_index']['genome']['browser_label']
 
             # output expected is explicit for type of aggregation template used
             # dna
@@ -213,14 +204,6 @@ class MakeBrowserLoad(object):
             if not tracks['agg_genome'] in self.all_tracks:
                 self.all_tracks[tracks['agg_genome']] = []
             self.all_tracks[tracks['agg_genome']].append(tracks)
-
-    def prepare_genomes(self):
-        # change genome names to match UCSC info
-        for key in self.all_tracks:
-            if key == "mm10-encode3-male":
-                self.all_tracks["mm10"] = self.all_tracks.pop("mm10-encode3-male")
-            elif key == "GRCh38_no_alts":
-                self.all_tracks["hg38"] = self.all_tracks.pop("GRCh38_no_alts")
 
     def create_ras(self):
         for key in self.all_tracks:
