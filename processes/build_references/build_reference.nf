@@ -75,7 +75,10 @@ process mappability {
   """
   awk '/^>/ {\$0=\$1} 1' < "$genome" > cleaned.fa
   perl "\$HOTSPOT_DIR/hotspot-deploy/bin/enumerateUniquelyMappableSpace.pl" "$read_length" "$genome" cleaned.fa \
-  > "${genome_name}.K${read_length}.mappable_only.bed"
+    | awk -f \$STAMPIPES/awk/merge_adjacent_bed.awk \
+    | sed 's/\\s\$//' \
+    | sort-bed - \
+    > "${genome_name}.K${read_length}.mappable_only.bed"
   """
 }
 
