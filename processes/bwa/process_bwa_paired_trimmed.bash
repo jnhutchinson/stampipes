@@ -7,7 +7,7 @@ source "$MODULELOAD"
 module purge
 module load jdk
 module load nextflow
-module load python3
+module load python/3.5.1
 
 adapterfile="adapters.txt"
 
