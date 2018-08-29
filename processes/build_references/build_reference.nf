@@ -117,6 +117,22 @@ process chrom_sizes {
   """
 }
 
+process chromInfo {
+
+  publishDir "${params.outdir}/annotations"
+
+  input:
+  file chrom_sizes
+
+  output:
+  file "${genome_name}.chromInfo.bed"
+
+  script:
+  """
+  awk 'BEGIN{OFS="\t"} {print \$1, \$2, \$3, \$1}' "$chrom_sizes" > "${genome_name}.chromInfo.bed"
+  """
+}
+
 process hotspot2 {
 
   container "fwip/hotspot2:latest"
