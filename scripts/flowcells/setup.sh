@@ -130,6 +130,14 @@ fi
 
 }
 
+# placeholder
+make_miniseq_samplesheet(){
+  }
+
+# placeholder
+make_miniseq_guideseq_samplesheet(){
+}
+
 ########
 # Main #
 ########
@@ -242,9 +250,9 @@ _U_
       --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
 _U_
   ;;
-"MiniSeq High Output Kit")
+"MiniSeq High Output Kit DNase")
     # Identical to nextseq processing
-    echo "High-output MiniSeq run detected"
+    echo "High-output MiniSeq run detected for DNase"
     parallel_env="-pe threads 6"
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
     samplesheet="SampleSheet.csv"
@@ -264,6 +272,72 @@ _U_
       --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
       --demultiplexing-threads \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
       --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
+_U_
+    set -e
+    ;;
+"MiniSeq Mid Output Kit GUIDEseq")
+    # Identical to nextseq processing
+    echo "Mid-output MiniSeq run detected for GUIDEseq"
+    parallel_env="-pe threads 6"
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--miniseq"
+    queue="queue2"
+    minidemux="True"
+    # placeholder
+    cp /home/dchee7/projects/guide-seq/data/samplesheets/SampleSheet.csv SampleSheet.csv
+    bcl_tasks=1
+    set +e
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --create-fastq-for-index-reads
+_U_
+    set -e
+    ;;
+"MiniSeq Mid Output Kit")
+    # Identical to nextseq processing
+    echo "Mid-output MiniSeq run detected"
+    parallel_env="-pe threads 6"
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--miniseq"
+    queue="queue2"
+    minidemux="True"
+    # placeholder
+    cp /net/fileserv0/projects/vol2/dchee7/datastore/talens/sample_sheets/SampleSheet.csv SampleSheet.csv
+    bcl_tasks=1
+    set +e
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --no-lane-splitting
+_U_
+    set -e
+    ;;
+"MiniSeq High Output Kit")
+    # Identical to nextseq processing
+    echo "High-output MiniSeq run detected"
+    parallel_env="-pe threads 6"
+    link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--miniseq"
+    queue="queue2"
+    minidemux="True"
+    # placeholder
+    cp /net/fileserv0/projects/vol2/dchee7/datastore/talens/sample_sheets/SampleSheet.csv > SampleSheet.csv
+    bcl_tasks=1
+    set +e
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --no-lane-splitting
 _U_
     set -e
     ;;
@@ -321,6 +395,55 @@ flowcell_id=$( curl \
 )
 
 # The final script is below:
+if [[ -n "$minidemux" ]]; then
+
+cat > run_bcl2fastq.sh <<__BCL2FASTQ__
+#!/bin/bash
+
+source $MODULELOAD
+module load bcl2fastq2/2.17.1.14
+source $PYTHON3_ACTIVATE
+source $STAMPIPES/scripts/lims/api_functions.sh
+
+# Register the file directory
+python3 "$STAMPIPES/scripts/lims/upload_data.py" \
+  --attach_directory "$analysis_dir" \
+  --attach_file_contenttype SequencingData.flowcellrun \
+  --attach_file_purpose flowcell-directory \
+  --attach_file_objectid $flowcell_id
+
+# Register as "Sequencing" in LIMS
+lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/2/"
+
+# Wait for RTAComplete
+while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
+
+# Register as "Processing" in LIMS
+lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/3/"
+lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
+
+# bcl2fastq
+bcl_jobid=\$(sbatch --export=ALL -J "u-$flowcell" -o "u-$flowcell.o%A" -e "u-$flowcell.e%A" \$dependencies_barcodes --partition=$queue --ntasks=1 --cpus-per-task=4 --mem-per-cpu=8000 --parsable --oversubscribe <<'__FASTQ__'
+#!/bin/bash
+
+set -x -e -o pipefail
+cd "$illumina_dir"
+
+$unaligned_command
+
+# if the run is for GUIDEseq, swap the indexes
+if cat processing.json | grep -q "MiniSeq Mid Output Kit GUIDEseq"; then
+    zcat fastq/Undetermined_S0_L001_I2_001.fastq.gz | awk '{if(NR % 4 == 2) {x=(substr(\$0,9,16)); y=(substr(\$0,0,8)); print x y; } else print; }' > fastq/Undetermined_S0_L001_I2_001.rev.fastq
+    gzip fastq/Undetermined_S0_L001_I2_001.rev.fastq
+fi
+
+__FASTQ__
+)
+
+__BCL2FASTQ__
+
+else
+
 cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 #!/bin/bash
 
@@ -505,6 +628,8 @@ bash run_alignments.bash
 __COLLATE__
 
 __BCL2FASTQ__
+
+fi
 
 if [ -e "RTAComplete.txt" ] ; then
     echo -e "Setup complete. To kick everything off, type:\n\nbash run_bcl2fastq.sh"
