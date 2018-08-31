@@ -129,12 +129,14 @@ process hotspot2 {
 
   script:
   """
+  export TMPDIR=\$(mktemp -d)
   hotspot2.sh -F 0.5 -p varWidth_20_default \
     -M "${mappable}" \
     -c "${chrom_sizes}" \
     -C "${centers}" \
     "${marked_bam}" \
     'peaks'
+  rm -rf "\$TMPDIR"
   """
 
 }
