@@ -9,7 +9,7 @@ module load nextflow
 module load python/3.5.1
 
 if [[ $(wc -w <<< "$BAM_FILES") -gt 1 ]] ; then
-  bamfiles="{$(sed 's/\s\+/,/g' <<< "$BAM_FILES")}"
+  bamfiles="$(sed 's/\s\+/,/g' <<< "$BAM_FILES")"
 else
   bamfiles=$BAM_FILES
 fi

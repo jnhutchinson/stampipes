@@ -23,7 +23,11 @@ def helpMessage() {
 dataDir = "$baseDir/../../../data"
 genome_name = file(params.genome).baseName
 
-bams = Channel.fromPath(params.bams).collect()
+bams = Channel.from(
+  params.bams.tokenize(',')
+).map {
+  file(it)
+}.collect()
 
 process merge {
 
