@@ -438,22 +438,23 @@ process spot_score {
   file('*') from file("${dataDir}/annotations/${genome_name}.chromInfo.bed")
 
   output:
-  file 'subsample.spot.out'
+  file 'subsample.r1.spot.out'
 
   script:
   """
   # random sample
-	samtools view -h -F 12 -f 3 "$bam" \
-		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
-		| samtools view -uS - \
-		> paired.bam
-	bash \$STAMPIPES/scripts/bam/random_sample.sh paired.bam subsample.bam 5000000
+  samtools view -h -F 12 -f 3 "$bam" \
+    | awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
+    | samtools view -1 - \
+    -o paired.bam
+  bash \$STAMPIPES/scripts/bam/random_sample.sh paired.bam subsample.bam 5000000
+        samtools view -1 -f 0x0040 subsample.bam -o subsample.r1.bam
 
   # hotspot
   bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
     \$HOTSPOT_DIR \
     \$PWD \
-    \$PWD/subsample.bam \
+    \$PWD/subsample.r1.bam \
     "${genome_name}" \
     "${params.readlength}" \
     DNaseI
@@ -484,14 +485,14 @@ process density_files {
 
   script:
   """
-	bam2bed -d \
-	  < $bam \
-	  | cut -f1-6 \
+  bam2bed -d \
+    < $bam \
+    | cut -f1-6 \
     | awk '{ if( \$6=="+" ){ s=\$2; e=\$2+1 } else { s=\$3-1; e=\$3 } print \$1 "\t" s "\t" e "\tid\t" 1 }' \
     | sort-bed - \
     > sample.bed
 
-	unstarch "${density_buckets}" \
+  unstarch "${density_buckets}" \
     | bedmap --faster --echo --count --delim "\t" - sample.bed \
     | awk -v binI=$bini -v win=$win \
         'BEGIN{ halfBin=binI/2; shiftFactor=win-halfBin } { print \$1 "\t" \$2 + shiftFactor "\t" \$3-shiftFactor "\tid\t" i \$4}' \
