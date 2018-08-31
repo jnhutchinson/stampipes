@@ -113,7 +113,7 @@ process chrom_sizes {
 
   script:
   """
-  awk 'BEGIN{OFS="\t"} {print \$1, 0, \$2}' "$fai" > "${genome_name}.chrom_sizes.bed"
+  awk 'BEGIN{OFS="\t"} {print \$1, 0, \$2}' "$fai" | sort-bed - > "${genome_name}.chrom_sizes.bed"
   """
 }
 
