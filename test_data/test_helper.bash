@@ -12,13 +12,13 @@ function require_exe() {
 }
 
 function cmp_text() {
-  name=$(basename "$1")
+  name=$1
   echo "Comparing $name..."
   diff "expected/$name" "output/$name"
 }
 
 function cmp_picard() {
-  name=$(basename "$1")
+  name=$1
   expected=$(grep -v '^#' "expected/$name")
   actual=$(grep -v '^#' "output/$name")
 
@@ -27,7 +27,7 @@ function cmp_picard() {
 }
 
 function cmp_starch() {
-  name=$(basename "$1")
+  name=$1
   if ! command -v unstarch ; then
     echo "Cannot verify $name, unstarch is not available"
     return 0
@@ -38,7 +38,7 @@ function cmp_starch() {
 }
 
 function cmp_bam() {
-  name=$(basename "$1")
+  name=$1
   if ! command -v samtools ; then
     echo "Cannot verify $name, samtools is not available"
     return 0

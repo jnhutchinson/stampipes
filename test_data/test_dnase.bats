@@ -56,4 +56,12 @@ root="$BATS_TEST_DIRNAME/.."
   cmp_text subsample.spot.out
   cmp_text tagcounts.txt
 
+  cmp_text peaks/filtered.SPOT.txt
+  cmp_starch peaks/filtered.allcalls.starch
+  cmp_starch peaks/filtered.cutcounts.starch
+  cmp_starch peaks/filtered.density.starch
+  cmp_starch peaks/filtered.hotspots.fdr0.05.starch
+  cmp_starch peaks/filtered.peaks.narrowpeaks.starch
+  cmp_starch peaks/filtered.peaks.starch
+
 }
