@@ -56,6 +56,12 @@ export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappab
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.nuclear.starch}
 export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
+export HOTSPOT_PEAKS_DEF=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.peaks.starch
+export HOTSPOT_NPEAKS_DEF=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.narrowpeaks.starch
+export HOTSPOT_NPEAKS_05=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.narrowpeaks.fdr0.05.starch
+export HOTSPOT_PEAKS_05=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.peaks.fdr0.05.starch
+export HOTSPOT_PEAKS_01=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.peaks.fdr0.01.starch
+export HOTSPOT_PEAKS_001=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.peaks.fdr0.001.starch
 
 # hard-coded until we retroactively change aggregation templates to their genome-specific template
 export ALTIUS_MASTERLIST="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.txt"
@@ -204,6 +210,13 @@ join <(sort "$NUCLEAR_CHR") "$CHROM_SIZES" | sed 's/\\s\\+/\\t/g' > "\$NUCLEAR_C
 "$STAMPIPES/scripts/SPOT/info.sh" "$HOTSPOT_CALLS" hotspot2 \$(cat $HOTSPOT_SPOT) > "$HOTSPOT_PREFIX.hotspot2.info"
 hsmerge.sh -f 0.01 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_01
 hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
+
+# peaks at FDRs
+cleave_count=\$(cat $HOTSPOT_CLEAVAGES)
+mv $HOTSPOT_PEAKS_DEF $HOTSPOT_PEAKS_05
+mv $HOTSPOT_NPEAKS_DEF $HOTSPOT_NPEAKS_05
+density-peaks.bash \$TMPDIR varWidth_20_${LIBRARY_NAME} $HOTSPOT_CUTCOUNTS $HOTSPOT_CALLS_01 $CHROM_SIZES $HOTSPOT_DENSITY $HOTSPOT_PEAKS_01 \$cleave_count
+density-peaks.bash \$TMPDIR varWidth_20_${LIBRARY_NAME} $HOTSPOT_CUTCOUNTS $HOTSPOT_CALLS_001 $CHROM_SIZES $HOTSPOT_DENSITY $HOTSPOT_PEAKS_001 \$cleave_count
 
 # create iSPOT
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})

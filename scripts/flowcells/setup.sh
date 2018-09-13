@@ -480,9 +480,8 @@ bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
 python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
 bctest=\$(python $STAMPIPES/scripts/flowcells/barcode_check.py --barcodes barcodes.\$bcmask.json --processing processing.json --bcmask \$bcmask)
 if [ \$bctest = "FALSE" ];
-    then
-        exit 1
-    fi
+then
+    exit 1
 fi
 
 __BARCODES__
