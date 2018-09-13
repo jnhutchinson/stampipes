@@ -1,0 +1,16 @@
+sudo: required
+
+language: java
+
+services:
+  - docker
+
+before_install:
+  - git lfs pull
+  - bash -c "wget -qO- https://get.nextflow.io | bash"
+  - sudo cp nextflow /usr/bin/
+  - sudo apt-get update -qq
+  - sudo apt-get install bats
+
+script:
+  - bats test_data/test_dnase.bats
