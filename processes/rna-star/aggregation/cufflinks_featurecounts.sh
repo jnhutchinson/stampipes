@@ -374,7 +374,9 @@ __SCRIPT__
     PROCESSING="$PROCESSING,$jobid"
 fi
 
-# anaquin calls and subsampling, will fail if there's nothing to subsample... could mean it was set up wrong but also if sequins were added extremely poorly
+# this correctly fails out if there are no sequins alignments found
+# this creates a weird fail state if there are sequins alignments found but not enough to do the subsampling, not sure how to fix this other than to change anaquin to fail as it were the above case
+# downstream uploads of information still occur
 if [[ ! -s "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
     jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__ANAQUIN__
 #!/bin/bash
@@ -390,13 +392,13 @@ hostname
 echo "START ANAQUIN: "
 date
 
-# create subsample
-DILUTION="0.0001"
-anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample | samtools view -bS - > \$TMPDIR/temp_subsample.bam
-
 # calculate anaquin align stats on full alignment
 anaquin RnaAlign -rgtf $SEQUINS_REF -usequin $GENOME_BAM -o anaquin_star
 bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
+
+# create subsample
+DILUTION="0.0001"
+anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample | samtools view -bS - > \$TMPDIR/temp_subsample.bam
 
 # calculate anaquin align stats on subset alignment
 anaquin RnaAlign -rgtf $SEQUINS_REF -usequin \$TMPDIR/temp_subsample.bam -o anaquin_subsample/anaquin_star

@@ -132,10 +132,12 @@ fi
 
 # placeholder
 make_miniseq_samplesheet(){
-  }
+sleep 10
+}
 
 # placeholder
 make_miniseq_guideseq_samplesheet(){
+sleep 10
 }
 
 ########

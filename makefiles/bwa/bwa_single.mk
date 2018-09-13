@@ -7,6 +7,7 @@
 # FAI file is not at $(BWAINDEX).fai, then it must also be specified under FAI.
 ###################
 # BWAINDEX=/path/to/genome
+# NUCLEAR_CHR=/path/to/genome/genomename.nuclear.txt
 # FASTQ_FILE=/path/to/R.fq.gz
 # OUTBAM=/path/to/out.sorted.bam
 ###################
@@ -57,6 +58,7 @@ info :
 	@echo "------"
 	@echo "SAMPLE_NAME: " $(SAMPLE_NAME)
 	@echo "BWAINDEX: " $(BWAINDEX)
+	@echo "NUCLEAR_CHR: " $(NUCLEAR_CHR)
 	@echo "FAI: " $(FAI)
 	@echo "READ LENGTH: " $(READ_LENGTH)
 	@echo "------"
@@ -82,7 +84,7 @@ $(TMPDIR)/align.sorted.bam : $(TMPDIR)/align.filtered.bam
 
 # Create unsorted filtered BAM files
 $(TMPDIR)/align.filtered.bam : $(TMPDIR)/align.unsorted.bam
-	time $(PYTHON) $(STAMPIPES)/scripts/bwa/filter_reads.py $^ $@
+	time $(PYTHON) $(STAMPIPES)/scripts/bwa/filter_reads.py $^ $@ $(NUCLEAR_CHR)
 
 # Create unsorted raw BAM files
 $(TMPDIR)/align.unsorted.bam : $(TMPDIR)/align.sam
