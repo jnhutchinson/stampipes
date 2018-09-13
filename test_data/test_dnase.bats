@@ -53,7 +53,7 @@ root="$BATS_TEST_DIRNAME/.."
 
   cmp_text adapter.counts.txt
   cmp_text hs_motifs_svmlight.txt
-  cmp_text subsample.spot.out
+  cmp_text r1.spot.out
   cmp_text tagcounts.txt
 
   cmp_text peaks/filtered.SPOT.txt

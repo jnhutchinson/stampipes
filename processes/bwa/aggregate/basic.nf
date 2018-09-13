@@ -80,6 +80,9 @@ process dups {
 marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter }
 
 process filter {
+
+  publishDir params.outdir
+
   input:
   file bam from bam_for_filter
 
