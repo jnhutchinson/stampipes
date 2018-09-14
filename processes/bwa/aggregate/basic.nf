@@ -139,6 +139,20 @@ process hotspot2 {
     -C "${centers}" \
     "${marked_bam}" \
     'peaks'
+
+  cd peaks
+
+  # Rename peaks files to include FDR
+  mv filtered.peaks.narrowpeaks.starch filtered.peaks.narrowpeaks.fdr0.05.starch
+  mv filtered.peaks.starch filtered.peaks.fdr0.05.starch
+
+  # TODO: Move this to separate process
+  hsmerge.sh -f 0.01 filtered.allcalls.starch filtered.hotspots.fdr0.01.starch
+  hsmerge.sh -f 0.001 filtered.allcalls.starch filtered.hotspots.fdr0.001.starch
+
+  density-peaks.bash \$TMPDIR varWidth_20_default filtered.cutcounts.starch filtered.hotspots.fdr0.01.starch ../"${chrom_sizes}" filtered.density.starch filtered.peaks.fdr0.01.starch \$(cat filtered.cleavage.total)
+  density-peaks.bash \$TMPDIR varWidth_20_default filtered.cutcounts.starch filtered.hotspots.fdr0.001.starch ../"${chrom_sizes}" filtered.density.starch filtered.peaks.fdr0.001.starch \$(cat filtered.cleavage.total)
+
   rm -rf "\$TMPDIR"
   """
 
