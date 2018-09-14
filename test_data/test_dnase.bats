@@ -60,8 +60,10 @@ root="$BATS_TEST_DIRNAME/.."
   cmp_starch peaks/filtered.allcalls.starch
   cmp_starch peaks/filtered.cutcounts.starch
   cmp_starch peaks/filtered.density.starch
-  cmp_starch peaks/filtered.hotspots.fdr0.05.starch
-  cmp_starch peaks/filtered.peaks.narrowpeaks.starch
-  cmp_starch peaks/filtered.peaks.starch
+  for fdr in 0.05 0.01 0.001 ; do
+    cmp_starch peaks/filtered.hotspots.fdr$fdr.starch
+    cmp_starch peaks/filtered.peaks.fdr$fdr.narrowpeaks.starch
+    cmp_starch peaks/filtered.peaks.fdr$fdr.starch
+  done
 
 }
