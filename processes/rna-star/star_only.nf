@@ -51,6 +51,8 @@ process star {
 
   publishDir params.outdir
 
+  label 'high_mem'
+
   input:
   set file(r1), file(r2) from trimmed
   file 'ref/*' from Channel.fromPath("$starIndexDir/*").collect()
@@ -83,8 +85,7 @@ process star {
     --sjdbScore 1 \
     --readFilesCommand zcat \
     --runThreadN ${threads} \
-    --genomeLoad LoadAndRemove \
-    --limitBAMsortRAM 10000000000 \
+    --limitBAMsortRAM 30000000000 \
     --outSAMtype BAM SortedByCoordinate \
     --quantMode TranscriptomeSAM \
     --outSAMheaderCommentFile commentslong.txt \
