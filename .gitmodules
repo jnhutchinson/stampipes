@@ -1,0 +1,3 @@
+[submodule "scripts/cleancut/TalenTools"]
+	path = scripts/cleancut/TalenTools
+	url = git@github.com:Altius/TalenTools.git
