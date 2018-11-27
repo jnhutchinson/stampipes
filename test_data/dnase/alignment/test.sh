@@ -48,7 +48,7 @@ set +e
 cmp_picard "tagcounts.txt" || echo "tagcounts differ"
 cmp_picard "MarkDuplicates.picard" || echo "dups differ"
 cmp_picard "CollectInsertSizeMetrics.picard" || echo "insert differ"
-cmp_picard "subsample.spot.out" || echo "spot differ"
+cmp_picard "subsample.r1.spot.out" || echo "spot differ"
 
 cmp_starch "density.bed.starch" || echo "density differ"
 
