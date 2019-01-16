@@ -374,8 +374,8 @@ export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
    
 if [[ -n "\$PAIRED" ]]; then
-   make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-   READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+   make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk "BWAINDEX=$BWAINDEX" "ASSAY=$ASSAY" "GENOME=$GENOME" \
+   "READLENGTH=$READLENGTH" "SAMPLE_NAME=$SAMPLE_NAME"
    python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
       -f ${FLOWCELL} \
@@ -384,8 +384,8 @@ if [[ -n "\$PAIRED" ]]; then
       --spotfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out \
       --spotdupfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt
 else
-   make -f $STAMPIPES/makefiles/SPOT/spot-single.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-   READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+   make -f $STAMPIPES/makefiles/SPOT/spot-single.mk "BWAINDEX=$BWAINDEX" "ASSAY=$ASSAY" "GENOME=$GENOME" \
+   "READLENGTH=$READLENGTH" "SAMPLE_NAME=$SAMPLE_NAME"
    python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
       -f ${FLOWCELL} \
@@ -422,8 +422,8 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
-make -f $STAMPIPES/makefiles/densities/density.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-   READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+make -f $STAMPIPES/makefiles/densities/density.mk "BWAINDEX=$BWAINDEX" "ASSAY=$ASSAY" "GENOME=$GENOME" \
+   "READLENGTH=$READLENGTH" "SAMPLE_NAME=$SAMPLE_NAME"
 
 # write tabix
 unstarch $SAMPLE_NAME.75_20.uniques-density.$READLENGTH.$GENOME.bed.starch | bgzip > $SAMPLE_NAME.75_20.uniques-density.$READLENGTH.$GENOME.bed.starch.bgz
