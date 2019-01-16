@@ -23,10 +23,12 @@ fi
 
 shopt -s nocasematch
 # Decide whether to use DUPOK based on assay type
-if [[ $ASSAY == "ChIP_Seq" ]]
+if [[ "$ASSAY" == *"ChIP"* ]]
 then
+    echo "Setting DUPOK=F"
     DUPOK="F"
 else
+    echo "Setting DUPOK=T"
     DUPOK="T"
 fi
 
