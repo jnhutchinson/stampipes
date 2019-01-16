@@ -929,7 +929,7 @@ class UploadLIMS(object):
         # replace content
         if exists['count'] == 1:
             report = exists['results'][0]
-            if report['raw_data'] != upload['raw_data']:
+            if 'raw_data' not in report or report['raw_data'] != upload['raw_data']:
                 log.info("Updating report %s" % upload['label'])
                 result = requests.patch(exists['results'][0]['url'], headers = self.headers, data = upload)
 
@@ -1034,7 +1034,7 @@ class UploadLIMS(object):
 
         if exists['count'] >= 1:
             upload = exists['results'][0]
-            if upload['raw_data'] != picard_metric:
+            if 'raw_data' not in upload or upload['raw_data'] != picard_metric:
                 log.info("Updating report %s" % label)
                 upload['raw_data'] = picard_metric
                 result = requests.put(upload['url'], headers = self.headers, data = upload)
