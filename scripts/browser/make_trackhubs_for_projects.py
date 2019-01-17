@@ -186,7 +186,7 @@ class MakeBrowserLoad(object):
 
             # output expected is explicit for type of aggregation template used
             # dna
-            if agg['aggregation_process_template_id'] == 5:
+            if agg['aggregation_process_template_id'] == 5 or agg['aggregation_process_template_id'] == 43 or agg['aggregation_process_template_id'] == 44:
                 
                 if 'normalized-density-bigwig-windowed' in agg['files'] and 'density-bigwig-windowed' in agg['files'] and 'all-alignments-bam' in agg['files'] and 'cutcounts-bw' in agg['files']:
                     tracks['dnase_normdens'] = agg['files']['normalized-density-bigwig-windowed']
@@ -221,6 +221,8 @@ class MakeBrowserLoad(object):
                 self.all_tracks["mm10"] = self.all_tracks.pop("mm10-encode3-male")
             elif key == "GRCh38_no_alts":
                 self.all_tracks["hg38"] = self.all_tracks.pop("GRCh38_no_alts")
+            elif key == "dm6_minimal":
+                self.all_tracks["dm6"] = self.all_tracks.pop("dm6_minimal")
 
     def create_ras(self):
         for key in self.all_tracks:
@@ -266,9 +268,9 @@ class MakeBrowserLoad(object):
         ra.write("group %s\n" % self.projectname)
         ra.write("priority %s\n" % self.priority)
         ra.write("subGroup1 view Views%s\n" % view_string)
-        ra.write("subGroup2 sample Sample%s\n" % sample_string)
-        ra.write("dimensions dimensionX=view dimensionY=sample\n")
-        ra.write("sortOrder view=+ sample=+\n")
+        ra.write("subGroup2 show _ show=_\n")
+        ra.write("dimensions dimensionX=view dimensionY=show\n")
+        ra.write("sortOrder view=+\n")
         ra.write("dragAndDrop subTracks\n")
         ra.write("type bed 3 +\n")
         ra.write("noInherit on\n\n")
@@ -303,7 +305,7 @@ class MakeBrowserLoad(object):
                     ra.write("\t\tbigDataUrl %s\n" % friendly_path)
                     ra.write("\t\tsubTrack %s_%s\n" % (self.projectname, path))
                     ra.write("\t\tshortLabel AG%s_%s_%s\n" % (track['agg_id'], self.projectname, path))
-                    ra.write("\t\tsubGroups view=%s sample=%s\n" % (path, track['agg_id']))
+                    ra.write("\t\tsubGroups view=%s show=show\n" % path)
                     ra.write("\t\tlongLabel AG%s, %s, SPOT1 %s, %s, %s\n" % (track['agg_id'], track['agg_ln'], track['agg_stat'], track['agg_taxonomy'], path))
                     ra.write("\t\tgroup %s\n" % self.projectname)
                     if file_format == "bam":

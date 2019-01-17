@@ -419,6 +419,63 @@ class UploadLIMS(object):
 
         return self.get_single_result(contenttype_url)
 
+    def get_file_purpose(self, slug):
+
+        filepurpose_url = '%s/file_purpose/?slug=%s' % (self.api_url, slug)
+
+        return self.get_single_result(filepurpose_url, field="url")
+
+    def get_file_type(self, slug):
+
+        filetype_url = '%s/file_type/?slug=%s' % (self.api_url, slug)
+
+        return self.get_single_result(filetype_url, field="url")
+
+    def get_fastqc_tags(self):
+
+       if not self.fastqc_tags:
+           tags_url = '%s/fastqc_tag/' % self.api_url
+           tags = list()
+
+           tags_results = requests.get(tags_url, headers = self.headers).json()
+           tags.extend(tags_results['results'])
+
+           while tags_results['next']:
+               tags_results = requests.get(tags_results['next'], headers = self.headers).json()
+               tags.extend(tags_results['results'])
+
+           self.fastqc_tags = dict([(tag['slug'], tag) for tag in tags])
+
+       return self.fastqc_tags
+
+    def get_picard_metrics(self):
+
+       if not self.picard_metrics:
+           metrics_url = '%s/picard_metric/' % self.api_url
+           picard_metrics = list()
+
+           metrics_results = requests.get(metrics_url, headers = self.headers).json()
+           picard_metrics.extend(metrics_results['results'])
+
+           while metrics_results['next']:
+               metrics_results = requests.get(metrics_results['next'], headers = self.headers).json()
+               picard_metrics.extend(metrics_results['results'])
+
+           self.picard_metrics = dict([(metric['name'], metric) for metric in picard_metrics])
+
+       return self.picard_metrics
+
+    def get_contenttype(self, contenttype_name):
+        """
+        Appname uses capitalization, modelname does not.
+        """
+
+        (appname, modelname) = contenttype_name.split(".")
+
+        contenttype_url = '%s/content_type/?app_label=%s&model=%s' % (self.api_url, appname, modelname)
+
+        return self.get_single_result(contenttype_url)
+
     def upload_directory_attachment(self, path, contenttype_name, object_id, file_purpose=None):
         path = os.path.abspath(path)
 
@@ -945,7 +1002,7 @@ class UploadLIMS(object):
         # replace content
         if exists['count'] == 1:
             report = exists['results'][0]
-            if report['raw_data'] != upload['raw_data']:
+            if 'raw_data' not in report or report['raw_data'] != upload['raw_data']:
                 log.info("Updating report %s" % upload['label'])
                 result = requests.patch(exists['results'][0]['url'], headers = self.headers, data = upload)
 
@@ -1050,7 +1107,7 @@ class UploadLIMS(object):
 
         if exists['count'] >= 1:
             upload = exists['results'][0]
-            if upload['raw_data'] != picard_metric:
+            if 'raw_data' not in upload or upload['raw_data'] != picard_metric:
                 log.info("Updating report %s" % label)
                 upload['raw_data'] = picard_metric
                 result = requests.put(upload['url'], headers = self.headers, data = upload)

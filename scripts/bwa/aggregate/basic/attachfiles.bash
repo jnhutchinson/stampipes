@@ -36,7 +36,13 @@ $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.allcalls.starch --attach_file_pu
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.hotspots.fdr0.05.starch --attach_file_purpose hotspot-calls --attach_file_type starch
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.hotspots.fdr0.01.starch --attach_file_purpose hotspot-calls-1per --attach_file_type starch
 $ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.hotspots.fdr0.001.starch --attach_file_purpose hotspot-calls-point1per --attach_file_type starch
-$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.peaks.starch --attach_file_purpose hotspot-peaks --attach_file_type starch
+
+$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.peaks.fdr0.05.starch --attach_file_purpose hotspot-calls --attach_file_type starch
+$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.peaks.fdr0.01.starch --attach_file_purpose hotspot-calls-1per --attach_file_type starch
+$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.peaks.fdr0.001.starch --attach_file_purpose hotspot-calls-point1per --attach_file_type starch
+$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.peaks.fdr0.05.starch --attach_file_purpose hotspot-peaks --attach_file_type starch
+$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.peaks.fdr0.01.starch --attach_file_purpose hotspot-peaks-1per --attach_file_type starch
+$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.peaks.fdr0.001.starch --attach_file_purpose hotspot-peaks-point1per --attach_file_type starch
 
 #TODO: We're effectively generating these twice, simplify
 #$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.cutcounts.starch --attach_file_purpose cutcounts-starch --attach_file_type starch

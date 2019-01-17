@@ -17,8 +17,9 @@ upload "rna_stats_summary.info"
 upload "metrics.info"
 
 # upload sequins stats
-if [[ -n "$SEQUINS_REF" ]]; then
-    upload "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info"
-    upload "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info"
-    upload "anaquin_star/RnaAlign_summary.stats.info"
-fi
+# not uploading until there's a sequins flag
+#if [[ -n "$SEQUINS_REF" ]]; then
+#    upload "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info"
+#    upload "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info"
+#    upload "anaquin_star/RnaAlign_summary.stats.info"
+#fi

@@ -214,7 +214,7 @@ class ProcessSetUp(object):
 
     def setup_flowcell(self, flowcell_label):
         logging.info("Setting up flowcell for %s" % flowcell_label)
-        alignments = self.api_list_result("flowcell_lane_alignment/?lane__flowcell__label=%s" % flowcell_label)
+        alignments = self.api_list_result("flowcell_lane_alignment/?lane__flowcell__label=%s&page_size=1000" % flowcell_label)
         if self.auto_aggregate:
             for alignment in alignments:
                 self.setup_alignment(alignment["id"])

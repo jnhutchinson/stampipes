@@ -14,6 +14,7 @@ module load picard/2.8.1
 source "$PYTHON3_ACTIVATE"
 module load python/2.7.11
 module load bowtie/1.0.0
+module load stringtie/1.3.4d
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
@@ -55,15 +56,16 @@ fi
 
 density_job=.AG${AGGREGATION_ID}.star_den
 cufflinks_job=.AG${AGGREGATION_ID}.star_cuff
-kallisto_job=.AGG${AGGREGATION_ID}.kallisto
-kallisto_adv_job=.AGG${AGGREGATION_ID}.kallisto_adv
-complete_job=.AGG#${AGGREGATION_ID}.complete
-fcounts_job=.AGG${AGGREGATION_ID}.star_fcounts
-picard_job=.AGG${AGGREGATION_ID}.picard
-dupes_job=.AGG${AGGREGATION_ID}.dupes
-adaptercounts_job=.AGG${AGGREGATION_ID}.adapter
-anaquin_job=.AGG${AGGREGATION_ID}.anaquinsub
-bow_rRNA_job=.AGG${AGGREGATION_ID}.rRNA
+kallisto_job=.AG${AGGREGATION_ID}.kallisto
+kallisto_adv_job=.AG${AGGREGATION_ID}.kallisto_adv
+complete_job=.AG${AGGREGATION_ID}.complete
+fcounts_job=.AG${AGGREGATION_ID}.star_fcounts
+stringtie_job=.AG${AGGREGATION_ID}.stringtie
+picard_job=.AG${AGGREGATION_ID}.picard
+dupes_job=.AG${AGGREGATION_ID}.dupes
+adaptercounts_job=.AG${AGGREGATION_ID}.adapter
+anaquin_job=.AG${AGGREGATION_ID}.anaquinsub
+bow_rRNA_job=.AG${AGGREGATION_ID}.rRNA
 
 # density information, convoluted, can clean up so we skip a lot of these steps
 if [ ! -s "Signal.Unique.both.starch.bgz.tbi" ] ; then
@@ -158,6 +160,29 @@ echo "FINISH CUFFLINKS: "
 date
 
 __CUFF__
+)
+   PROCESSING="$PROCESSING,$jobid"
+fi
+
+# stringtie
+if [ ! -s "stringtie_rf/abundances.txt" ] ; then
+    jobid=$(sbatch --export=ALL -J "$stringtie_job" -o "$stringtie_job.o%A" -e "$stringtie_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__ST__
+#!/bin/bash
+
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START STRINGTIE: "
+date
+
+stringtie $GENOME_BAM --rf -p 4 -G $ANNOTATION -o stringtie_rf/transcripts.gtf -A stringtie_rf/abundances.txt
+
+echo "FINISH STRINGTIE: "
+date
+
+__ST__
 )
    PROCESSING="$PROCESSING,$jobid"
 fi
@@ -349,7 +374,9 @@ __SCRIPT__
     PROCESSING="$PROCESSING,$jobid"
 fi
 
-# anaquin calls and subsampling, will fail if there's nothing to subsample... could mean it was set up wrong but also if sequins were added extremely poorly
+# this correctly fails out if there are no sequins alignments found
+# this creates a weird fail state if there are sequins alignments found but not enough to do the subsampling, not sure how to fix this other than to change anaquin to fail as it were the above case
+# downstream uploads of information still occur
 if [[ ! -s "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
     jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__ANAQUIN__
 #!/bin/bash
@@ -365,13 +392,13 @@ hostname
 echo "START ANAQUIN: "
 date
 
-# create subsample
-DILUTION="0.0001"
-anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample | samtools view -bS - > \$TMPDIR/temp_subsample.bam
-
 # calculate anaquin align stats on full alignment
 anaquin RnaAlign -rgtf $SEQUINS_REF -usequin $GENOME_BAM -o anaquin_star
 bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
+
+# create subsample
+DILUTION="0.0001"
+anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample | samtools view -bS - > \$TMPDIR/temp_subsample.bam
 
 # calculate anaquin align stats on subset alignment
 anaquin RnaAlign -rgtf $SEQUINS_REF -usequin \$TMPDIR/temp_subsample.bam -o anaquin_subsample/anaquin_star

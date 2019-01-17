@@ -34,5 +34,5 @@ $(TMPDIR)/$(SAMPLE_NAME).cigar.bam : $(BAMFILE)
 # Calculate the duplication score of the random sample
 $(OUTBAM) : $(TMPDIR)/$(SAMPLE_NAME).cigar.bam
 	time picard MarkDuplicatesWithMateCigar INPUT=$(TMPDIR)/$(SAMPLE_NAME).cigar.bam OUTPUT=$(OUTBAM) \
-		METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
+		METRICS_FILE=$(DUP_OUT) ASSUME_SORTED=true MINIMUM_DISTANCE=150 VALIDATION_STRINGENCY=SILENT \
 		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'

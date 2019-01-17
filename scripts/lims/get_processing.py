@@ -44,6 +44,8 @@ def parser_setup():
         help="The project to get processing info for.")
     parser.add_argument("-g", "--alignment-group", dest="alignment_group", type=int,
         help="A specific aligment group to get processing info for.")
+    parser.add_argument("-e", "--experiment", dest="experiment",
+        help="The experiment to get processing info for.")
 
     parser.add_argument("-o", "--outfile", dest="outfile",
         help="The outfile to save to.")
@@ -67,6 +69,22 @@ def get_processing_info_project(api_url, token, id, outfile):
         result = info.json()
         with open(outfile, 'w') as output:
             json.dump(result, output, sort_keys=True, indent=4, separators=(',', ': '))
+    else:
+        logging.error("info was not found within API")
+
+    return
+
+
+def get_processing_info_experiment(api_url, token, id, outfile):
+
+    logging.info("Setting up experiment #%s" % id)
+
+    info = requests.get("%s/experiment/%s/schema" % (api_url, id), headers={'Authorization': "Token %s" % token})
+
+    if info.ok:
+        result = info.json()
+        with open(outfile, 'w') as output:
+            json.dump(result, output, indent=4, separators=(',', ': '))
     else:
         logging.error("info was not found within API")
 
@@ -150,6 +168,9 @@ from the command line."""
     if poptions.alignment_group:
         get_processing_info_alignment_group(api_url, token, poptions.alignment_group, poptions.outfile)
 
+    if poptions.experiment:
+        logging.info("Getting aggregation information for experiment #%s" % poptions.experiment)
+        get_processing_info_experiment(api_url, token, poptions.experiment, poptions.outfile)
 
 
 

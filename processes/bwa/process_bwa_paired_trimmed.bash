@@ -78,6 +78,8 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
                                    exit
 ##########################################################################
 
+# Dependencies
+source "$MODULELOAD"
 module load zlib/1.2.8
 module load bedops/2.4.35-typical
 module load bedtools/2.25.0
@@ -91,7 +93,6 @@ module load git/2.3.3
 module load coreutils/8.25
 module load pigz/2.3.3
 module load modwt/1.0
-module load hotspot2/2.1.1
 module load htslib/1.6.0
 
 # Load in this order specifically, currently the python3 activation
@@ -176,7 +177,7 @@ if [[ ! -e "$FINAL_BAM" ]]; then
       BAMFILE="${SAMPLE_NAME}_${filenum}.sorted.bam"
       filenum=$filenum
       if [[ ! -e "$BAMFILE" ]]; then
-         jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+         jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=10000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -400,7 +401,7 @@ fi
 # tag counting
 if [[ ! -e "$SAMPLE_NAME.tagcounts.txt" || -n "$FORCE_COUNTS" ]]; then
    JOBNAME=".ct${JOB_BASENAME}"
-   jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<__SCRIPT__
+   jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -436,7 +437,7 @@ fi
 # SPOT SCORE
 if [[ -n "$PAIRED" && ! -e "$SAMPLE_NAME.R1.rand.uniques.sorted.spot.info" ]] || [[ ! -n "$PAIRED" && ! -e "$SAMPLE_NAME.rand.uniques.sorted.spot.txt" ]]; then
    JOBNAME=".sp${JOB_BASENAME}"
-   jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+   jobid=$(sbatch --export=ALL -J "$JOBNAME" -o "$JOBNAME.o%A" -e "$JOBNAME.e%A" $dependencies_finalbam --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -451,8 +452,8 @@ export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
    
 if [[ -n "\$PAIRED" ]]; then
-   make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-   READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+   make -f $STAMPIPES/makefiles/SPOT/spot-R1-paired.mk "BWAINDEX=$BWAINDEX" "ASSAY=$ASSAY" "GENOME=$GENOME" \
+   "READLENGTH=$READLENGTH" "SAMPLE_NAME=$SAMPLE_NAME"
    python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
       -f ${FLOWCELL} \
@@ -461,8 +462,8 @@ if [[ -n "\$PAIRED" ]]; then
       --spotfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spot.out \
       --spotdupfile ${SAMPLE_NAME}.R1.rand.uniques.sorted.spotdups.txt
 else
-   make -f $STAMPIPES/makefiles/SPOT/spot-single.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-   READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+   make -f $STAMPIPES/makefiles/SPOT/spot-single.mk "BWAINDEX=$BWAINDEX" "ASSAY=$ASSAY" "GENOME=$GENOME" \
+   "READLENGTH=$READLENGTH" "SAMPLE_NAME=$SAMPLE_NAME"
    python3 $STAMPIPES/scripts/lims/upload_data.py -a ${LIMS_API_URL} \
       -t ${LIMS_API_TOKEN} \
       -f ${FLOWCELL} \
@@ -499,12 +500,12 @@ date
 export TMPDIR=/tmp/slurm.\$SLURM_JOB_ID
 mkdir -p \$TMPDIR
 
-make -f $STAMPIPES/makefiles/densities/density.mk BWAINDEX=$BWAINDEX ASSAY=$ASSAY GENOME=$GENOME \
-   READLENGTH=$READLENGTH SAMPLE_NAME=$SAMPLE_NAME
+make -f $STAMPIPES/makefiles/densities/density.mk "BWAINDEX=$BWAINDEX" "ASSAY=$ASSAY" "GENOME=$GENOME" \
+   "READLENGTH=$READLENGTH" "SAMPLE_NAME=$SAMPLE_NAME"
 
 # write tabix
-unstarch $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch | bgzip > $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch.bgz
-tabix -p bed $SAMPLE_NAME.75_20.uniques-density.36.$GENOME.bed.starch.bgz
+unstarch $SAMPLE_NAME.75_20.uniques-density.$READLENGTH.$GENOME.bed.starch | bgzip > $SAMPLE_NAME.75_20.uniques-density.$READLENGTH.$GENOME.bed.starch.bgz
+tabix -p bed $SAMPLE_NAME.75_20.uniques-density.$READLENGTH.$GENOME.bed.starch.bgz
 
 rm -rf "\$TMPDIR"
 
@@ -524,7 +525,7 @@ if [[ -n "$PROCESSING" ]]; then
 
 set -x -e -o pipefail
 
-echo "Hostname: "11
+echo "Hostname: "
 hostname
 
 echo "START COMPLETION: "

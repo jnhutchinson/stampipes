@@ -29,13 +29,14 @@ files=( \
 )
 
 # list of sequins files
-sequinsfiles=( \
-    "anaquin_subsample/anaquin_kallisto/RnaExpression_genes.tsv" \
-    "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv" \
-    "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info" \
-    "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats" \
-    "anaquin_star/RnaAlign_summary.stats.info" \
-)
+# turned off until we get a sequins flag
+#sequinsfiles=( \
+#    "anaquin_subsample/anaquin_kallisto/RnaExpression_genes.tsv" \
+#    "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv" \
+#    "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info" \
+#    "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats" \
+#    "anaquin_star/RnaAlign_summary.stats.info" \
+#)
 
 # check files
 for FILE in "${files[@]}"; do

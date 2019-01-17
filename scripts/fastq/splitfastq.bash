@@ -25,7 +25,7 @@ echo "Splitting $R1_FASTQ"
 zcat $R1_FASTQ | split -l $LINE_CHUNK -d -a 3 - "$TMPDIR/${SAMPLE_NAME}_R1_"
 date
 
-if [ -n $R1_FASTQ ]; then
+if [ -n $R2_FASTQ ]; then
   echo "Splitting $R2_FASTQ"
   zcat $R2_FASTQ | split -l $LINE_CHUNK -d -a 3 - "$TMPDIR/${SAMPLE_NAME}_R2_"
   date

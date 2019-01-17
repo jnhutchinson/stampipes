@@ -135,6 +135,12 @@ export MAPPABLE_REGIONS=${MAPPABLE_REGIONS:-$GENOME_INDEX.K${READ_LENGTH}.mappab
 export CHROM_SIZES=${CHROM_SIZES:-$GENOME_INDEX.chrom_sizes.bed}
 export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n100.nuclear.starch}
 export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
+export HOTSPOT_PEAKS_DEF=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.peaks.starch
+export HOTSPOT_NPEAKS_DEF=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.narrowpeaks.starch
+export HOTSPOT_NPEAKS_05=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.narrowpeaks.fdr0.05.starch
+export HOTSPOT_PEAKS_05=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.peaks.fdr0.05.starch
+export HOTSPOT_PEAKS_01=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.peaks.fdr0.01.starch
+export HOTSPOT_PEAKS_001=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.peaks.fdr0.001.starch
 
 # hard-coded until we retroactively change aggregation templates to their genome-specific template
 export ALTIUS_MASTERLIST="/net/seq/data/genomes/human/GRCh38/noalts/ref/masterlist_DHSs_WM20180313_all_indexIDs.665samples.txt"
@@ -261,7 +267,7 @@ fi
 # Run Hotspot2
 if [[ ! -s "$HOTSPOT_CALLS" || ! -s "$HOTSPOT_CALLS_001" ]] ; then
 	HOTSPOT_SPOT=$HOTSPOT2_DIR/$HOTSPOT_PREFIX.SPOT.txt
-	jobid=$(sbatch --export=ALL -J "$HOTSPOT_JOBNAME" -o "$HOTSPOT_JOBNAME.o%A" -e "$HOTSPOT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$HOTSPOT_JOBNAME" -o "$HOTSPOT_JOBNAME.o%A" -e "$HOTSPOT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 echo "Hostname: "
@@ -284,6 +290,12 @@ join <(sort "$NUCLEAR_CHR") "$CHROM_SIZES" | sed 's/\\s\\+/\\t/g' > "\$NUCLEAR_C
 hsmerge.sh -f 0.01 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_01
 hsmerge.sh -f 0.001 $HOTSPOT_ALLCALLS $HOTSPOT_CALLS_001
 
+# peaks at FDRs
+cleave_count=\$(cat $HOTSPOT_CLEAVAGES)
+mv $HOTSPOT_PEAKS_DEF $HOTSPOT_PEAKS_05
+mv $HOTSPOT_NPEAKS_DEF $HOTSPOT_NPEAKS_05
+density-peaks.bash \$TMPDIR varWidth_20_${LIBRARY_NAME} $HOTSPOT_CUTCOUNTS $HOTSPOT_CALLS_01 $CHROM_SIZES $HOTSPOT_DENSITY $HOTSPOT_PEAKS_01 \$cleave_count
+density-peaks.bash \$TMPDIR varWidth_20_${LIBRARY_NAME} $HOTSPOT_CUTCOUNTS $HOTSPOT_CALLS_001 $CHROM_SIZES $HOTSPOT_DENSITY $HOTSPOT_PEAKS_001 \$cleave_count
 # create iSPOT
 totalcuts=\$(cat ${HOTSPOT_CLEAVAGES})
 if [[ -n "$ALTIUS_MASTERLIST" ]]; then
@@ -322,7 +334,7 @@ fi
 
 # SPOT score
 if [[ -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.R1.rand.uniques.sorted.spot.info" ]] || [[ ! -n "$PAIRED" && ! -e "$LIBRARY_NAME.$GENOME.rand.uniques.sorted.spot.info" ]]; then
-	jobid=$(sbatch --export=ALL -J "$SPOTSCORE_JOBNAME" -o "$SPOTSCORE_JOBNAME.o%A" -e "$SPOTSCORE_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$SPOTSCORE_JOBNAME" -o "$SPOTSCORE_JOBNAME.o%A" -e "$SPOTSCORE_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -354,7 +366,7 @@ fi
 
 # bam counts
 if [ ! -e $TAGCOUNTS_FILE ]; then
-	jobid=$(sbatch --export=ALL -J "$COUNT_JOBNAME" -o "$COUNT_JOBNAME.o%A" -e "$COUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$COUNT_JOBNAME" -o "$COUNT_JOBNAME.o%A" -e "$COUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=4000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -377,7 +389,7 @@ fi
 
 # adapter counts
 if [[ ! -s "$ADAPTER_COUNT_FILE" ]]; then
-	jobid=$(sbatch --export=ALL -J "$ADAPTERCOUNT_JOBNAME" -o "$ADAPTERCOUNT_JOBNAME.o%A" -e "$ADAPTERCOUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+	jobid=$(sbatch --export=ALL -J "$ADAPTERCOUNT_JOBNAME" -o "$ADAPTERCOUNT_JOBNAME.o%A" -e "$ADAPTERCOUNT_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=10000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
@@ -402,7 +414,7 @@ fi
 
 # preseq
 if [[ ! -s "$PRESEQ_TRGT" ]]; then
-        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__SCRIPT__
+        jobid=$(sbatch --export=ALL -J "$PRESEQ_JOBNAME" -o "$PRESEQ_JOBNAME.o%A" -e "$PRESEQ_JOBNAME.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=4000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
