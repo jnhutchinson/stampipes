@@ -28,7 +28,7 @@ win=75
 bini=20
 
 bams = Channel.from(
-  params.bams.tokenize(',')
+  params.treatment.tokenize(',')
 ).map {
   file(it)
 }.collect()
@@ -256,7 +256,7 @@ process signal_compare {
 
    script : 
    """
-   macs2 bdgcmp -t "${treatment}" -c "${control}" --outdir peaks --o-prefix signal -m FE 
+   macs2 bdgcmp -t "${treatment}" -c "${control}" --outdir peaks --o-prefix signal -m ppois 
    bedtools slop -i peaks/signal_FE.bdg -g "${dataDir}/annotations/GRCh38_no_alts.chrom.sizes" -b 0 | bedClip stdin "${dataDir}/annotations/GRCh38_no_alts.chrom.sizes" peaks/signal_FE.bdg.clip
    LC_COLLATE=C sort -k1,1 -k2,2n peaks/signal_FE.bdg.clip > peaks/signal_FE.bdg.clip.sort
    bedGraphToBigWig peaks/signal_FE.bdg.clip.sort "${dataDir}/annotations/GRCh38_no_alts.chrom.sizes" peaks/signal_FE.bw
