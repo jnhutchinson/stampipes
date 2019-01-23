@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version=2.0.1
+
 cd "$(dirname "$0")"
 
 # Dependencies
@@ -11,7 +13,7 @@ module load python/3.5.1
 
 adapterfile="adapters.txt"
 
-outdir="output"
+outdir="output_$version"
 workdir="work"
 
 # Remove old stuff if necessary
@@ -34,7 +36,6 @@ if [[ (-n "$ADAPTER_P7") && (-n "$ADAPTER_P5") ]]; then
 fi
 
 # Tell LIMS we're starting alignment
-echo \
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -a "$LIMS_API_URL" \
   -t "$LIMS_API_TOKEN" \
@@ -59,7 +60,6 @@ nextflow run \
   -resume
 
 # Upload results
-echo \
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -a "$LIMS_API_URL" \
   -t "$LIMS_API_TOKEN" \

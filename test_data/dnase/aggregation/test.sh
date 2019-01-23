@@ -8,7 +8,7 @@ cd "$here"
 STAMPIPES=$PWD/../../..
 export STAMPIPES
 nextflow run $STAMPIPES/processes/bwa/aggregate/basic.nf \
-  -profile test,docker \
+  -profile test,cluster,modules \
   "$@"
 
 # Verify
@@ -48,7 +48,7 @@ set +e
 cmp_picard "tagcounts.txt" || echo "tagcounts differ"
 cmp_picard "MarkDuplicates.picard" || echo "dups differ"
 cmp_picard "CollectInsertSizeMetrics.picard" || echo "insert differ"
-cmp_picard "subsample.spot.out" || echo "spot differ"
+cmp_picard "r1.spot.out" || echo "spot differ"
 
 cmp_starch "density.starch" || echo "density differ"
 

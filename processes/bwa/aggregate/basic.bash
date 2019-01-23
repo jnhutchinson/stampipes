@@ -26,6 +26,8 @@ export CENTER_SITES=${CENTER_SITES:-$GENOME_INDEX.K${READ_LENGTH}.center_sites.n
 export NUCLEAR_CHR=${NUCLEAR_CHR:-$GENOME_INDEX.nuclear.txt}
 export CHROM_BUCKET=$STAMPIPES_DATA/densities/chrom-buckets.$GENOME.${WIN}_${BINI}.bed.starch
 
+HOTSPOT_INDEX=${HOTSPOT_INDEX:-.}
+
 # Remove old stuff if necessary
 if [[ -n "$REDO_AGGREGATION" ]] ; then
   rm -rf "$outdir"
@@ -37,7 +39,6 @@ if [[ -n "$REDO_AGGREGATION" ]] ; then
 fi
 
 # Tell LIMS we're starting alignment
-echo \
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -a "$LIMS_API_URL" \
   -t "$LIMS_API_TOKEN" \
@@ -55,6 +56,7 @@ nextflow run \
   --chrom_sizes "$CHROM_SIZES" \
   --centers "$CENTER_SITES" \
   --chrom_bucket "$CHROM_BUCKET" \
+  --hotspot_index "$HOTSPOT_INDEX" \
   --outdir "$outdir" \
   --threads 3 \
   -profile cluster,modules \
@@ -64,7 +66,6 @@ nextflow run \
   -resume
 
 # Upload results
-echo \
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -a "$LIMS_API_URL" \
   -t "$LIMS_API_TOKEN" \

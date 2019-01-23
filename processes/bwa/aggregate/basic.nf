@@ -9,6 +9,8 @@ params.dofeatures = false
 
 params.readlength = 36
 
+params.hotspot_index = "."
+
 def helpMessage() {
   log.info"""
     Usage: nextflow run basic.nf \\
@@ -77,7 +79,7 @@ process dups {
       MINIMUM_DISTANCE=300
   """
 }
-marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter }
+marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter; bam_for_diff_peaks }
 
 process filter {
 
@@ -129,6 +131,7 @@ process hotspot2 {
   output:
   file('peaks/filtered*')
   file('peaks/filtered.hotspots.fdr0.05.starch') into hotspot_calls
+  file('peaks/filtered.peaks.fdr0.001.starch') into onepercent_peaks
 
   script:
   """
@@ -413,5 +416,47 @@ process closest_features {
       closest.clean.txt \
     >> prox_dist.info
   done
+  """
+}
+
+/*
+ * Metrics: Hotspot differential index comparison
+ */
+process differential_hotspots {
+
+  publishDir params.outdir
+
+  input:
+  file 'bam' from bam_for_diff_peaks
+  file 'peaks' from onepercent_peaks
+  file 'index' from file(params.hotspot_index)
+
+  output:
+  file 'differential_index_report.tsv'
+
+  when:
+  params.hotspot_index != "."
+
+  script:  // TODO: Use 'shell' feature
+  version = index.toFile().getAbsoluteFile().getParent()
+  diffName = "dhs_index_${version}_differential_peaks"
+  diffPerName = "dhs_index_${version}_differential_peaks_percent"
+  conName = "dhs_index_${version}_constitutive_peaks"
+  conPerName = "dhs_index_${version}_constitutive_peaks_percent"
+
+  """
+  set -e -o pipefail
+  statOverlap=\$(bedops -e 1 "$peaks" "$index" | wc -l)
+  statNoOverlap=\$(bedops -n 1 "$peaks" "$index" | wc -l)
+  total=\$(unstarch "$peaks" | wc -l)
+  statPercOverlap=\$(echo "scale=3; \$statOverlap * 100.0/\$total" | bc -q)
+  statPercNoOverlap=\$(echo "scale=3; \$statNoOverlap * 100.0/\$total" | bc -q)
+
+  {
+    echo -e "$diffName\t\$statNoOverlap"
+    echo -e "$diffPerName\t\$statPercNoOverlap"
+    echo -e "$conName\t\$statOverlap"
+    echo -e "$conPerName\t\$statPercOverlap"
+  } > differential_index_report.tsv
   """
 }
