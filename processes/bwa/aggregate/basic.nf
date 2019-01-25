@@ -149,6 +149,10 @@ process hotspot2 {
   mv filtered.peaks.narrowpeaks.starch filtered.peaks.narrowpeaks.fdr0.05.starch
   mv filtered.peaks.starch filtered.peaks.fdr0.05.starch
 
+  bash \$STAMPIPES/scripts/SPOT/info.sh \
+    filtered.hotspots.fdr0.05.starch hotspot2 filtered.SPOT.txt \
+    > filtered.hotspot2.info
+
   # TODO: Move this to separate process
   hsmerge.sh -f 0.01 filtered.allcalls.starch filtered.hotspots.fdr0.01.starch
   hsmerge.sh -f 0.001 filtered.allcalls.starch filtered.hotspots.fdr0.001.starch
@@ -171,6 +175,7 @@ process spot_score {
 
   output:
   file 'r1.spot.out'
+  file 'r1.hotspot.info'
 
   script:
   """
@@ -190,6 +195,13 @@ process spot_score {
     "${genome_name}" \
     "${params.readlength}" \
     DNaseI
+
+  starch --header r1-both-passes/r1.hotspot.twopass.zscore.wig \
+    > r1.spots.starch
+
+  bash \$STAMPIPES/scripts/SPOT/info.sh \
+    r1.spots.starch hotspot1 r1.spot.out \
+    > r1.hotspot.info
   """
 }
 
