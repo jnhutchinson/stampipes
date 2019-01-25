@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e -o pipefail
 
 version=2.0.1
 
@@ -60,6 +61,9 @@ nextflow run \
   -resume
 
 # Upload results
+( cd "$outdir" \
+  && bash "$STAMPIPES/scripts/bwa/attachfiles_nextflow.bash"
+)
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -a "$LIMS_API_URL" \
   -t "$LIMS_API_TOKEN" \

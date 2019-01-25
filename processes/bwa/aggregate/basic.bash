@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version=2.0.1
+
 cd "$(dirname "$0")"
 
 source "$MODULELOAD"
@@ -13,7 +15,7 @@ if [[ $(wc -w <<< "$BAM_FILES") -gt 1 ]] ; then
 else
   bamfiles=$BAM_FILES
 fi
-outdir="output"
+outdir="output_${version}"
 workdir="work"
 
 WIN=75
@@ -65,6 +67,10 @@ nextflow run \
   -with-timeline nextflow.timeline.html \
   -resume
 
+( cd "$outdir" \
+    && bash "$STAMPIPES/scripts/bwa/aggregate/basic/attachfiles_nextflow.bash" \
+    && bash "$STAMPIPES/scripts/bwa/aggregate/basic/uploadcounts_nextflow.bash"
+)
 # Upload results
 python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -a "$LIMS_API_URL" \
