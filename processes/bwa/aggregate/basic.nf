@@ -427,9 +427,9 @@ process differential_hotspots {
   publishDir params.outdir
 
   input:
-  file 'bam' from bam_for_diff_peaks
-  file 'peaks' from onepercent_peaks
-  file 'index' from file(params.hotspot_index)
+  file bam from bam_for_diff_peaks
+  file peaks from onepercent_peaks
+  file index from file(params.hotspot_index)
 
   output:
   file 'differential_index_report.tsv'
@@ -437,26 +437,26 @@ process differential_hotspots {
   when:
   params.hotspot_index != "."
 
-  script:  // TODO: Use 'shell' feature
-  version = index.toFile().getAbsoluteFile().getParent()
+  shell:
+  version = (new File(params.hotspot_index)).getAbsoluteFile().getParentFile().getName()
   diffName = "dhs_index_${version}_differential_peaks"
   diffPerName = "dhs_index_${version}_differential_peaks_percent"
   conName = "dhs_index_${version}_constitutive_peaks"
   conPerName = "dhs_index_${version}_constitutive_peaks_percent"
 
-  """
+  '''
   set -e -o pipefail
-  statOverlap=\$(bedops -e 1 "$peaks" "$index" | wc -l)
-  statNoOverlap=\$(bedops -n 1 "$peaks" "$index" | wc -l)
-  total=\$(unstarch "$peaks" | wc -l)
-  statPercOverlap=\$(echo "scale=3; \$statOverlap * 100.0/\$total" | bc -q)
-  statPercNoOverlap=\$(echo "scale=3; \$statNoOverlap * 100.0/\$total" | bc -q)
+  statOverlap=$(bedops -e 1 "!{peaks}" "!{index}" | wc -l)
+  statNoOverlap=$(bedops -n 1 "!{peaks}" "!{index}" | wc -l)
+  total=$(unstarch "!{peaks}" | wc -l)
+  statPercOverlap=$(echo "scale=3; $statOverlap * 100.0/$total" | bc -q)
+  statPercNoOverlap=$(echo "scale=3; $statNoOverlap * 100.0/$total" | bc -q)
 
   {
-    echo -e "$diffName\t\$statNoOverlap"
-    echo -e "$diffPerName\t\$statPercNoOverlap"
-    echo -e "$conName\t\$statOverlap"
-    echo -e "$conPerName\t\$statPercOverlap"
+    echo -e "!{diffName}\t$statNoOverlap"
+    echo -e "!{diffPerName}\t$statPercNoOverlap"
+    echo -e "!{conName}\t$statOverlap"
+    echo -e "!{conPerName}\t$statPercOverlap"
   } > differential_index_report.tsv
-  """
+  '''
 }
