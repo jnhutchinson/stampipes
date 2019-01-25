@@ -31,6 +31,7 @@ bams = Channel.from(
   file(it)
 }.collect()
 
+
 process merge {
 
   input:
@@ -57,6 +58,7 @@ process dups {
 
   output:
   file 'marked.bam' into marked_bam
+  file 'marked.bam.bai'
   file 'MarkDuplicates.picard'
 
   script:
@@ -77,6 +79,8 @@ process dups {
       METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
       MINIMUM_DISTANCE=300
+
+  samtools index marked.bam
   """
 }
 marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter; bam_for_diff_peaks }
@@ -290,15 +294,13 @@ process cutcounts {
   unstarch cuts.starch \
   | bedmap --echo --count --delim "\t" allbase.tmp - \
   | awk '{print \$1"\t"\$2"\t"\$3"\tid-"NR"\t"\$4}' \
-  > cutcounts.tmp
+  | starch - > cutcounts.starch
 
-  starch cutcounts.tmp > cutcounts.starch
-
-  awk 'BEGIN{OFS="\t"}{print \$1,\$2,\$3,\$5}' cutcounts.tmp \
-  | grep -v chrM \
-  > wig.tmp
-
-  wigToBigWig -clip wig.tmp "${fai}" cutcounts.bw
+  # Bigwig
+  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+    cutcounts.starch \
+    cutcounts.bw \
+    "${fai}"
 
   # tabix
   unstarch cutcounts.starch | bgzip > cutcounts.bed.bgz
@@ -313,29 +315,88 @@ process density {
   input:
   file filtered_bam from bam_for_density
   file chrom_bucket from file(params.chrom_bucket)
+  file fai from file("${params.genome}.fai")
 
   output:
   file 'density.starch'
+  file 'density.bw'
+  file 'density.bgz'
+  file 'density.bgz.tbi'
+  set(file(filtered_bam), file('density.starch')) into to_normalize
 
-  script:
-  """
+  shell:
+  window_size = 75
+  bin_size = 20
+  scale = 1_000_000
+  '''
   mkfifo density.bed
 
   bam2bed -d \
-  < "${filtered_bam}" \
+  < "!{filtered_bam}" \
   | cut -f1-6 \
-  | awk '{ if( \$6=="+" ){ s=\$2; e=\$2+1 } else { s=\$3-1; e=\$3 } print \$1 "\t" s "\t" e "\tid\t" 1 }' \
+  | awk '{ if( $6=="+" ){ s=$2; e=$2+1 } else { s=$3-1; e=$3 } print $1 "\t" s "\t" e "\tid\t" 1 }' \
   | sort-bed - \
   > density.bed \
   &
 
-  unstarch "${chrom_bucket}" \
+  unstarch "!{chrom_bucket}" \
   | bedmap --faster --echo --count --delim "\t" - density.bed \
-  | awk -v binI=20 -v win=75 \
-        'BEGIN{ halfBin=binI/2; shiftFactor=win-halfBin } { print \$1 "\t" \$2 + shiftFactor "\t" \$3-shiftFactor "\tid\t" i \$4}' \
+  | awk -v "binI=!{bin_size}" -v "win=!{window_size}" \
+        'BEGIN{ halfBin=binI/2; shiftFactor=win-halfBin } { print $1 "\t" $2 + shiftFactor "\t" $3-shiftFactor "\tid\t" i $4}' \
   | starch - \
   > density.starch
-  """
+
+  # Bigwig
+  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+    density.starch \
+    density.bw \
+    "!{fai}" \
+    "!{bin_size}"
+
+  # Tabix
+  unstarch density.starch | bgzip > density.bgz
+  tabix -p bed density.bgz
+  '''
+
+}
+
+process normalize_density {
+  publishDir params.outdir
+
+  input:
+  set(file(filtered_bam), file(density)) from to_normalize
+  file(fai) from file("${params.genome}.fai")
+
+  output:
+  file 'normalized.density.starch'
+  file 'normalized.density.bw'
+  file 'normalized.density.bgz'
+  file 'normalized.density.bgz.tbi'
+
+  shell:
+  bin_size = 20
+  scale = 1_000_000
+  '''
+  # Normalized density
+  unstarch density.starch \
+    | awk -v allcounts=$(samtools view -c !{filtered_bam}) \
+          -v extranuclear_counts=$(samtools view -c "!{filtered_bam}" chrM chrC) \
+          -v scale=!{scale} \
+          'BEGIN{ tagcount=allcounts-extranuclear_counts }
+           { z=$5;
+             n=(z/tagcount)*scale;
+             print $1 "\t" $2 "\t" $3 "\t" $4 "\t" n }' \
+    | starch - > normalized.density.starch
+
+  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+    normalized.density.starch \
+    normalized.density.bw \
+    "!{fai}" \
+    "!{bin_size}"
+
+  unstarch normalized.density.starch | bgzip > normalized.density.bgz
+  tabix -p bed normalized.density.bgz
+  '''
 
 }
 
