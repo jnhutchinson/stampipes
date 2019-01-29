@@ -189,7 +189,7 @@ fi
 
 # featureCounts
 if [ ! -s "feature_counts.txt" ] ; then
-    jobid=$(sbatch --export=ALL -J "$fcounts_job" -o "$fcounts_job.o%A" -e "$fcounts_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__FC__
+    jobid=$(sbatch --export=ALL -J "$fcounts_job" -o "$fcounts_job.o%A" -e "$fcounts_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__FC__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -201,7 +201,7 @@ echo "START FEATURECOUNTS: "
 date
 
     FCOUNTS=featureCounts
-    FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2"
+    FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2 -D 10000"
     \$FCOUNTS \$FCOUNTS_COMMON -t 'exon' -g 'gene_id' -a $ANNOTATION -o feature_counts.txt $GENOME_BAM
 
 echo "FINISH FEATURECOUNTS: "
