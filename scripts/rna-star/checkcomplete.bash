@@ -8,8 +8,7 @@ files=( \
     "${SAMPLE_NAME}.versions.txt" \
     "Aligned.sortedByCoord.out.bam" \
     "Aligned.toTranscriptome.out.bam" \
-    "trimmed/${SAMPLE_NAME}.trimmed.R1.fastq.gz" \
-    "trimmed/${SAMPLE_NAME}.trimmed.R2.fastq.gz"
+    "trimmed/${SAMPLE_NAME}.trimmed.R1.fastq.gz"
 )
 
 for FILE in "${files[@]}"; do
