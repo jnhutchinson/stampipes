@@ -18,7 +18,11 @@ export STARdir="$REFDIR/$STAR_DIR"
 
 TRIMDIR="trimmed/"
 TRIM_R1=$TRIMDIR/${SAMPLE_NAME}.trimmed.R1.fastq.gz
-TRIM_R2=$TRIMDIR/${SAMPLE_NAME}.trimmed.R2.fastq.gz
+if [[ -n "$PAIRED" ]] ; then
+  TRIM_R2=$TRIMDIR/${SAMPLE_NAME}.trimmed.R2.fastq.gz
+else
+  TRIM_R2=
+fi
 mkdir -p "$TRIMDIR"
 
 dataType="str_PE"  # 4 types; str_SE str_PE unstr_SE unstr_PE, truseq is str_PE
@@ -27,6 +31,8 @@ ADAPTER_FILE=${SAMPLE_NAME}.adapters.txt
 VERSION_FILE=${SAMPLE_NAME}.versions.txt
 
 bash "$STAMPIPES/scripts/versions.bash" &> "$VERSION_FILE"
+ADAPTER_P7=${ADAPTER_P7:-NOTAVAILABLE}
+ADAPTER_P5=${ADAPTER_P5:-NOTAVAILABLE}
 if [[ ( -n "$ADAPTER_P7" ) && ( -n "$ADAPTER_P5" ) ]] ; then
   echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > "$ADAPTER_FILE"
 fi
@@ -40,29 +46,33 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   --version_file "$VERSION_FILE"
 
 # Collate FastQ files
-if [[ ( ! -e "$R1_FASTQ" ) || ( ! -e "$R2_FASTQ" ) ]] ; then
+if [[ ( ! -e "$R1_FASTQ" ) || (( -n "$PAIRED" ) && ( ! -e "$R2_FASTQ" )) ]] ; then
   bash "$STAMPIPES/processes/fastq/collate_fastq.bash"
 fi
 
 # Perform trimming
-if [[ ( "$ADAPTER_P7"  == "NOTAVAILABLE" ) || ( "$ADAPTER_P5" == "NOTAVAILABLE" ) ]] ; then
-  # distinguish trimming needs further upstream in the future, for now copy so they always get saved independently
-  cp $R1_FASTQ $TRIM_R1
-  cp $R2_FASTQ $TRIM_R2
-else 
-  if [[ ( ! -e "$TRIM_R1" ) || ( ! -e "$TRIM_R2" ) ]] ; then
-    trim-adapters-illumina -f "$ADAPTER_FILE" \
-      --threads=2 \
-      -1 P5 -2 P7 \
-      "$R1_FASTQ" \
-      "$R2_FASTQ" \
-      "$TRIM_R1.tmp" \
-      "$TRIM_R2.tmp" \
-      &> "$outdir/adapter_trimming.txt"
+if [[ -n "$PAIRED" ]] ; then
+  if [[ ( "$ADAPTER_P7"  == "NOTAVAILABLE" ) || ( "$ADAPTER_P5" == "NOTAVAILABLE" ) ]] ; then
+    # distinguish trimming needs further upstream in the future, for now copy so they always get saved independently
+    cp $R1_FASTQ $TRIM_R1
+    cp $R2_FASTQ $TRIM_R2
+  else
+    if [[ ( ! -e "$TRIM_R1" ) || ( ! -e "$TRIM_R2" ) ]] ; then
+      trim-adapters-illumina -f "$ADAPTER_FILE" \
+        --threads=2 \
+        -1 P5 -2 P7 \
+        "$R1_FASTQ" \
+        "$R2_FASTQ" \
+        "$TRIM_R1.tmp" \
+        "$TRIM_R2.tmp" \
+        &> "$outdir/adapter_trimming.txt"
 
-    mv "$TRIM_R1.tmp" "$TRIM_R1"
-    mv "$TRIM_R2.tmp" "$TRIM_R2"
+      mv "$TRIM_R1.tmp" "$TRIM_R1"
+      mv "$TRIM_R2.tmp" "$TRIM_R2"
+    fi
   fi
+else
+  cp "$R1_FASTQ" "$TRIM_R1"
 fi
 
 jobbase="${SAMPLE_NAME}-ALIGN#${ALIGNMENT_ID}"

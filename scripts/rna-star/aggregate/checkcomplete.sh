@@ -14,7 +14,6 @@ files=( \
     "isoforms.fpkm_tracking" \
     "kallisto.log" \
     "kallisto_adv.log" \
-    "picard.CollectInsertSizes.txt" \
     "picard.MarkDuplicates.txt" \
     "picard.RnaSeqMetrics.txt" \
     "Signal.Unique.both.bw" \
@@ -23,9 +22,14 @@ files=( \
     "adapter_counts.info" \
     "ribosomal_counts.info" \
     "trims.R1.fastq.gz" \
-    "trims.R2.fastq.gz" \
     "kallisto_output/abundance.tsv" \
     "kallisto_output_adv/abundance.tsv" \
+)
+
+# Paired files only exist for paired-end aggregations.
+paired_files=( \
+    "picard.CollectInsertSizes.txt" \
+    "trims.R2.fastq.gz" \
 )
 
 # list of sequins files
@@ -41,10 +45,19 @@ files=( \
 # check files
 for FILE in "${files[@]}"; do
     if [ ! -s $FILE ]; then
-	echo "Missing $FILE"
-	EXIT=1
+        echo "Missing $FILE"
+        EXIT=1
     fi
 done
+
+if [[ -n "$PAIRED" ]] ; then
+    for FILE in "${paired_files[@]}"; do
+        if [ ! -s $FILE ]; then
+            echo "Missing $FILE"
+            EXIT=1
+        fi
+    done
+fi
 
 # check sequins files
 if [[ -n "$SEQUINS_REF" ]]; then
