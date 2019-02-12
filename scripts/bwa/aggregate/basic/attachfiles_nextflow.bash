@@ -25,8 +25,6 @@ function attach_file() {
     --attach_file_type "$filetype"
 }
 
-0cEatta_€kbch_filewdWWdWwWdWn0
-
 $ATTACH_AGGREGATION --attach_directory "$(readlink -f ..)" --attach_file_purpose aggregation-directory
 
 attach_file  marked.bam      all-alignments-bam  bam
