@@ -167,6 +167,8 @@ def get_spot_score(spot_file):
     return {"total_tags": int(stats[0]), "tags_in_hotspots": int(stats[1]), "spot_score": stats[2]}
 
 def get_dup_score(spotdup_file):
+    if not spotdup_file:
+        return None
 
     infile = open(spotdup_file, 'r')
 
