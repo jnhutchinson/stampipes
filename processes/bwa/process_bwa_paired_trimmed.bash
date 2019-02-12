@@ -70,7 +70,7 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -f "$FLOWCELL" \
   --alignment_id "$ALIGNMENT_ID" \
   --flowcell_lane_id "$FLOWCELL_LANE_ID" \
-  --spotfile "$outdir/subsample.spot.out" \
+  --spotfile "$outdir/subsample.r1.spot.out" \
   --countsfile "$outdir/tagcounts.txt" \
   --insertsfile "$outdir/CollectInsertSizeMetrics.picard" \
   --dupsfile "$outdir/MarkDuplicates.picard" \
