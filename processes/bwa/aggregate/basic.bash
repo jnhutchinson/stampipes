@@ -76,7 +76,7 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -a "$LIMS_API_URL" \
   -t "$LIMS_API_TOKEN" \
   --aggregation_id "$AGGREGATION_ID" \
-  --finish_aggregation
+  --complete_aggregation
 
 # TODO: remove below this line
 ####
