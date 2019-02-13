@@ -256,7 +256,8 @@ process preseq {
   script:
   """
   python3 \$STAMPIPES/scripts/bam/mark_dups.py -i "${nuclear_bam}" -o /dev/null --hist dups.hist
-  preseq lc_extrap -hist dups.hist -extrap 1.001e9 -s 1e6 -v > preseq.txt
+  preseq lc_extrap -hist dups.hist -extrap 1.001e9 -s 1e6 -v > preseq.txt \
+  || preseq lc_extrap -hist dups.hist -extrap 1.001e9 -s 1e6 -v > preseq.txt
 
   # write out preseq targets
   bash "\$STAMPIPES/scripts/utility/preseq_targets.sh" preseq.txt preseq_targets.txt
