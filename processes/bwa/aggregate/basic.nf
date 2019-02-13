@@ -237,7 +237,9 @@ process count_adapters {
 
   script:
   """
-  bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${bam}" > adapter.counts.txt
+  bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${bam}" \
+  | sed 's/^/adapter\t/' \
+  > adapter.counts.txt
   """
 }
 
