@@ -74,8 +74,8 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   --countsfile "$outdir/tagcounts.txt" \
   --insertsfile "$outdir/CollectInsertSizeMetrics.picard" \
   --dupsfile "$outdir/MarkDuplicates.picard" \
+  --spotdupfile "$outdir/spotdups.txt" \
   --finish_alignment
-  #--spotdupfile ${SAMPLE_NAME}.rand.uniques.sorted.spotdups.txt \
 
 # TODO: Delete below this line
 ################################## Exit ##################################

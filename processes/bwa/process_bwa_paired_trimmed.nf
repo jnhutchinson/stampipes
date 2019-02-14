@@ -439,6 +439,7 @@ process spot_score {
 
   output:
   file 'subsample.r1.spot.out'
+  file 'spotdups.txt'
 
   script:
   """
@@ -458,6 +459,22 @@ process spot_score {
     "${genome_name}" \
     "${params.readlength}" \
     DNaseI
+
+  # Remove existing duplication marks
+  picard RevertSam \
+    INPUT=subsample.bam \
+    OUTPUT=clear.bam \
+    VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATE_INFORMATION=true SORT_ORDER=coordinate \
+    RESTORE_ORIGINAL_QUALITIES=false REMOVE_ALIGNMENT_INFORMATION=false
+
+	picard MarkDuplicatesWithMateCigar \
+    INPUT=clear.bam \
+    METRICS_FILE=spotdups.txt \
+    OUTPUT=/dev/null \
+    ASSUME_SORTED=true \
+    MINIMUM_DISTANCE=300 \
+    VALIDATION_STRINGENCY=SILENT \
+		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
   """
 }
 
