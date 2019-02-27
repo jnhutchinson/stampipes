@@ -33,6 +33,9 @@ upload r1.hotspot.info
 # Upload Adapter stats
 upload "adapter.counts.txt"
 
+# Upload differential peaks stats
+maybe_upload "differential_index_report.tsv"
+
 # Upload Preseq stats
 maybe_upload "preseq_targets.txt"
 

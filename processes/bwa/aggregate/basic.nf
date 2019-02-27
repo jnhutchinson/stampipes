@@ -515,10 +515,10 @@ process differential_hotspots {
 
   shell:
   version = (new File(params.hotspot_index)).getAbsoluteFile().getParentFile().getName()
-  diffName = "dhs_index_${version}_differential_peaks"
-  diffPerName = "dhs_index_${version}_differential_peaks_percent"
-  conName = "dhs_index_${version}_constitutive_peaks"
-  conPerName = "dhs_index_${version}_constitutive_peaks_percent"
+  diffName = "dhsindex_${version}_differential_peaks"
+  diffPerName = "dhsindex_${version}_differential_peaks_percent"
+  conName = "dhsindex_${version}_constitutive_peaks"
+  conPerName = "dhsindex_${version}_constitutive_peaks_percent"
 
   '''
   set -e -o pipefail
