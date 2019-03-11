@@ -15,7 +15,7 @@ if [[ -n "$SPOT" ]]; then
   if [[ -f "$SPOT" ]]; then
     tmp=$(awk 'END{print $NF}' "$SPOT")
     # Check to make sure we read a number (must accept 0 <= x <= 1)
-    if [[ ! "$tmp" =~ ^[0-1]?\.[0-9]+$ ]]; then
+    if [[ ! "$tmp" =~ ^[0-1]?(.[0-9]+)?$ ]]; then
       echo "Couldn't read SPOT file $SPOT" >&2
       exit 1
     fi
