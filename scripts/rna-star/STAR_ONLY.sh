@@ -31,7 +31,7 @@ STARparCommon=" --genomeDir $STARgenomeDir  --readFilesIn $read1 $read2   --outS
  --alignSJoverhangMin 8   --alignSJDBoverhangMin 1 --sjdbScore 1 --readFilesCommand zcat"
 
 # STAR parameters: run-time, controlled by DCC
-STARparRun=" --runThreadN $nThreadsSTAR --genomeLoad LoadAndRemove  --limitBAMsortRAM 10000000000"
+STARparRun=" --runThreadN $nThreadsSTAR --limitBAMsortRAM 10000000000"
 
 # STAR parameters: type of BAM output: quantification or sorted BAM or both
 #     OPTION: sorted BAM output
