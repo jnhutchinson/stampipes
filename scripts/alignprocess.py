@@ -4,6 +4,7 @@ import sys
 import argparse
 import logging
 import requests
+import textwrap
 from collections import OrderedDict
 try:
     from concurrent.futures import ThreadPoolExecutor
@@ -243,16 +244,37 @@ class ProcessSetUp(object):
                full_path = os.path.join(self.align_base_dir, alignment["align_dir"], "last_complete_job_id.txt")
 
            alignment_string = alignment_string + " " + full_path
-        aggregationrun = "sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 \$upload_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG2__\n#!/bin/bash\npython /home/solexa/stampipes-hpc/scripts/aggregateprocessflowcell.py --flowcell %s --outfile run_aggregations.bash\nbash run_aggregations.bash\n__AUTOAGG2__" % (aaname_run,aaname_run,aaname_run,self.qsub_queue,flowcell_label)
-        sleep = "sleep 60"
         upload_count = "upload_count=\$(" + alignment_string + " | wc -l)"
         upload_dependencies = "upload_dependencies=\$(" + alignment_string + " | tr \'\\n\' \',\' | sed -e \'s/,$//g\'| sed -e \'s/,/,afterok:/g\' | sed -e \'s/^/--dependency=afterok:/g\')"
         if_statement = "if [ \$upload_count == " + str(len(alignments)) + " ]\nthen\n%s\nfi\n" % aggregationrun
         aggregationscript = sleep + "\n" + upload_count + "\n" + upload_dependencies + "\n\n" + if_statement
 
-        outfile.write("cd /net/seq/data/flowcells/FC%s_*\n" % flowcell_label) # replace me with actual path
-        outfile.write("sentinel_dependencies=$(echo $PROCESSING | sed -e \'s/,/,afterok:/g\' | sed -e \'s/^,afterok/--dependency=afterok/g\')\n")
-        outfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 $sentinel_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG1__\n#!/bin/bash\n%s\n__AUTOAGG1__\n" % (aaname_sentinel, aaname_sentinel, aaname_sentinel, self.qsub_queue, aggregationscript))
+        contents = textwrap.dedent("""\
+                   cd /net/seq/data/flowcells/FC{label}_*
+                   sentinel_dependencies=$(echo $PROCESSING | sed -e 's/,/,afterok:/g' | sed -e 's/^,afterok/--dependency=afterok/g')
+                   sbatch --export=ALL -J {job_name} -o {job_name}.o%A -e {job_name}.e%A --partition={queue} --cpus-per-task=1 --ntasks=1 $sentinel_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG1__
+                   #!/bin/bash
+                   sleep 60
+                   {upload_count}
+                   {upload_dependencies}
+                   if [ \$upload_count == {count} ]
+                   then
+                   sbatch --export=ALL -J {job2} -o {job2}.o%A -e {job2}.e%A --partition={queue} --cpus-per-task=1 --ntasks=1 \$upload_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG2__
+                   #!/bin/bash
+                   python /home/solexa/stampipes-hpc/scripts/aggregateprocessflowcell.py --flowcell {label} --outfile run_aggregations.bash
+                   bash run_aggregations.bash
+                   __AUTOAGG2__
+                   fi
+                   __AUTOAGG1__""".format(label=flowcell_label,
+                                          job_name=aaname_sentinel,
+                                          queue=self.qsub_queue,
+                                          count=len(alignments),
+                                          upload_count=upload_count,
+                                          upload_dependencies=upload_dependencies,
+                                          job2=aaname_run))
+
+
+        outfile.write(contents)
         outfile.close()
 
     def add_script(self, align_id, processing_info, script_file, sample_name):
