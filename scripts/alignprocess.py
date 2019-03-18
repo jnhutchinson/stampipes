@@ -225,7 +225,6 @@ class ProcessSetUp(object):
 
     def auto_aggregation_script(self,flowcell_label,alignments):
         aaname_sentinel = "auto_agg_sentinel.%s" % (flowcell_label)
-        aaname_run = "auto_agg_run.%s" % (flowcell_label)
 
         if not self.outfile:
             logging.debug("Writing script to stdout")
@@ -234,45 +233,16 @@ class ProcessSetUp(object):
             logging.debug("Logging script to %s" % self.outfile)
             outfile = open(self.outfile, 'a')
 
-        alignment_string = "cat"
-        for a in alignments:
-           aln = self.get_align_process_info(a["id"])
-           lane = aln["libraries"][0]
-           alignment = lane["alignments"][0]
-           full_path = os.path.join(lane["directory"], alignment["align_dir"], "last_complete_job_id.txt")
-           if self.align_base_dir:
-               full_path = os.path.join(self.align_base_dir, alignment["align_dir"], "last_complete_job_id.txt")
-
-           alignment_string = alignment_string + " " + full_path
-        upload_count = "upload_count=\$(" + alignment_string + " | wc -l)"
-        upload_dependencies = "upload_dependencies=\$(" + alignment_string + " | tr \'\\n\' \',\' | sed -e \'s/,$//g\'| sed -e \'s/,/,afterok:/g\' | sed -e \'s/^/--dependency=afterok:/g\')"
-        if_statement = "if [ \$upload_count == " + str(len(alignments)) + " ]\nthen\n%s\nfi\n" % aggregationrun
-        aggregationscript = sleep + "\n" + upload_count + "\n" + upload_dependencies + "\n\n" + if_statement
-
         contents = textwrap.dedent("""\
                    cd /net/seq/data/flowcells/FC{label}_*
                    sentinel_dependencies=$(echo $PROCESSING | sed -e 's/,/,afterok:/g' | sed -e 's/^,afterok/--dependency=afterok/g')
                    sbatch --export=ALL -J {job_name} -o {job_name}.o%A -e {job_name}.e%A --partition={queue} --cpus-per-task=1 --ntasks=1 $sentinel_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG1__
                    #!/bin/bash
-                   sleep 60
-                   {upload_count}
-                   {upload_dependencies}
-                   if [ \$upload_count == {count} ]
-                   then
-                   sbatch --export=ALL -J {job2} -o {job2}.o%A -e {job2}.e%A --partition={queue} --cpus-per-task=1 --ntasks=1 \$upload_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG2__
-                   #!/bin/bash
                    python /home/solexa/stampipes-hpc/scripts/aggregateprocessflowcell.py --flowcell {label} --outfile run_aggregations.bash
                    bash run_aggregations.bash
-                   __AUTOAGG2__
-                   fi
                    __AUTOAGG1__""".format(label=flowcell_label,
                                           job_name=aaname_sentinel,
-                                          queue=self.qsub_queue,
-                                          count=len(alignments),
-                                          upload_count=upload_count,
-                                          upload_dependencies=upload_dependencies,
-                                          job2=aaname_run))
-
+                                          queue=self.qsub_queue)
 
         outfile.write(contents)
         outfile.close()
