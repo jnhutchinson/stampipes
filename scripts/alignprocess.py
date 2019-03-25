@@ -242,7 +242,7 @@ class ProcessSetUp(object):
                    bash run_aggregations.bash
                    __AUTOAGG1__""".format(label=flowcell_label,
                                           job_name=aaname_sentinel,
-                                          queue=self.qsub_queue)
+                                          queue=self.qsub_queue))
 
         outfile.write(contents)
         outfile.close()
