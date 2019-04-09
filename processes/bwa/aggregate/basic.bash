@@ -59,6 +59,7 @@ nextflow run \
   --centers "$CENTER_SITES" \
   --chrom_bucket "$CHROM_BUCKET" \
   --hotspot_index "$HOTSPOT_INDEX" \
+  --bias "$STAMPIPES_DATA/footprints/vierstra_et_al.txt" \
   --outdir "$outdir" \
   --threads 3 \
   -profile cluster,modules \
