@@ -9,6 +9,7 @@ dependencies:
   - ucsc-wigtobigwig
   - bedops
   - Cython
+  - samtools
   - tabix
   - pip:
     - numpy>=1.10
@@ -18,5 +19,5 @@ dependencies:
     - statsmodels
     - multiprocessing
     - matplotlib
-    - "git+https://github.com/jvierstra/genome-tools"
-    - "git+https://github.com/jvierstra/footprint-tools"
+    - "git+https://github.com/jvierstra/genome-tools@5e3cc51"
+    - "git+https://github.com/jvierstra/footprint-tools@914923e"

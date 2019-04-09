@@ -35,6 +35,7 @@ bams = Channel.from(
 
 
 process merge {
+  label "modules"
 
   input:
   file 'in*.bam' from bams
@@ -52,6 +53,7 @@ process merge {
 
 // TODO: single end
 process dups {
+  label "modules"
   publishDir params.outdir
   memory '16 GB'
 
@@ -88,6 +90,7 @@ process dups {
 marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter; bam_for_diff_peaks }
 
 process filter {
+  label "modules"
 
   publishDir params.outdir
 
@@ -106,6 +109,7 @@ process filter {
 filtered_bam.into { bam_for_hotspot2; bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
 
 process filter_nuclear {
+  label "modules"
   input:
   file bam from bam_for_nuclear
   file nuclear_chroms from file("${params.genome}.nuclear.txt")
@@ -123,6 +127,7 @@ process filter_nuclear {
 }
 
 process hotspot2 {
+  label "modules"
 
   publishDir "${params.outdir}"
   container "fwip/hotspot2:latest"
@@ -173,6 +178,7 @@ process hotspot2 {
 }
 
 process spot_score {
+  label "modules"
   publishDir params.outdir
 
   input:
@@ -213,6 +219,7 @@ process spot_score {
 }
 
 process bam_counts {
+  label "modules"
   publishDir params.outdir
 
   input:
@@ -230,6 +237,7 @@ process bam_counts {
 }
 
 process count_adapters {
+  label "modules"
   publishDir params.outdir
 
   input:
@@ -247,6 +255,7 @@ process count_adapters {
 }
 
 process preseq {
+  label "modules"
   publishDir params.outdir
   input:
   file nuclear_bam
@@ -268,6 +277,7 @@ process preseq {
 }
 
 process cutcounts {
+  label "modules"
 
   publishDir params.outdir
 
@@ -315,6 +325,7 @@ process cutcounts {
 }
 
 process density {
+  label "modules"
 
   publishDir params.outdir
 
@@ -367,6 +378,7 @@ process density {
 }
 
 process normalize_density {
+  label "modules"
   publishDir params.outdir
 
   input:
@@ -407,6 +419,7 @@ process normalize_density {
 }
 
 process insert_sizes {
+  label "modules"
 
   publishDir params.outdir
 
@@ -436,6 +449,7 @@ process insert_sizes {
 }
 
 process motif_matrix {
+  label "modules"
 
   publishDir params.outdir
 
@@ -459,6 +473,7 @@ process motif_matrix {
 }
 
 process closest_features {
+  label "modules"
 
   publishDir params.outdir
 
@@ -502,6 +517,7 @@ process closest_features {
  * Metrics: Hotspot differential index comparison
  */
 process differential_hotspots {
+  label "modules"
 
   publishDir params.outdir
 
@@ -563,14 +579,14 @@ process learn_dispersion {
   file bias from file(params.bias)
 
   output:
-  set file('dm.json'), file(bam), file ("$bam.bai") into dispersion
+  set file('dm.json'), file(bam), file ("${bam}.bai") into dispersion
 
   script:
   """
   samtools index "$bam"
 
   # TODO: Use nuclear file
-  unstarch $starch \
+  unstarch $spots \
   | grep -v "_random" \
   | grep -v "chrUn" \
   | grep -v "chrM" \
@@ -592,7 +608,7 @@ process make_intervals {
 
   label "footprints"
   input:
-  file starch
+  file starch from hotspot_calls
 
   output:
   file 'chunk_*' into intervals mode flatten
@@ -617,7 +633,7 @@ process compute_deviation {
   input:
   set file(interval), file(dispersion), file(bam), file(bai) from intervals.combine(dispersion)
   file(bias) from file(params.bias)
-  file(ref) from file(params.reference)
+  file(ref) from file(params.genome)
 
   output:
   file 'deviation.out' into deviations
