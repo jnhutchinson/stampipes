@@ -12,6 +12,7 @@ params.readlength = 36
 params.hotspot_index = "."
 
 params.bias = ""
+params.chunksize = 5000
 
 def helpMessage() {
   log.info"""
@@ -572,7 +573,7 @@ process learn_dispersion {
   params.bias != ""
 
   input:
-  file ref from file(params.genome)
+  file ref from file("${params.genome}.fa")
   file bam from bam_for_footprints
   //file bai
   file spots from hotspot_calls_for_bias
@@ -633,7 +634,7 @@ process compute_deviation {
   input:
   set file(interval), file(dispersion), file(bam), file(bai) from intervals.combine(dispersion)
   file(bias) from file(params.bias)
-  file(ref) from file(params.genome)
+  file(ref) from file("${params.genome}.fa")
 
   output:
   file 'deviation.out' into deviations
