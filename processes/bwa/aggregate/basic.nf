@@ -11,6 +11,9 @@ params.readlength = 36
 
 params.hotspot_index = "."
 
+params.bias = ""
+params.chunksize = 5000
+
 def helpMessage() {
   log.info"""
     Usage: nextflow run basic.nf \\
@@ -33,6 +36,7 @@ bams = Channel.from(
 
 
 process merge {
+  label "modules"
 
   input:
   file 'in*.bam' from bams
@@ -50,6 +54,7 @@ process merge {
 
 // TODO: single end
 process dups {
+  label "modules"
   publishDir params.outdir
   memory '16 GB'
 
@@ -86,6 +91,7 @@ process dups {
 marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter; bam_for_diff_peaks }
 
 process filter {
+  label "modules"
 
   publishDir params.outdir
 
@@ -101,9 +107,10 @@ process filter {
   samtools view -b -F "${flag}" marked.bam > filtered.bam
   """
 }
-filtered_bam.into { bam_for_hotspot2; bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear }
+filtered_bam.into { bam_for_hotspot2; bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
 
 process filter_nuclear {
+  label "modules"
   input:
   file bam from bam_for_nuclear
   file nuclear_chroms from file("${params.genome}.nuclear.txt")
@@ -121,6 +128,7 @@ process filter_nuclear {
 }
 
 process hotspot2 {
+  label "modules"
 
   publishDir "${params.outdir}"
   container "fwip/hotspot2:latest"
@@ -135,6 +143,7 @@ process hotspot2 {
   output:
   file('peaks/filtered*')
   file('peaks/filtered.hotspots.fdr0.05.starch') into hotspot_calls
+  file('peaks/filtered.hotspots.fdr0.05.starch') into hotspot_calls_for_bias
   file('peaks/filtered.peaks.fdr0.001.starch') into onepercent_peaks
 
   script:
@@ -170,6 +179,7 @@ process hotspot2 {
 }
 
 process spot_score {
+  label "modules"
   publishDir params.outdir
 
   input:
@@ -210,6 +220,7 @@ process spot_score {
 }
 
 process bam_counts {
+  label "modules"
   publishDir params.outdir
 
   input:
@@ -227,6 +238,7 @@ process bam_counts {
 }
 
 process count_adapters {
+  label "modules"
   publishDir params.outdir
 
   input:
@@ -244,6 +256,7 @@ process count_adapters {
 }
 
 process preseq {
+  label "modules"
   publishDir params.outdir
   input:
   file nuclear_bam
@@ -265,6 +278,7 @@ process preseq {
 }
 
 process cutcounts {
+  label "modules"
 
   publishDir params.outdir
 
@@ -312,6 +326,7 @@ process cutcounts {
 }
 
 process density {
+  label "modules"
 
   publishDir params.outdir
 
@@ -364,6 +379,7 @@ process density {
 }
 
 process normalize_density {
+  label "modules"
   publishDir params.outdir
 
   input:
@@ -404,6 +420,7 @@ process normalize_density {
 }
 
 process insert_sizes {
+  label "modules"
 
   publishDir params.outdir
 
@@ -433,6 +450,7 @@ process insert_sizes {
 }
 
 process motif_matrix {
+  label "modules"
 
   publishDir params.outdir
 
@@ -456,6 +474,7 @@ process motif_matrix {
 }
 
 process closest_features {
+  label "modules"
 
   publishDir params.outdir
 
@@ -499,6 +518,7 @@ process closest_features {
  * Metrics: Hotspot differential index comparison
  */
 process differential_hotspots {
+  label "modules"
 
   publishDir params.outdir
 
@@ -535,4 +555,185 @@ process differential_hotspots {
     echo -e "!{conPerName}\t$statPercOverlap"
   } > differential_index_report.tsv
   '''
+}
+
+
+/*
+ * Footprint calling
+ */
+process learn_dispersion {
+
+  label "footprints"
+  publishDir params.outdir
+
+  memory = '8 GB'
+  cpus = 8
+
+  when:
+  params.bias != ""
+
+  input:
+  file ref from file("${params.genome}.fa")
+  file bam from bam_for_footprints
+  //file bai
+  file spots from hotspot_calls_for_bias
+  file bias from file(params.bias)
+
+  output:
+  set file('dm.json'), file(bam), file ("${bam}.bai") into dispersion
+
+  script:
+  """
+  samtools index "$bam"
+
+  # TODO: Use nuclear file
+  unstarch $spots \
+  | grep -v "_random" \
+  | grep -v "chrUn" \
+  | grep -v "chrM" \
+  > intervals.bed
+
+  ftd-learn-dispersion-model \
+    --bm $bias \
+    --half-win-width 5 \
+    --processors 8 \
+    $bam \
+    $ref \
+    intervals.bed \
+  > dm.json
+  """.stripIndent()
+
+}
+
+process make_intervals {
+
+  label "footprints"
+  input:
+  file starch from hotspot_calls
+
+  output:
+  file 'chunk_*' into intervals mode flatten
+
+  script:
+  """
+  unstarch "$starch" \
+  | grep -v "_random" \
+  | grep -v "chrUn" \
+  | grep -v "chrM" \
+  | split -l "$params.chunksize" -a 4 -d - chunk_
+  """.stripIndent()
+
+}
+
+process compute_deviation {
+
+  label "footprints"
+  memory = '8 GB'
+  cpus = 4
+
+  input:
+  set file(interval), file(dispersion), file(bam), file(bai) from intervals.combine(dispersion)
+  file(bias) from file(params.bias)
+  file(ref) from file("${params.genome}.fa")
+
+  output:
+  file 'deviation.out' into deviations
+
+  script:
+  """
+  ftd-compute-deviation \
+  --bm "$bias" \
+  --half-win-width 5 \
+  --smooth-half-win-width 50 \
+  --smooth-clip 0.01 \
+  --dm "$dispersion" \
+  --fdr-shuffle-n 50 \
+  --processors 4 \
+  "$bam" \
+  "$ref" \
+  "$interval" \
+  | sort --buffer-size=8G -k1,1 -k2,2n \
+  > deviation.out
+  """.stripIndent()
+}
+
+process merge_deviation {
+
+  label "footprints"
+  memory = "32 GB"
+  cpus = 1
+
+  when:
+  params.bias != ""
+
+  input:
+  file 'chunk_*' from deviations.collect()
+
+  output:
+  file 'interval.all.bedgraph' into merged_interval
+
+  script:
+  """
+  echo chunk_*
+  sort -k1,1 -k2,2n -S 32G -m chunk_* > interval.all.bedgraph
+  """.stripIndent()
+}
+
+process working_tracks {
+
+  label "footprints"
+  memory = '32 GB'
+  cpus = 1
+
+  publishDir params.outdir
+
+  input:
+  file merged_interval
+
+  output:
+  file 'interval.all.bedgraph' into bedgraph
+  file 'interval.all.bedgraph.starch'
+  file 'interval.all.bedgraph.gz'
+  file 'interval.all.bedgraph.gz.tbi'
+
+  script:
+  """
+  sort-bed "$merged_interval" | starch - > interval.all.bedgraph.starch
+  bgzip -c "$merged_interval" > interval.all.bedgraph.gz
+  tabix -0 -p bed interval.all.bedgraph.gz
+  """.stripIndent()
+
+}
+
+thresholds = Channel.from(0.2, 0.1, 0.05, 0.01, 0.001, 0.0001)
+
+process compute_footprints {
+
+  label "footprints"
+  memory = '8 GB'
+  cpus = 1
+
+  publishDir params.outdir
+
+  input:
+  set file(merged_interval), val(threshold) from merged_interval.combine(thresholds)
+
+  output:
+  file "interval.all.fps.${threshold}.bed.gz"
+  file "interval.all.fps.${threshold}.bed.gz.tbi"
+
+  script:
+  """
+  output=interval.all.fps.${threshold}.bed
+  cat "${merged_interval}" \
+  | awk -v OFS="\t" -v thresh="${threshold}" '\$8 <= thresh { print \$1, \$2-3, \$3+3; }' \
+	| sort-bed --max-mem 8G - \
+	| bedops -m - \
+	| awk -v OFS="\t" -v thresh="${threshold}" '{ \$4="."; \$5=thresh; print; }' \
+  > \$output
+
+  bgzip -c "\$output" > "\$output.gz"
+  tabix -0 -p bed "\$output.gz"
+  """.stripIndent()
+
 }

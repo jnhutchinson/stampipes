@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=2.0.3
+version=2.1.0
 
 cd "$(dirname "$0")"
 
@@ -9,6 +9,7 @@ module purge
 module load jdk
 module load nextflow
 module load python/3.5.1
+module load anaconda/2.1.0-dev
 
 if [[ $(wc -w <<< "$BAM_FILES") -gt 1 ]] ; then
   bamfiles="$(sed 's/\s\+/,/g' <<< "$BAM_FILES")"
@@ -59,6 +60,7 @@ nextflow run \
   --centers "$CENTER_SITES" \
   --chrom_bucket "$CHROM_BUCKET" \
   --hotspot_index "$HOTSPOT_INDEX" \
+  --bias "$STAMPIPES_DATA/footprints/vierstra_et_al.txt" \
   --outdir "$outdir" \
   --threads 3 \
   -profile cluster,modules \
