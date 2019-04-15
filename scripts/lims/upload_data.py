@@ -221,35 +221,25 @@ def url_join(*args):
 class UploadLIMS(object):
 
     def __init__(self, api_url, token):
-        self.api_url = api_url.rstrip('/')
-        self.token = token
-        self.headers = {'Authorization': "Token %s" % token}
-        self.fastqc_tags = None
-        self.count_types = {}
-        self.flowcelllane_contenttype = None
-        self.alignment_contenttype = None
-        self.aggregation_contenttype = None
-        self.flowcell_lane_cache = {}
-        self.alignment_counts = {}
-        self.picard_metrics = None
-        self.fastqc_counts = {}
-        self.session = requests.Session()
-        self.session.headers.update({'Authorization': "Token %s" % self.token})
-        self.cache = {}
-
-    def get(self, url, use_cache=True):
-        if not use_cache:
-            return self.session.get(url)
-        if url not in self.cache:
-            self.cache[url] = self.session.get(url)
-        return self.cache[url]
+       self.api_url = api_url.rstrip('/')
+       self.token = token
+       self.headers = {'Authorization': "Token %s" % token}
+       self.fastqc_tags = None
+       self.count_types = {}
+       self.flowcelllane_contenttype = None
+       self.alignment_contenttype = None
+       self.aggregation_contenttype = None
+       self.flowcell_lane_cache = {}
+       self.alignment_counts = {}
+       self.picard_metrics = None
+       self.fastqc_counts = {}
 
     def get_single_result(self, fetch_url, field=None):
         """
         Using a list API url that should bring up a single item, retrieve that single item if it exists.
         """
 
-        fetch_results = self.session.get(fetch_url)
+        fetch_results = requests.get(fetch_url, headers = self.headers)
 
         if fetch_results.ok:
             results = fetch_results.json()
@@ -279,12 +269,12 @@ class UploadLIMS(object):
             log.error("Failure to reset flowcell cache for %s" % flowcell)
             return
 
-        log.debug(self.session.post(url_join(url, "clear_cache/")).json())
+        log.debug(requests.post(url_join(url, "clear_cache/"), headers = self.headers).json())
 
     def clear_alignment_stats(self, alignment_id):
         url = "flowcell_lane_alignment/%d/clear_stats/" % alignment_id
         log.debug("Clearing stats: %s" % url)
-        results = self.session.post("%s/%s" % (self.api_url, url))
+        results = requests.post("%s/%s" % (self.api_url, url), headers = self.headers)
 
         if results.ok:
            log.info(results.json())
@@ -294,7 +284,7 @@ class UploadLIMS(object):
     def clear_aggregation_stats(self, aggregation_id):
         url = "aggregation/%d/clear_stats/" % aggregation_id
         log.debug("Clearing stats: %s" % url)
-        results = self.session.post("%s/%s" % (self.api_url, url))
+        results = requests.post("%s/%s" % (self.api_url, url), headers = self.headers)
 
         if results.ok:
            log.info(results.json())
@@ -306,7 +296,8 @@ class UploadLIMS(object):
         data = {
             "processing_started": datetime.datetime.now(),
         }
-        results = self.session.patch("%s/%s" % (self.api_url, url),
+        results = requests.patch("%s/%s" % (self.api_url, url),
+                                 headers=self.headers,
                                  data=data)
         if results.ok:
             log.info(results.json())
@@ -321,7 +312,7 @@ class UploadLIMS(object):
             "needs_reprocessing": False, 
         }
 
-        results = self.session.patch("%s/%s" % (self.api_url, url), data=data)
+        results = requests.patch("%s/%s" % (self.api_url, url), headers = self.headers, data = data)
 
         if results.ok:
             log.info(results.json())
@@ -334,11 +325,11 @@ class UploadLIMS(object):
            tags_url = '%s/fastqc_tag/' % self.api_url
            tags = list()
 
-           tags_results = self.get(tags_url).json()
+           tags_results = requests.get(tags_url, headers = self.headers).json()
            tags.extend(tags_results['results'])
 
            while tags_results['next']:
-               tags_results = self.get(tags_results['next']).json()
+               tags_results = requests.get(tags_results['next'], headers = self.headers).json()
                tags.extend(tags_results['results'])
 
            self.fastqc_tags = dict([(tag['slug'], tag) for tag in tags])
@@ -351,11 +342,11 @@ class UploadLIMS(object):
            metrics_url = '%s/picard_metric/' % self.api_url
            picard_metrics = list()
 
-           metrics_results = self.get(metrics_url).json()
+           metrics_results = requests.get(metrics_url, headers = self.headers).json()
            picard_metrics.extend(metrics_results['results'])
 
            while metrics_results['next']:
-               metrics_results = self.get(metrics_results['next']).json()
+               metrics_results = requests.get(metrics_results['next'], headers = self.headers).json()
                picard_metrics.extend(metrics_results['results'])
 
            self.picard_metrics = dict([(metric['name'], metric) for metric in picard_metrics])
@@ -391,11 +382,11 @@ class UploadLIMS(object):
            tags_url = '%s/fastqc_tag/' % self.api_url
            tags = list()
 
-           tags_results = self.get(tags_url).json()
+           tags_results = requests.get(tags_url, headers = self.headers).json()
            tags.extend(tags_results['results'])
 
            while tags_results['next']:
-               tags_results = self.get(tags_results['next']).json()
+               tags_results = requests.get(tags_results['next'], headers = self.headers).json()
                tags.extend(tags_results['results'])
 
            self.fastqc_tags = dict([(tag['slug'], tag) for tag in tags])
@@ -408,11 +399,11 @@ class UploadLIMS(object):
            metrics_url = '%s/picard_metric/' % self.api_url
            picard_metrics = list()
 
-           metrics_results = self.get(metrics_url).json()
+           metrics_results = requests.get(metrics_url, headers = self.headers).json()
            picard_metrics.extend(metrics_results['results'])
 
            while metrics_results['next']:
-               metrics_results = self.get(metrics_results['next']).json()
+               metrics_results = requests.get(metrics_results['next'], headers = self.headers).json()
                picard_metrics.extend(metrics_results['results'])
 
            self.picard_metrics = dict([(metric['name'], metric) for metric in picard_metrics])
@@ -448,11 +439,11 @@ class UploadLIMS(object):
            tags_url = '%s/fastqc_tag/' % self.api_url
            tags = list()
 
-           tags_results = self.get(tags_url).json()
+           tags_results = requests.get(tags_url, headers = self.headers).json()
            tags.extend(tags_results['results'])
 
            while tags_results['next']:
-               tags_results = self.get(tags_results['next']).json()
+               tags_results = requests.get(tags_results['next'], headers = self.headers).json()
                tags.extend(tags_results['results'])
 
            self.fastqc_tags = dict([(tag['slug'], tag) for tag in tags])
@@ -465,11 +456,11 @@ class UploadLIMS(object):
            metrics_url = '%s/picard_metric/' % self.api_url
            picard_metrics = list()
 
-           metrics_results = self.get(metrics_url).json()
+           metrics_results = requests.get(metrics_url, headers = self.headers).json()
            picard_metrics.extend(metrics_results['results'])
 
            while metrics_results['next']:
-               metrics_results = self.get(metrics_results['next']).json()
+               metrics_results = requests.get(metrics_results['next'], headers = self.headers).json()
                picard_metrics.extend(metrics_results['results'])
 
            self.picard_metrics = dict([(metric['name'], metric) for metric in picard_metrics])
@@ -508,8 +499,7 @@ class UploadLIMS(object):
         elif purpose:
             log.debug("File purpose: %s" % purpose)
 
-        check_exist_url = "%s/directory/?object_id=%d&content_type_id=%d&purpose=%d" % (
-            self.api_url, object_id, contenttype, purpose )
+        check_exist_url = "%s/directory/?path=%s" % (self.api_url, path)
         exists = self.get_single_result(check_exist_url)
 
         if exists:
@@ -526,10 +516,10 @@ class UploadLIMS(object):
 
         if exists:
             log.info("Updating information for directory %s" % path)
-            result = self.session.put(data['url'], data = data)
+            result = requests.put(data['url'], headers = self.headers, data = data)
         else:
             log.info("Uploading information for directory %s" % path)
-            result = self.session.post("%s/directory/" % self.api_url, data = data)
+            result = requests.post("%s/directory/" % self.api_url, headers = self.headers, data = data)
 
         if not result.ok:
             log.error("Could not upload directory %s" % path)
@@ -569,8 +559,7 @@ class UploadLIMS(object):
             log.debug("File Type: %s" % ftype)
 
         # when checking, replace '+' character with API accessible escape
-        check_exist_url = "%s/file/?object_id=%d&content_type_id=%d&purpose=%d&file_type=%d" % (
-            self.api_url, object_id, contenttype, purpose, ftype)
+        check_exist_url = "%s/file/?path=%s" % (self.api_url, path.replace("+","%2B"))
         exists = self.get_single_result(check_exist_url)
 
 
@@ -583,7 +572,7 @@ class UploadLIMS(object):
 
         # TODO: Make time-checking work!
         # Current issue: sub-second precision.
-        if skip_md5_check and exists and exists["size_bytes"] == file_size and exists["path"] == path:#and last_modified == recorded_mtime:
+        if skip_md5_check and exists and exists["size_bytes"] == file_size :#and last_modified == recorded_mtime:
             log.info("File exists and matches recorded size, skipping %s" % path)
             return
 
@@ -606,10 +595,10 @@ class UploadLIMS(object):
 
         if exists:
             log.info("Updating information for file %s" % path)
-            result = self.session.put(exists['url'], data = data)
+            result = requests.put(exists['url'], headers = self.headers, data = data)
         else:
             log.info("Uploading information for file %s" % path)
-            result = self.session.post("%s/file/" % self.api_url, data = data)
+            result = requests.post("%s/file/" % self.api_url, headers = self.headers, data = data)
 
         if not result.ok:
             log.error("Could not upload file %s" % path)
@@ -649,7 +638,7 @@ class UploadLIMS(object):
             "title": name,
         }
 
-        result = self.session.post("%s/flowcell_lane_count_type/" % self.api_url, data = data)
+        result = requests.post("%s/flowcell_lane_count_type/" % self.api_url, headers = self.headers, data = data)
 
         if result.ok:
             self.count_types[name] = result.json()
@@ -666,7 +655,7 @@ class UploadLIMS(object):
             return None
 
         if not name in self.count_types:
-            exists = self.get("%s/flowcell_lane_count_type/?codename=%s" % (self.api_url, name))
+            exists = requests.get("%s/flowcell_lane_count_type/?codename=%s" % (self.api_url, name), headers = self.headers)
             log.debug("%s/flowcell_lane_count_type/?codename=%s" % (self.api_url, name))
             count_type = None
             if exists.ok:
@@ -690,13 +679,13 @@ class UploadLIMS(object):
             counts_url = "%s/flowcell_lane_count/?alignment=%d" % (self.api_url, alignment_id)
             counts = list()
 
-            counts_results = self.get(counts_url)
+            counts_results = requests.get(counts_url, headers = self.headers)
 
             if counts_results.ok:
                 counts_results = counts_results.json()
                 counts.extend(counts_results['results'])
                 while counts_results['next']:
-                    counts_results = self.get(counts_results['next']).json()
+                    counts_results = requests.get(counts_results['next'], headers = self.headers).json()
                     counts.extend(counts_results['results'])
             else:
                 log.error("Could not get existing alignment counts (%s)" % str(counts_results))
@@ -712,7 +701,7 @@ class UploadLIMS(object):
         if flowcell_lane_id in self.flowcell_lane_cache:
             return self.flowcell_lane_cache[flowcell_lane_id]
         log.debug("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id))
-        exists = self.get("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id))
+        exists = requests.get("%s/flowcell_lane/%d" % (self.api_url, flowcell_lane_id), headers = self.headers)
         if exists.ok:
             self.flowcell_lane_cache[flowcell_lane_id] = exists.json()
         else:
@@ -724,7 +713,7 @@ class UploadLIMS(object):
 
     def get_library(self, library_id):
 
-        exists = self.get("%s/library/%s" % (self.api_url, library_id))
+        exists = requests.get("%s/library/%s" % (self.api_url, library_id), headers = self.headers)
         if exists.ok:
             return exists.json()
         else:
@@ -733,7 +722,7 @@ class UploadLIMS(object):
 
     def get_aggregation(self, aggregation_id):
 
-        exists = self.get("%s/aggregation/%s" % (self.api_url, aggregation_id))
+        exists = requests.get("%s/aggregation/%s" % (self.api_url, aggregation_id), headers = self.headers)
         if exists.ok:
             return exists.json()
         else:
@@ -741,7 +730,7 @@ class UploadLIMS(object):
             log.error(exists)
 
     def get_rna_metrics(self, alignment_id):
-        exists = self.get("%s/rna_alignment_metrics/?alignment=%d" % (self.api_url, alignment_id))
+        exists = requests.get("%s/rna_alignment_metrics/?alignment=%d" % (self.api_url, alignment_id), headers = self.headers)
 
         if exists.ok:
             results = exists.json()
@@ -785,10 +774,10 @@ class UploadLIMS(object):
         if exists:
             # Currently (2014-12-22) this will fail, but that's a TODO on the LIMS side.
             log.info("Updating RNA metrics for alignment ID %d" % alignment_id)
-            result = self.session.put(data['url'], data = data)
+            result = requests.put(data['url'], headers = self.headers, data = data)
         else:
             log.info("Uploading RNA metrics for alignment ID %d" % alignment_id)
-            result = self.session.post("%s/rna_alignment_metrics/" % self.api_url, data = data)
+            result = requests.post("%s/rna_alignment_metrics/" % self.api_url, headers = self.headers, data = data)
         log.debug(result.json())
 
     def upload_barcode_report(self, barcode_file):
@@ -816,7 +805,7 @@ class UploadLIMS(object):
         }
 
         # TODO: Don't upload redundant barcodes.
-        result = self.session.post("%s/barcode_report/" % self.api_url, data = data)
+        result = requests.post("%s/barcode_report/" % self.api_url, headers = self.headers, data = data)
         log.debug(result.json())
 
     def upload_counts(self, alignment_id, counts_file):
@@ -844,7 +833,7 @@ class UploadLIMS(object):
             if exists['count'] != count:
                 log.info("Updating count %s (%d) for alignment %d" % (count_type_name, count, alignment_id))
                 exists['count'] = count
-                result = self.session.put(exists['url'], data = exists)
+                result = requests.put(exists['url'], headers = self.headers, data = exists)
 
                 if result.ok:
                     log.debug(result.json())
@@ -865,7 +854,7 @@ class UploadLIMS(object):
             "count": count,
         }
 
-        result = self.session.post("%s/flowcell_lane_count/" % self.api_url, data = data)
+        result = requests.post("%s/flowcell_lane_count/" % self.api_url, headers = self.headers, data = data)
 
         if result.ok:
             log.debug(result.json())
@@ -880,7 +869,7 @@ class UploadLIMS(object):
             log.debug("No data to upload.")
             return None
 
-        exists = self.get("%s/flowcell_lane_alignment/%d/" % (self.api_url, alignment_id))
+        exists = requests.get("%s/flowcell_lane_alignment/%d/" % (self.api_url, alignment_id), headers = self.headers)
 
         if not exists.ok:
             log.debug(exists)
@@ -901,7 +890,7 @@ class UploadLIMS(object):
         if complete_time:
             alignment["complete_time"] = datetime.datetime.now()
 
-        result = self.session.patch(alignment['url'], data = alignment)
+        result = requests.patch(alignment['url'], headers = self.headers, data = alignment)
 
         if result.ok:
             log.info("Alignment %d updated" % alignment_id)
@@ -929,7 +918,7 @@ class UploadLIMS(object):
 
         log.debug(data["percent_duplication"])
 
-        exists = self.get("%s/flowcell_lane_spot/?alignment=%d" % (self.api_url, alignment_id))
+        exists = requests.get("%s/flowcell_lane_spot/?alignment=%d" % (self.api_url, alignment_id), headers = self.headers)
 
         if not exists.ok:
             log.error(exists)
@@ -946,11 +935,11 @@ class UploadLIMS(object):
                 log.info("Updating SPOT score for %d" % alignment_id)
                 log.debug(exists['results'][0]['url'])
                 log.debug(data)
-                result = self.session.patch(exists['results'][0]['url'], data = data)
+                result = requests.patch(exists['results'][0]['url'], headers = self.headers, data = data)
                 log.debug(result.json())
         elif exists["count"] == 0:
             log.info("Uploading new spot for %d" % alignment_id)
-            result = self.session.post("%s/flowcell_lane_spot/" % (self.api_url), data = data)
+            result = requests.post("%s/flowcell_lane_spot/" % (self.api_url), headers = self.headers, data = data)
 
             if not result.ok:
                 log.error("Could not upload SPOT")
@@ -1010,15 +999,14 @@ class UploadLIMS(object):
         upload['label'] = "FC%s %s %s %s %s" % (lane_info['flowcell_label'], samplename, str(lane_info["lane"]), lane_info["barcode_index"], read)
 
         # does this report already exist?
-        exists = self.get("%s/fastqc_report/?label=%s&object_id=%d&content_type=%d" % (
-            self.api_url, upload['label'], upload['object_id'], self.flowcelllane_contenttype["id"])).json()
+        exists = requests.get("%s/fastqc_report/?label=%s&object_id=%d&content_type=%d" % (self.api_url, upload['label'], upload['object_id'], self.flowcelllane_contenttype["id"]), headers = self.headers).json()
 
         # replace content
         if exists['count'] == 1:
             report = exists['results'][0]
             if 'raw_data' not in report or report['raw_data'] != upload['raw_data']:
                 log.info("Updating report %s" % upload['label'])
-                result = self.session.patch(exists['results'][0]['url'], data = upload)
+                result = requests.patch(exists['results'][0]['url'], headers = self.headers, data = upload)
 
                 if result.ok:
                     log.debug(result.json())
@@ -1026,7 +1014,7 @@ class UploadLIMS(object):
                     log.error("Could not update FastQC report %s" % exists['results'][0]['url'])
         else:
             log.info("Uploading new fastqc report %s" % upload['label'])
-            result = self.session.post("%s/fastqc_report/" % self.api_url, data = upload)
+            result = requests.post("%s/fastqc_report/" % self.api_url, headers = self.headers, data = upload)
 
             if result.ok:
                 log.debug(result.json())
@@ -1105,7 +1093,7 @@ class UploadLIMS(object):
             content_type = self.aggregation_contenttype
             aggregation_info = self.get_aggregation(aggregation_id)
             log.debug(aggregation_info)
-            library_exists = self.get(aggregation_info['library'])
+            library_exists = requests.get(aggregation_info['library'], headers = self.headers)
             if library_exists.ok:
                 library_info = library_exists.json()
                 log.debug(library_info)
@@ -1117,14 +1105,14 @@ class UploadLIMS(object):
         # does this report already exist?
         existing_url = "%s/picard_report/?object_id=%d&content_type=%s&label=%s" % (self.api_url, object_id, content_type["id"], label)
         log.debug("Checking for existing report at \"%s\"" % existing_url)
-        exists = self.get(existing_url).json()
+        exists = requests.get(existing_url, headers = self.headers).json()
 
         if exists['count'] >= 1:
             upload = exists['results'][0]
             if 'raw_data' not in upload or upload['raw_data'] != picard_metric:
                 log.info("Updating report %s" % label)
                 upload['raw_data'] = picard_metric
-                result = self.session.put(upload['url'], data = upload)
+                result = requests.put(upload['url'], headers = self.headers, data = upload)
                 if not result.ok:
                     log.error("Could not update Picard report %d" % upload['id'])
                 else:
@@ -1142,7 +1130,7 @@ class UploadLIMS(object):
         upload['label'] = label
 
         log.info("Uploading new picard report %s" % upload['label'])
-        result = self.session.post("%s/picard_report/" % self.api_url, data = upload)
+        result = requests.post("%s/picard_report/" % self.api_url, headers = self.headers, data = upload)
         if not result.ok:
             log.error("Could not upload new Picard report %s" % filename)
         else:
