@@ -376,7 +376,15 @@ class ProcessSetUp(object):
         self.setup_aggregations([a['id'] for a in aggregations])
 
     def setup_aggregations(self, aggregation_ids):
-        list(self.pool.map(self.setup_aggregation, aggregation_ids))
+        # The pool will "eat" exceptions, banishing them to the hopeless void
+        # This will log them instead, while not stopping other aggregations
+        # from setting up successfully
+        def try_setup(agg_id):
+            try:
+                self.setup_aggregation(agg_id)
+            except Exception:
+                logging.exception("Something went wrong for AG%d" % agg_id)
+        list(self.pool.map(try_setup, aggregation_ids))
 
     def setup_aggregation(self, aggregation_id):
 
