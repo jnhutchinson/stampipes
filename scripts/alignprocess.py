@@ -238,7 +238,7 @@ class ProcessSetUp(object):
                    sentinel_dependencies=$(echo $PROCESSING | sed -e 's/,/,afterok:/g' | sed -e 's/^,afterok/--dependency=afterok/g')
                    sbatch --export=ALL -J {job_name} -o {job_name}.o%A -e {job_name}.e%A --partition={queue} --cpus-per-task=1 --ntasks=1 $sentinel_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG1__
                    #!/bin/bash
-                   python /home/solexa/stampipes-hpc/scripts/aggregateprocessflowcell.py --flowcell {label} --outfile run_aggregations.bash
+                   python $STAMPIPES/scripts/aggregateprocess.py --flowcell {label} --outfile run_aggregations.bash
                    bash run_aggregations.bash
                    __AUTOAGG1__""".format(label=flowcell_label,
                                           job_name=aaname_sentinel,

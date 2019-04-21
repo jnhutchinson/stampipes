@@ -64,6 +64,8 @@ def parser_setup():
         help="Run for these aggregations (can be used more than once).")
     parser.add_argument("--project", dest="project",
         help="Run for aggregations in this project.")
+    parser.add_argument("--flowcell", dest="flowcell",
+        help="Run for aggregations in this flowcell.")
 
     parser.add_argument("--qsub-prefix", dest="qsub_prefix",
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
@@ -366,8 +368,15 @@ class ProcessSetUp(object):
         aggregations = self.api_list_result("aggregation/?library__sample__project=%s" % project_id)
         self.setup_aggregations([a['id'] for a in aggregations])
 
+    def setup_flowcell(self, flowcell_label):
+        logging.info("Setting up flowcell %s" % flowcell_label)
+        aggregations = self.api_list_result("aggregation/?in_flowcell=%s" % flowcell_label)
+        if not aggregations:
+           logging.error("%s has no aggregations" % flowcell_label)
+        self.setup_aggregations([a['id'] for a in aggregations])
+
     def setup_aggregations(self, aggregation_ids):
-        self.pool.map(self.setup_aggregation, aggregation_ids)
+        list(self.pool.map(self.setup_aggregation, aggregation_ids))
 
     def setup_aggregation(self, aggregation_id):
 
@@ -375,6 +384,11 @@ class ProcessSetUp(object):
 
         if not aggregation:
             return False
+
+        if aggregation['locked']:
+            logging.warn("Refusing to set up locked aggregation %d" % (aggregation_id))
+            return False
+
 
         aggregation_lanes = self.get_aggregation_lanes(aggregation_id)
 
@@ -418,7 +432,8 @@ class ProcessSetUp(object):
                 logging.info(bamfile)
                 files.append(bamfile)
 
-        if missing: return False
+        if missing:
+            return False
 
         (script_contents, process_template) = self.get_script_template(aggregation_id, aggregation["aggregation_process_template"], self.script_template)
 
@@ -445,7 +460,7 @@ class ProcessSetUp(object):
             env_vars["UMI"] = None
 
         # Set process template env var overrides
-        if 'process_variables' in process_template and process_template['process_variables']:
+        if process_template and 'process_variables' in process_template and process_template['process_variables']:
             try:
                 process_template_variables = json.loads(process_template['process_variables'],
                                                         object_pairs_hook=OrderedDict)
@@ -468,7 +483,10 @@ class ProcessSetUp(object):
             logging.info("Dry run, would have created: %s" % script_file)
             return True
 
-        os.makedirs(aggregation_folder, exist_ok=True)
+        try:
+            os.makedirs(aggregation_folder)
+        except:
+            pass
 
         file_record = open("%s/bamfiles.txt" % aggregation_folder, "w")
         file_record.write("\n".join(["\t".join(bamfile) for bamfile in files]))
@@ -546,6 +564,9 @@ from the command line."""
 
     if poptions.project:
         process.setup_project(poptions.project)
+
+    if poptions.flowcell:
+        process.setup_flowcell(poptions.flowcell)
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
