@@ -240,9 +240,10 @@ class ProcessSetUp(object):
                    #!/bin/bash
                    python $STAMPIPES/scripts/aggregateprocess.py --flowcell {label} --outfile run_aggregations.bash
                    bash run_aggregations.bash
-                   __AUTOAGG1__""".format(label=flowcell_label,
-                                          job_name=aaname_sentinel,
-                                          queue=self.qsub_queue))
+                   __AUTOAGG1__
+                   """.format(label=flowcell_label,
+                            job_name=aaname_sentinel,
+                            queue=self.qsub_queue))
 
         outfile.write(contents)
         outfile.close()
