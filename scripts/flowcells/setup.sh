@@ -605,7 +605,7 @@ sbatch --export=ALL -J "collate-$flowcell" \$copy_dependency -o "collate-$flowce
 cd "$analysis_dir"
 $link_command
 # Remove existing scripts if they exist (to avoid appending)
-rm -f fastqc.bash collate.bash run.bash
+rm -f fastqc.bash collate.bash run_alignments.bash run_aggregations.bash
 
 # Create fastqc scripts
 python3 "$STAMPIPES/scripts/apilaneprocess.py" \
