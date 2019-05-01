@@ -1,4 +1,4 @@
-name: footprints_env
+name: footprints
 channels:
   - defaults
   - bioconda
