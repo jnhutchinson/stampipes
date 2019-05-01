@@ -56,7 +56,7 @@ process merge {
 process dups {
   label "modules"
   publishDir params.outdir
-  memory '16 GB'
+  label 'high_mem'
 
   input:
   file(merged)
@@ -329,6 +329,7 @@ process density {
   label "modules"
 
   publishDir params.outdir
+  label 'high_mem'
 
   input:
   file filtered_bam from bam_for_density
