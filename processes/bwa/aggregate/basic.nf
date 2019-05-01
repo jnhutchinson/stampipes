@@ -582,6 +582,7 @@ process learn_dispersion {
 
   output:
   set file('dm.json'), file(bam), file ("${bam}.bai") into dispersion
+  file 'dm.json' into to_plot
 
   script:
   """
@@ -737,4 +738,22 @@ process compute_footprints {
   tabix -0 -p bed "\$output.gz"
   """.stripIndent()
 
+}
+
+process plot_footprints {
+
+  label "footprints"
+  publishDir params.outdir
+
+  input:
+  file model from to_plot
+  file plot from file("$baseDir/plot_footprints.py")
+
+  output:
+  file "dispersion.*pdf"
+
+  script:
+  """
+  "./$plot" "$model"
+  """
 }
