@@ -25,7 +25,7 @@ maybe_upload() {
 upload "tagcounts.txt"
 
 # Upload SPOT2 stats
-upload "peaks/filtered.hotspot2.info"
+upload "peaks/nuclear.hotspot2.info"
 
 # Upload SPOT1 stats
 upload r1.hotspot.info

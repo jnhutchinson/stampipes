@@ -11,7 +11,7 @@ set -e -u -o pipefail
 UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
 
 # All peaks files start with this:
-PEAKS_PREFIX="peaks/filtered"
+PEAKS_PREFIX="peaks/nuclear"
 
 ATTACH_AGGREGATION="python3 $UPLOAD_SCRIPT --attach_file_contenttype AggregationData.aggregation --attach_file_objectid ${AGGREGATION_ID}"
 

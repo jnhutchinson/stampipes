@@ -107,7 +107,7 @@ process filter {
   samtools view -b -F "${flag}" marked.bam > filtered.bam
   """
 }
-filtered_bam.into { bam_for_hotspot2; bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
+filtered_bam.into { bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
 
 process filter_nuclear {
   label "modules"
@@ -117,6 +117,7 @@ process filter_nuclear {
 
   output:
   file 'nuclear.bam' into nuclear_bam
+  file 'nuclear.bam' into bam_for_hotspot2
 
   script:
   """
@@ -134,17 +135,17 @@ process hotspot2 {
   container "fwip/hotspot2:latest"
 
   input:
-  file(marked_bam) from bam_for_hotspot2
+  file(nuclear) from bam_for_hotspot2
   file(mappable) from file(params.mappable)
   file(chrom_sizes) from file(params.chrom_sizes)
   file(centers) from file(params.centers)
 
 
   output:
-  file('peaks/filtered*')
-  file('peaks/filtered.hotspots.fdr0.05.starch') into hotspot_calls
-  file('peaks/filtered.hotspots.fdr0.05.starch') into hotspot_calls_for_bias
-  file('peaks/filtered.peaks.fdr0.001.starch') into onepercent_peaks
+  file('peaks/nuclear*')
+  file('peaks/nuclear.hotspots.fdr0.05.starch') into hotspot_calls
+  file('peaks/nuclear.hotspots.fdr0.05.starch') into hotspot_calls_for_bias
+  file('peaks/nuclear.peaks.fdr0.001.starch') into onepercent_peaks
 
   script:
   """
@@ -153,25 +154,25 @@ process hotspot2 {
     -M "${mappable}" \
     -c "${chrom_sizes}" \
     -C "${centers}" \
-    "${marked_bam}" \
+    "${nuclear}" \
     'peaks'
 
   cd peaks
 
   # Rename peaks files to include FDR
-  mv filtered.peaks.narrowpeaks.starch filtered.peaks.narrowpeaks.fdr0.05.starch
-  mv filtered.peaks.starch filtered.peaks.fdr0.05.starch
+  mv nuclear.peaks.narrowpeaks.starch nuclear.peaks.narrowpeaks.fdr0.05.starch
+  mv nuclear.peaks.starch nuclear.peaks.fdr0.05.starch
 
   bash \$STAMPIPES/scripts/SPOT/info.sh \
-    filtered.hotspots.fdr0.05.starch hotspot2 filtered.SPOT.txt \
-    > filtered.hotspot2.info
+    nuclear.hotspots.fdr0.05.starch hotspot2 nuclear.SPOT.txt \
+    > nuclear.hotspot2.info
 
   # TODO: Move this to separate process
-  hsmerge.sh -f 0.01 filtered.allcalls.starch filtered.hotspots.fdr0.01.starch
-  hsmerge.sh -f 0.001 filtered.allcalls.starch filtered.hotspots.fdr0.001.starch
+  hsmerge.sh -f 0.01 nuclear.allcalls.starch nuclear.hotspots.fdr0.01.starch
+  hsmerge.sh -f 0.001 nuclear.allcalls.starch nuclear.hotspots.fdr0.001.starch
 
-  density-peaks.bash \$TMPDIR varWidth_20_default filtered.cutcounts.starch filtered.hotspots.fdr0.01.starch ../"${chrom_sizes}" filtered.density.starch filtered.peaks.fdr0.01.starch \$(cat filtered.cleavage.total)
-  density-peaks.bash \$TMPDIR varWidth_20_default filtered.cutcounts.starch filtered.hotspots.fdr0.001.starch ../"${chrom_sizes}" filtered.density.starch filtered.peaks.fdr0.001.starch \$(cat filtered.cleavage.total)
+  density-peaks.bash \$TMPDIR varWidth_20_default nuclear.cutcounts.starch nuclear.hotspots.fdr0.01.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.01.starch \$(cat nuclear.cleavage.total)
+  density-peaks.bash \$TMPDIR varWidth_20_default nuclear.cutcounts.starch nuclear.hotspots.fdr0.001.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.001.starch \$(cat nuclear.cleavage.total)
 
   rm -rf "\$TMPDIR"
   """
