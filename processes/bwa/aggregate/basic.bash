@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=2.2.0
+version=2.3.0
 
 cd "$(dirname "$0")"
 
