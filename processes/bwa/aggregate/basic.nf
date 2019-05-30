@@ -14,6 +14,8 @@ params.hotspot_index = "."
 params.bias = ""
 params.chunksize = 5000
 
+params.hotspot_id = "default"
+
 def helpMessage() {
   log.info"""
     Usage: nextflow run basic.nf \\
@@ -135,6 +137,7 @@ process hotspot2 {
   container "fwip/hotspot2:latest"
 
   input:
+  val(hotspotid) from params.hotspot_id
   file(nuclear) from bam_for_hotspot2
   file(mappable) from file(params.mappable)
   file(chrom_sizes) from file(params.chrom_sizes)
@@ -150,7 +153,7 @@ process hotspot2 {
   script:
   """
   export TMPDIR=\$(mktemp -d)
-  hotspot2.sh -F 0.5 -p varWidth_20_default \
+  hotspot2.sh -F 0.5 -p "varWidth_20_${hotspotid}" \
     -M "${mappable}" \
     -c "${chrom_sizes}" \
     -C "${centers}" \
@@ -171,8 +174,8 @@ process hotspot2 {
   hsmerge.sh -f 0.01 nuclear.allcalls.starch nuclear.hotspots.fdr0.01.starch
   hsmerge.sh -f 0.001 nuclear.allcalls.starch nuclear.hotspots.fdr0.001.starch
 
-  density-peaks.bash \$TMPDIR varWidth_20_default nuclear.cutcounts.starch nuclear.hotspots.fdr0.01.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.01.starch \$(cat nuclear.cleavage.total)
-  density-peaks.bash \$TMPDIR varWidth_20_default nuclear.cutcounts.starch nuclear.hotspots.fdr0.001.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.001.starch \$(cat nuclear.cleavage.total)
+  density-peaks.bash \$TMPDIR "varWidth_20_${hotspotid}" nuclear.cutcounts.starch nuclear.hotspots.fdr0.01.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.01.starch \$(cat nuclear.cleavage.total)
+  density-peaks.bash \$TMPDIR "varWidth_20_${hotspotid}" nuclear.cutcounts.starch nuclear.hotspots.fdr0.001.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.001.starch \$(cat nuclear.cleavage.total)
 
   rm -rf "\$TMPDIR"
   """

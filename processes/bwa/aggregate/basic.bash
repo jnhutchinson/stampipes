@@ -60,6 +60,7 @@ nextflow run \
   --centers "$CENTER_SITES" \
   --chrom_bucket "$CHROM_BUCKET" \
   --hotspot_index "$HOTSPOT_INDEX" \
+  --hotspot_id "AG$AGGREGATION_ID"
   --bias "$STAMPIPES_DATA/footprints/vierstra_et_al.txt" \
   --outdir "$outdir" \
   --threads 3 \
