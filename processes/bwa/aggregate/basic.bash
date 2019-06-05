@@ -48,6 +48,11 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   --aggregation_id "$AGGREGATION_ID" \
   --start_aggregation
 
+# Default peak caller for back-compat
+if [[ -z "$PEAK_CALLER" ]] ; then
+  PEAK_CALLER=hotspot2
+fi
+
 # Run the whole process
 nextflow run \
   "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
@@ -57,6 +62,7 @@ nextflow run \
   --genome "$GENOME_INDEX" \
   --mappable "$MAPPABLE_REGIONS" \
   --chrom_sizes "$CHROM_SIZES" \
+  --peakcaller "$PEAK_CALLER" \
   --centers "$CENTER_SITES" \
   --chrom_bucket "$CHROM_BUCKET" \
   --hotspot_index "$HOTSPOT_INDEX" \

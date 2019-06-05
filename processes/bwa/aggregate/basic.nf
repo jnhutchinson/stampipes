@@ -9,12 +9,14 @@ params.dofeatures = false
 
 params.readlength = 36
 
-params.hotspot_index = "."
+params.peakcaller = "hotspot2"
 
 params.bias = ""
 params.chunksize = 5000
 
 params.hotspot_id = "default"
+params.hotspot_index = "."
+
 
 def helpMessage() {
   log.info"""
@@ -120,6 +122,7 @@ process filter_nuclear {
   output:
   file 'nuclear.bam' into nuclear_bam
   file 'nuclear.bam' into bam_for_hotspot2
+  file 'nuclear.bam' into bam_for_macs2
 
   script:
   """
@@ -130,11 +133,39 @@ process filter_nuclear {
   """
 }
 
+process macs2 {
+  label "macs2"
+  publishDir "${params.outdir}/peaks"
+  scratch false
+
+  when:
+  params.peakcaller == "macs2"
+
+  input:
+  file bam from bam_for_macs2
+
+  output:
+  file 'NA_*'
+
+  script:
+  """
+  macs2 callpeak \
+    -t "$bam" \
+    -f BAMPE \
+    -g hs \
+    -B \
+    -q 0.01
+  """
+}
+
 process hotspot2 {
   label "modules"
 
   publishDir "${params.outdir}"
   container "fwip/hotspot2:latest"
+
+  when:
+  params.peakcaller == "hotspot2"
 
   input:
   val(hotspotid) from params.hotspot_id
