@@ -135,7 +135,7 @@ process filter_nuclear {
 
 process macs2 {
   label "macs2"
-  publishDir "${params.outdir}/peaks"
+  publishDir "${params.outdir}/peaks_macs2"
   scratch false
 
   when:
