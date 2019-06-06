@@ -50,7 +50,12 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
 
 # Default peak caller for back-compat
 if [[ -z "$PEAK_CALLER" ]] ; then
-  PEAK_CALLER=hotspot2
+  # TODO: Match on ASSAY_CATEGORY instead
+  if [[ "$ASSAY" =~ ChIP ]] || [[ "$ASSAY" == "Crosslinked" ]] ; then
+    PEAK_CALLER=macs2
+  else
+    PEAK_CALLER=hotspot2
+  fi
 fi
 
 # Run the whole process
