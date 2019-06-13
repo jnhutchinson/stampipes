@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e -o pipefail
 
-version=2.0.3
+version=2.1.0
 
 cd "$(dirname "$0")"
 
@@ -53,6 +53,7 @@ nextflow run \
   --r1 "$R1_FASTQ" \
   --r2 "$R2_FASTQ" \
   --adapter_file "$adapterfile"  \
+  --UMI "$UMI_METHOD" \
   --genome "$BWAINDEX" \
   --outdir "$outdir" \
   --threads 3 \
