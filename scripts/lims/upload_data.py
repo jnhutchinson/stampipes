@@ -364,7 +364,7 @@ class UploadLIMS(object):
 
         return self.get_single_result(contenttype_url)
 
-    def get_file_purpose(self, slug):
+    def get_file_purpose_url(self, slug):
 
         filepurpose_url = '%s/file_purpose/?slug=%s' % (self.api_url, slug)
 
@@ -421,7 +421,7 @@ class UploadLIMS(object):
 
         return self.get_single_result(contenttype_url)
 
-    def get_file_purpose(self, slug):
+    def get_file_purpose_url(self, slug):
 
         filepurpose_url = '%s/file_purpose/?slug=%s' % (self.api_url, slug)
 
@@ -491,7 +491,7 @@ class UploadLIMS(object):
             log.error("Cannot attach file %s without contenttype result" % path)
             return False
 
-        purpose = self.get_file_purpose(file_purpose)
+        purpose = self.get_file_purpose_url(file_purpose)
 
         if file_purpose and not purpose:
             log.error("Could not find file purpose %s for uploading directory %s" % (file_purpose, path))
@@ -542,7 +542,7 @@ class UploadLIMS(object):
             log.error("Cannot attach file %s without contenttype result" % path)
             return False
 
-        purpose = self.get_file_purpose(file_purpose)
+        purpose = self.get_file_purpose_url(file_purpose)
 
         if file_purpose and not purpose:
             log.error("Could not find file purpose %s for uploading file %s" % (file_purpose, path))
@@ -559,7 +559,7 @@ class UploadLIMS(object):
             log.debug("File Type: %s" % ftype)
 
         # when checking, replace '+' character with API accessible escape
-        check_exist_url = "%s/file/?path=%s" % (self.api_url, path.replace("+","%2B"))
+        check_exist_url = "%s/file/?object_id=%d&purpose__slug=%s&content_type=%d" % (self.api_url, object_id, file_purpose, contenttype['id'])
         exists = self.get_single_result(check_exist_url)
 
 
