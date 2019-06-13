@@ -365,6 +365,7 @@ class ProcessSetUp(object):
                 env_vars["UMI"] = "True"
             else:
                 env_vars["UMI"] = None
+            env_vars["UMI_METHOD"] = lane['barcode1']['umi_method']
 
         # Set process template env var overrides
         if 'process_variables' in process_template and process_template['process_variables']:
