@@ -50,14 +50,14 @@ nextflow run \
   "$STAMPIPES/processes/bwa/process_bwa_paired_trimmed.nf" \
   -c "$STAMPIPES/nextflow.config" \
   -w "$workdir" \
-  --r1 "$R1_FASTQ" \
-  --r2 "$R2_FASTQ" \
-  --adapter_file "$adapterfile"  \
-  --UMI "$UMI_METHOD" \
-  --genome "$BWAINDEX" \
-  --outdir "$outdir" \
-  --threads 3 \
-  --readlength "$READLENGTH" \
+  --r1="$R1_FASTQ" \
+  --r2="$R2_FASTQ" \
+  --adapter_file="$adapterfile"  \
+  --UMI="$UMI_METHOD" \
+  --genome="$BWAINDEX" \
+  --outdir="$outdir" \
+  --threads=3 \
+  --readlength="$READLENGTH" \
   -profile cluster,modules \
   -resume
 
