@@ -28,7 +28,7 @@ def helpMessage() {
     Options:
     --threads [count]     The number of threads that will be used for child applications  (1)
     --chunk_size [count]  How many reads to process per chunk                             (16000000)
-    --UMI                 The reads contain UMI markers ('single-strand', 'True')         (false)
+    --UMI                 The reads contain UMI markers ('single-strand', 'thruplex')         (false)
     --trim_to [length]    Trim fastq reads to [length] bp (0 for no trimming)             (0)
     --outdir [dir]        Where to write results to                                       (output)
     """.stripIndent();
@@ -157,7 +157,7 @@ process add_umi_info {
       >(gzip -c -1 > r1.fastq.umi.gz) \
       >(gzip -c -1 > r2.fastq.umi.gz)
     """
-  else if (params.UMI == 'True') // TODO: Is this right?
+  else if (params.UMI == 'single-strand') // TODO: Is this right?
     """
     python3 \$STAMPIPES/scripts/umi/fastq_umi_add.py $r1 r1.fastq.umi.gz
     python3 \$STAMPIPES/scripts/umi/fastq_umi_add.py $r2 r2.fastq.umi.gz
@@ -169,7 +169,7 @@ process add_umi_info {
     ln -s $r2 r2.fastq.umi.gz
     """
   else
-    error "--UMI must be `thruplex`, `True` (for single-strand preparation), or false"
+    error "--UMI must be `thruplex`, `single-strand` (for single-strand preparation), or false, got: '" + params.UMI + "'"
 }
 
 /*
