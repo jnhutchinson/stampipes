@@ -29,12 +29,16 @@ def parser_setup():
 
     return parser
 
-def upload_stat(api, aggregation, stat_type_slug, value):
-    stat_type = metrics.stat_type_from_slug(api, stat_type_slug)
-    if not stat_type:
-        log.error("Cannot find stat type %s" % stat_type_slug)
-        return
-    metrics.upload_count(api, stat_type, aggregation, value)
+# aggregation
+def upload_stats(api, aggregation, stats={}):
+    data = [{
+        "object_id": aggregation,
+        "content_type": "aggregation",
+        "stats": stats,
+    }]
+    response = api.post_single_result(url_addition="stat/create", json=data)
+    if response is None:
+        raise Exception("Upload failed")
 
 def upload_spot(api, aggregation, spot_file):
     if not os.path.exists(spot_file):
@@ -50,6 +54,7 @@ def upload_spot(api, aggregation, spot_file):
 def upload_file(api, aggregation, counts_file):
     count_content = open(counts_file, 'r')
 
+    stats = {}
     for line in count_content:
         values = line.split()
 
@@ -61,10 +66,10 @@ def upload_file(api, aggregation, counts_file):
 
         if not stat_type_name:
             continue
-
-        upload_stat(api, aggregation, stat_type_name, value)
-
+        stats[stat_type_name] = value
     count_content.close()
+    upload_stats(api, aggregation, stats)
+
 
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
@@ -88,7 +93,7 @@ from the command line."""
     aggregation = aggregations.get_aggregation(api, poptions.aggregation_id)
     if poptions.counts_file:
         for count_file in poptions.counts_file:
-            upload_file(api, aggregation, count_file)
+            upload_file(api, poptions.aggregation_id, count_file)
 
 # This is the main body of the program that only runs when running this script
 # doesn't run when imported, so you can use the functions above in the shell after importing
