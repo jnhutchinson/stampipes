@@ -157,7 +157,7 @@ process add_umi_info {
       >(gzip -c -1 > r1.fastq.umi.gz) \
       >(gzip -c -1 > r2.fastq.umi.gz)
     """
-  else if (params.UMI == 'single-strand') // TODO: Is this right?
+  else if (params.UMI == 'single-strand')
     """
     python3 \$STAMPIPES/scripts/umi/fastq_umi_add.py $r1 r1.fastq.umi.gz
     python3 \$STAMPIPES/scripts/umi/fastq_umi_add.py $r2 r2.fastq.umi.gz
@@ -328,8 +328,7 @@ process mark_duplicates {
 
     picard UmiAwareMarkDuplicatesWithMateCigar INPUT=cigar.bam OUTPUT=marked.bam \
       METRICS_FILE=MarkDuplicates.picard UMI_TAG_NAME=XD ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
-      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
-      MINIMUM_DISTANCE=300
+      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
     """
   else
     """
