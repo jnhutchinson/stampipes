@@ -7,6 +7,7 @@
 params.genome = ""
 params.readlength = 36
 params.outdir = "output"
+params.nuclearchromosomes = ""
 
 genome_name = file(params.genome).baseName
 readlengths = params.readlength.tokenize(',')
@@ -117,7 +118,7 @@ process chrom_sizes {
   """
 }
 
-process chromInfo {
+process chrom_info {
 
   publishDir "${params.outdir}/annotations"
 
@@ -146,13 +147,40 @@ process hotspot2 {
 
   output:
   file '*.starch'
+  file out into center_sites
 
   script:
+  out = "${genome_name}.K${read_length}.center_sites.n${n}.starch"
   """
   extractCenterSites.sh \
     -c "$chrom_sizes" \
     -M "$mappable" \
-    -o "${genome_name}.K${read_length}.center_sites.n${n}.starch" \
+    -o "$out" \
     -n "$n"
+  """
+}
+
+process nuclear_center_sites {
+  publishDir "${params.outdir}/hotspot2"
+
+  input:
+  file center_sites
+  file(nuclear) from file(params.nuclearchromosomes)
+
+  when params.nuclearchromosomes != ""
+
+  output:
+  file "*starch"
+
+  script:
+  out_nuclear = center_sites.name.replaceFirst('.starch$', '.nuclear.starch')
+  """
+  awk '{print \$0 "\t" 0 "\t" 1}' "$nuclear" \
+    | sort-bed - \
+    | while read chr rest ; do
+        unstarch "\$chr" "$center_sites"
+      done \
+    | starch - \
+    > "$out_nuclear"
   """
 }
