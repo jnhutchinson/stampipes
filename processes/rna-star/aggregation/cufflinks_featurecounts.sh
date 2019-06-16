@@ -214,7 +214,7 @@ fi
 
 # kallisto
 if [ ! -s "kallisto_output/abundance.tsv" ] ; then
-    jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__KALLISTO__
+    jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -241,7 +241,7 @@ fi
 
 # kallisto advanced
 if [ ! -s "kallisto_output_adv/abundance.tsv" ] ; then
-    jobid=$(sbatch --export=ALL -J "$kallisto_adv_job" -o "$kallisto_adv_job.o%A" -e "$kallisto_adv_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__KALLISTO__
+    jobid=$(sbatch --export=ALL -J "$kallisto_adv_job" -o "$kallisto_adv_job.o%A" -e "$kallisto_adv_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=64000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -280,7 +280,7 @@ echo "START PICARD: "
 date
 
 picard CollectInsertSizeMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
-picard CollectRnaSeqMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND="SECOND_READ_TRANSCRIPTION_STRAND"
+picard CollectRnaSeqMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND_SPECIFICITY="SECOND_READ_TRANSCRIPTION_STRAND"
 
 cat picard.RnaSeqMetrics.txt | grep -A 1 "METRICS CLASS" | sed 1d | tr '\t' '\n' > rna_stats_summary.info
 cat picard.RnaSeqMetrics.txt | grep -A 2 "METRICS CLASS" | sed 1d | sed 1d | tr '\t' '\n' | paste rna_stats_summary.info - > tmp.txt && mv tmp.txt rna_stats_summary.info
