@@ -43,14 +43,16 @@ attach_file  cutcounts.bw       cutcounts-bw         bigwig
 attach_file  cutcounts.starch   cutcounts-starch     starch
 attach_file  cutcounts.bed.bgz  cutcounts-tabix-bgz  bgz
 
-# hotspot2 output
-attach_file  $PEAKS_PREFIX.allcalls.starch           hotspot-per-base         starch
-attach_file  $PEAKS_PREFIX.hotspots.fdr0.05.starch   hotspot-calls            starch
-attach_file  $PEAKS_PREFIX.hotspots.fdr0.01.starch   hotspot-calls-1per       starch
-attach_file  $PEAKS_PREFIX.hotspots.fdr0.001.starch  hotspot-calls-point1per  starch
-attach_file  $PEAKS_PREFIX.peaks.fdr0.05.starch      hotspot-peaks            starch
-attach_file  $PEAKS_PREFIX.peaks.fdr0.01.starch      hotspot-peaks-1per       starch
-attach_file  $PEAKS_PREFIX.peaks.fdr0.001.starch     hotspot-peaks-point1per  starch
+if [[ "$PEAK_CALLER" == hotspot2 ]] ; then
+  # hotspot2 output
+  attach_file  $PEAKS_PREFIX.allcalls.starch           hotspot-per-base         starch
+  attach_file  $PEAKS_PREFIX.hotspots.fdr0.05.starch   hotspot-calls            starch
+  attach_file  $PEAKS_PREFIX.hotspots.fdr0.01.starch   hotspot-calls-1per       starch
+  attach_file  $PEAKS_PREFIX.hotspots.fdr0.001.starch  hotspot-calls-point1per  starch
+  attach_file  $PEAKS_PREFIX.peaks.fdr0.05.starch      hotspot-peaks            starch
+  attach_file  $PEAKS_PREFIX.peaks.fdr0.01.starch      hotspot-peaks-1per       starch
+  attach_file  $PEAKS_PREFIX.peaks.fdr0.001.starch     hotspot-peaks-point1per  starch
+fi
 
 #TODO: We're effectively generating these twice, simplify
 #$ATTACH_AGGREGATION --attach_file $PEAKS_PREFIX.cutcounts.starch --attach_file_purpose cutcounts-starch --attach_file_type starch

@@ -81,6 +81,7 @@ nextflow run \
   -with-timeline nextflow.timeline.html \
   -resume
 
+export PEAK_CALLER
 ( cd "$outdir" \
     && bash "$STAMPIPES/scripts/bwa/aggregate/basic/attachfiles_nextflow.bash" \
     && bash "$STAMPIPES/scripts/bwa/aggregate/basic/uploadcounts_nextflow.bash"

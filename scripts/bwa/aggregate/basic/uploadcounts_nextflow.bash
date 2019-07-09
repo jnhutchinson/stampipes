@@ -24,14 +24,14 @@ maybe_upload() {
 # Upload regular stats
 upload "tagcounts.txt"
 
-# Upload SPOT2 stats
-upload "peaks/nuclear.hotspot2.info"
-
 # Upload SPOT1 stats
-upload r1.hotspot.info
+upload "r1.hotspot.info"
 
 # Upload Adapter stats
 upload "adapter.counts.txt"
+
+# Upload SPOT2 stats
+maybe_upload "peaks/nuclear.hotspot2.info"
 
 # Upload differential peaks stats
 maybe_upload "differential_index_report.tsv"
@@ -43,4 +43,4 @@ maybe_upload "preseq_targets.txt"
 maybe_upload "CollectInsertSizeMetrics.picard.info"
 
 # Upload Proximal / Distal
-maybe_upload prox_dist.info
+maybe_upload "prox_dist.info"
