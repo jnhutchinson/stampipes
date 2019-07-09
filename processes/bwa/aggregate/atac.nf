@@ -107,7 +107,32 @@ process filter {
   samtools view -b -F "${flag}" marked.bam > filtered.bam
   """
 }
-filtered_bam.into { bam_for_hotspot2; bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
+filtered_bam.into { bam_for_shift; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints }
+
+/*
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3959825/
+For peak calling and footprinting, we adjusted the read start sites to represent the center of the transposon binding event.
+Previous descriptions of the Tn5 transposase show that the transposon binds as a dimer and inserts two adapters separated by
+9 bps (main text ref. 11). Therefore, all reads aligning to the + strand were offset by +4 bps, and all reads
+aligning to the – strand were offset −5 bps.
+*/
+process shift {
+  label "modules"
+
+  publishDir params.outdir
+
+  input:
+  file filtered_bam from bam_for_shift
+
+  output:
+  file "shifted.bam" into shifted_bam
+
+  script:
+  """
+  python3 \$STAMPIPES/scripts/bwa/aggregate/basic/shiftatacbam.py < ${filtered_bam} > shifted.bam
+  """
+}
+shifted_bam.into { bam_for_hotspot2; bam_for_spot_score }
 
 process filter_nuclear {
   label "modules"
