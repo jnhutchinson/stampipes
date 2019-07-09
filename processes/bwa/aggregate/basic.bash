@@ -1,6 +1,7 @@
 #!/bin/bash
 
-version=2.4.0
+version=2.4.1
+export NXF_VER=18.10.1  # The version of nextflow to run. 18.10.1 includes conda
 
 cd "$(dirname "$0")"
 
@@ -73,6 +74,7 @@ nextflow run \
   --hotspot_index "$HOTSPOT_INDEX" \
   --hotspot_id "AG$AGGREGATION_ID" \
   --bias "$STAMPIPES_DATA/footprints/vierstra_et_al.txt" \
+  --UMI="$UMI" \
   --outdir "$outdir" \
   --threads 3 \
   -profile cluster,modules \

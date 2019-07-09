@@ -71,12 +71,13 @@ process dups {
   file 'MarkDuplicates.picard'
 
   script:
-  if (params.UMI)
+  if (params.UMI) {
     cmd = "UmiAwareMarkDuplicatesWithMateCigar"
     extra = "UMI_TAG_NAME=XD"
-  if (!params.UMI)
+  } else {
     cmd = "MarkDuplicatesWithMateCigar"
-    extra = ""
+    extra = "MINIMUM_DISTANCE=300"
+  }
   """
   picard RevertOriginalBaseQualitiesAndAddMateCigar \
     "INPUT=${merged}" OUTPUT=cigar.bam \
@@ -86,8 +87,7 @@ process dups {
       INPUT=cigar.bam OUTPUT=marked.bam \
       $extra \
       METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
-      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
-      MINIMUM_DISTANCE=300
+      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
 
   samtools index marked.bam
   """
@@ -295,6 +295,9 @@ process preseq {
   publishDir params.outdir
   input:
   file nuclear_bam
+
+  when:
+  !params.UMI
 
   output:
   file 'preseq.txt'
