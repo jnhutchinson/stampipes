@@ -9,10 +9,14 @@ params.dofeatures = false
 
 params.readlength = 36
 
-params.hotspot_index = "."
+params.peakcaller = "hotspot2"
 
 params.bias = ""
 params.chunksize = 5000
+
+params.hotspot_id = "default"
+params.hotspot_index = "."
+
 
 def helpMessage() {
   log.info"""
@@ -56,7 +60,7 @@ process merge {
 process dups {
   label "modules"
   publishDir params.outdir
-  memory '16 GB'
+  label 'high_mem'
 
   input:
   file(merged)
@@ -107,7 +111,7 @@ process filter {
   samtools view -b -F "${flag}" marked.bam > filtered.bam
   """
 }
-filtered_bam.into { bam_for_shift; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints }
+filtered_bam.into { bam_for_shift; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprint; }
 
 /*
 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3959825/
@@ -119,20 +123,33 @@ aligning to the – strand were offset −5 bps.
 process shift {
   label "modules"
 
+  cpus params.threads
   publishDir params.outdir
 
   input:
   file filtered_bam from bam_for_shift
+  file nuclear_chroms from file("${params.genome}.nuclear.txt")
 
   output:
   file "shifted.bam" into shifted_bam
+  file "nuclear_shifted.bam" into nuclear_shifted_bam
 
   script:
   """
-  python3 \$STAMPIPES/scripts/bwa/aggregate/basic/shiftatacbam.py < ${filtered_bam} > shifted.bam
+  python3 \$STAMPIPES/scripts/bwa/aggregate/basic/shiftatacbam.py < ${filtered_bam} > unsorted_shifted.bam
+  # we have to resort after our shifting
+  samtools sort \
+    -l 0 -m 1G -@ "${params.threads}" unsorted_shifted.bam \
+    > shifted.bam
+  samtools index shifted.bam
+  # we also need a nuclear version
+  cat "${nuclear_chroms}" \
+  | xargs samtools view -b shifted.bam \
+  > nuclear_shifted.bam
+  samtools index nuclear_shifted.bam
   """
 }
-shifted_bam.into { bam_for_hotspot2; bam_for_spot_score }
+nuclear_shifted_bam.into { bam_for_hotspot2; bam_for_macs2; bam_for_spot_score; }
 
 process filter_nuclear {
   label "modules"
@@ -152,51 +169,80 @@ process filter_nuclear {
   """
 }
 
+process macs2 {
+  label "macs2"
+  publishDir "${params.outdir}/peaks_macs2"
+  scratch false
+
+  when:
+  params.peakcaller == "macs2"
+
+  input:
+  file bam from bam_for_macs2
+
+  output:
+  file 'NA_*'
+
+  script:
+  """
+  macs2 callpeak \
+    -t "$bam" \
+    -f BAMPE \
+    -g hs \
+    -B \
+    -q 0.01
+  """
+}
+
 process hotspot2 {
   label "modules"
 
   publishDir "${params.outdir}"
   container "fwip/hotspot2:latest"
 
+  when:
+  params.peakcaller == "hotspot2"
+
   input:
-  file(marked_bam) from bam_for_hotspot2
+  val(hotspotid) from params.hotspot_id
+  file(nuclear) from bam_for_hotspot2
   file(mappable) from file(params.mappable)
   file(chrom_sizes) from file(params.chrom_sizes)
   file(centers) from file(params.centers)
 
 
   output:
-  file('peaks/filtered*')
-  file('peaks/filtered.hotspots.fdr0.05.starch') into hotspot_calls
-  file('peaks/filtered.hotspots.fdr0.05.starch') into hotspot_calls_for_bias
-  file('peaks/filtered.peaks.fdr0.001.starch') into onepercent_peaks
+  file('peaks/nuclear_shifted*')
+  file('peaks/nuclear_shifted.hotspots.fdr0.05.starch') into hotspot_calls
+  file('peaks/nuclear_shifted.hotspots.fdr0.05.starch') into hotspot_calls_for_bias
+  file('peaks/nuclear_shifted.peaks.fdr0.001.starch') into onepercent_peaks
 
   script:
   """
   export TMPDIR=\$(mktemp -d)
-  hotspot2.sh -F 0.5 -p varWidth_20_default \
+  hotspot2.sh -F 0.5 -p "varWidth_20_${hotspotid}" \
     -M "${mappable}" \
     -c "${chrom_sizes}" \
     -C "${centers}" \
-    "${marked_bam}" \
+    "${nuclear}" \
     'peaks'
 
   cd peaks
 
   # Rename peaks files to include FDR
-  mv filtered.peaks.narrowpeaks.starch filtered.peaks.narrowpeaks.fdr0.05.starch
-  mv filtered.peaks.starch filtered.peaks.fdr0.05.starch
+  mv nuclear_shifted.peaks.narrowpeaks.starch nuclear_shifted.peaks.narrowpeaks.fdr0.05.starch
+  mv nuclear_shifted.peaks.starch nuclear_shifted.peaks.fdr0.05.starch
 
   bash \$STAMPIPES/scripts/SPOT/info.sh \
-    filtered.hotspots.fdr0.05.starch hotspot2 filtered.SPOT.txt \
-    > filtered.hotspot2.info
+    nuclear_shifted.hotspots.fdr0.05.starch hotspot2 nuclear_shifted.SPOT.txt \
+    > nuclear_shifted.hotspot2.info
 
   # TODO: Move this to separate process
-  hsmerge.sh -f 0.01 filtered.allcalls.starch filtered.hotspots.fdr0.01.starch
-  hsmerge.sh -f 0.001 filtered.allcalls.starch filtered.hotspots.fdr0.001.starch
+  hsmerge.sh -f 0.01 nuclear_shifted.allcalls.starch nuclear_shifted.hotspots.fdr0.01.starch
+  hsmerge.sh -f 0.001 nuclear_shifted.allcalls.starch nuclear_shifted.hotspots.fdr0.001.starch
 
-  density-peaks.bash \$TMPDIR varWidth_20_default filtered.cutcounts.starch filtered.hotspots.fdr0.01.starch ../"${chrom_sizes}" filtered.density.starch filtered.peaks.fdr0.01.starch \$(cat filtered.cleavage.total)
-  density-peaks.bash \$TMPDIR varWidth_20_default filtered.cutcounts.starch filtered.hotspots.fdr0.001.starch ../"${chrom_sizes}" filtered.density.starch filtered.peaks.fdr0.001.starch \$(cat filtered.cleavage.total)
+  density-peaks.bash \$TMPDIR "varWidth_20_${hotspotid}" nuclear_shifted.cutcounts.starch nuclear_shifted.hotspots.fdr0.01.starch ../"${chrom_sizes}" nuclear_shifted.density.starch nuclear_shifted.peaks.fdr0.01.starch \$(cat nuclear_shifted.cleavage.total)
+  density-peaks.bash \$TMPDIR "varWidth_20_${hotspotid}" nuclear_shifted.cutcounts.starch nuclear_shifted.hotspots.fdr0.001.starch ../"${chrom_sizes}" nuclear_shifted.density.starch nuclear_shifted.peaks.fdr0.001.starch \$(cat nuclear_shifted.cleavage.total)
 
   rm -rf "\$TMPDIR"
   """
@@ -354,6 +400,7 @@ process density {
   label "modules"
 
   publishDir params.outdir
+  label 'high_mem'
 
   input:
   file filtered_bam from bam_for_density
