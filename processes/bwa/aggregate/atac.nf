@@ -261,6 +261,7 @@ process spot_score {
   output:
   file 'r1.spot.out'
   file 'r1.hotspot.info'
+  file 'spotdups.picard'
 
   script:
   """
@@ -287,6 +288,31 @@ process spot_score {
   bash \$STAMPIPES/scripts/SPOT/info.sh \
     r1.spots.starch hotspot1 r1.spot.out \
     > r1.hotspot.info
+
+  # Create the SPOT dup score
+  # RevertSam will barf if it's not sorted exactly how it likes apparently?
+  # Exception in thread "main" java.lang.IllegalArgumentException: Alignments added 
+  #   out of order in SAMFileWriterImpl.addAlignment for /tmp/nxf.ZbudE8UGBY/clear.bam.
+  #   Sort order is coordinate. Offending records are at [chr1:195371075] and [chr10:3100064]
+  picard SortSam \
+      INPUT=subsample.bam \
+      OUTPUT=sorted_subsample.bam \
+      SORT_ORDER=coordinate
+  # Remove existing duplication marks
+  picard RevertSam \
+    INPUT=sorted_subsample.bam \
+    OUTPUT=clear.bam \
+    VALIDATION_STRINGENCY=SILENT REMOVE_DUPLICATE_INFORMATION=true SORT_ORDER=coordinate \
+    RESTORE_ORIGINAL_QUALITIES=false REMOVE_ALIGNMENT_INFORMATION=false
+  # Make the dup scare
+	picard MarkDuplicatesWithMateCigar \
+    INPUT=clear.bam \
+    METRICS_FILE=spotdups.picard \
+    OUTPUT=/dev/null \
+    ASSUME_SORTED=true \
+    MINIMUM_DISTANCE=300 \
+    VALIDATION_STRINGENCY=SILENT \
+		READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
   """
 }
 
