@@ -36,7 +36,7 @@ echo "Creating $CONFIGOUT"
 
 chromFile=$(readlink -f "$GENOME.chromInfo.bed")
 mappableFile=$(readlink -f "$GENOME.K$K.mappable_only.bed")
-chkchr=$(awk 'BEGIN {print $1}' < "$chromFile")
+chkchr=$(awk 'NR==1{print $1}' < "$chromFile")
 
 # Create the configuration file for the SPOT program
 cat > $CONFIGOUT <<EOF
