@@ -1,4 +1,4 @@
-# Requires SAMPLE_NAME and GENOME to be in the environment
+# Requires SAMPLE_NAME and FLOWCELL and GENOME to be in the environment
 # Checks that important files exist and are not size 0
 
 EXIT=0
@@ -8,7 +8,7 @@ files=( \
     "${SAMPLE_NAME}.versions.txt" \
     "Aligned.sortedByCoord.out.bam" \
     "Aligned.toTranscriptome.out.bam" \
-    "trimmed/${SAMPLE_NAME}.trimmed.R1.fastq.gz"
+    "trimmed/${FLOWCELL}_${SAMPLE_NAME}_R1.fastq.gz"
 )
 
 for FILE in "${files[@]}"; do
