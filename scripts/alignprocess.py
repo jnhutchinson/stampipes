@@ -83,6 +83,8 @@ def parser_setup():
         action="store_true")
     parser.add_argument("--align_base_dir", dest="align_base_dir", help="Create the alignment directory in this directory")
 
+    parser.add_argument("--listout", dest="simple_output", help="Write only a list of alignments to run, rather than a script to submit them", action="store_true")
+
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
 
@@ -106,6 +108,8 @@ class ProcessSetUp(object):
         self.qsub_queue = args.qsub_queue
         self.auto_aggregate = args.auto_aggregate
         self.align_base_dir = args.align_base_dir
+
+        self.simple_output = args.simple_output
 
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
@@ -257,9 +261,12 @@ class ProcessSetUp(object):
             logging.debug("Logging script to %s" % self.outfile)
             outfile = open(self.outfile, 'a')
 
-        outfile.write("cd %s && " % os.path.dirname(script_file))
-        fullname = "%s%s-%s-ALIGN#%d" % (self.qsub_prefix,sample_name,processing_info['flowcell']['label'],align_id)
-        outfile.write("jobid=$(sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n)\nPROCESSING=\"$PROCESSING,$jobid\"\n\n" % (fullname, fullname, fullname, self.qsub_queue, script_file))
+        if self.simple_output:
+            outfile.write(script_file + "\n")
+        else:
+            outfile.write("cd %s && " % os.path.dirname(script_file))
+            fullname = "%s%s-%s-ALIGN#%d" % (self.qsub_prefix,sample_name,processing_info['flowcell']['label'],align_id)
+            outfile.write("jobid=$(sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n)\nPROCESSING=\"$PROCESSING,$jobid\"\n\n" % (fullname, fullname, fullname, self.qsub_queue, script_file))
         outfile.close()
 
     def get_script_template(self, process_template):

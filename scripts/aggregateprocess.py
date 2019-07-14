@@ -71,6 +71,7 @@ def parser_setup():
         help="Name of the qsub prefix in the qsub job name.  Use a . in front to make it non-cluttery.")
     parser.add_argument("--qsub-queue", dest="qsub_queue",
         help="Name of the SLURM partition to use.")
+    parser.add_argument("--listout", dest="simple_output", help="Write only a list of alignments to run, rather than a script to submit them", action="store_true")
     parser.add_argument("-n", "--dry-run", dest="dry_run", action="store_true",
         help="Take no action, only print messages.")
 
@@ -99,7 +100,11 @@ class ProcessSetUp(object):
         self.session = requests.Session()
         self.session.headers.update({'Authorization': "Token %s" % self.token})
 
+        self.simple_output = args.simple_output
         self.pool = ThreadPoolExecutor(max_workers=10)
+
+        if self.overwrite and not self.dry_run and os.path.exists(self.outfile):
+            os.remove(self.outfile)
 
     def api_single_result(self, url_addition=None, url=None):
 
@@ -346,16 +351,13 @@ class ProcessSetUp(object):
         return paired_ended
 
     def add_script(self, aggregation_id, aggregation_folder, library_number):
-
-        if self.overwrite:
-            mode = "w"
-        else:
-            mode = "a"
-
-        with open(self.outfile, mode) as runfile:
-            runfile.write("cd %s && " % aggregation_folder)
-            fullname = "%sLN%d_AGG#%d" % (self.qsub_prefix, library_number, aggregation_id)
-            runfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__AGG__\n#!/bin/bash\nbash %s\n__AGG__\n\n" % (fullname, fullname, fullname, self.qsub_queue, self.qsub_scriptname))
+        with open(self.outfile, "a") as runfile:
+            if self.simple_output:
+                runfile.write("%s/%s\n" % (aggregation_folder, self.qsub_scriptname))
+            else:
+                runfile.write("cd %s && " % aggregation_folder)
+                fullname = "%sLN%d_AGG#%d" % (self.qsub_prefix, library_number, aggregation_id)
+                runfile.write("sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=2000 --parsable --oversubscribe <<__AGG__\n#!/bin/bash\nbash %s\n__AGG__\n\n" % (fullname, fullname, fullname, self.qsub_queue, self.qsub_scriptname))
 
     def setup_tag(self, tag_slug):
 
