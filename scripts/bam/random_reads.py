@@ -7,6 +7,7 @@ def main():
     import datetime
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", dest="seed", type=int)
     parser.add_argument("infile")
     parser.add_argument("outfile")
     parser.add_argument("paired_reads_count")
@@ -21,6 +22,12 @@ def main():
     paired_reads_count_to_select = int(args.paired_reads_count_to_select)
     # total number of reads in the input file
     paired_reads_count = int(args.paired_reads_count)
+
+    # Set up a seed based on the argument plus desired reads & total reads.
+    # This should ensure that the selection is easily reproducible, but not
+    # biased in any consistent way
+    if args.seed:
+        random.seed(args.seed + paired_reads_count + paired_reads_count_to_select)
 
     # if total number of reads less than number of reads to select,
     # then copy input file to output file
