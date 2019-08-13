@@ -48,10 +48,7 @@ fi
 
 # create merged fastqs
 if [ ! -s "$TRIMS_R1" ] ; then
-samtools sort -n -o sorted.bam $GENOME_BAM
-samtools view -uf64 sorted.bam | samtools fastq - > $TRIMS_R1
-samtools view -uf128 sorted.bam | samtools fastq - > $TRIMS_R2
-rm sorted.bam
+  samtools fastq --threads 2 "$GENOME_BAM" -1 "$TRIMS_R1" -2 "$TRIMS_R2"
 fi
 
 density_job=.AG${AGGREGATION_ID}.star_den
