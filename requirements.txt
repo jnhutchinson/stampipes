@@ -1,3 +1,0 @@
-biopython==1.65
-pysam=0.6.0
-requests=2.6.0
