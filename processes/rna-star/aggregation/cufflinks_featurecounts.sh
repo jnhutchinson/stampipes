@@ -1,5 +1,5 @@
 source $MODULELOAD
-module load samtools/1.3
+module load samtools/1.7
 module load gcc/4.7.2     # R dependent on this
 module load R/3.2.5
 module load STAR/2.4.2a   # Just for densities
