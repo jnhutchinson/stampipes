@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=2.4.1
+version=2.5.0
 export NXF_VER=18.10.1  # The version of nextflow to run. 18.10.1 includes conda
 
 cd "$(dirname "$0")"
