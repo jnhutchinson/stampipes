@@ -92,7 +92,7 @@ process dups {
   samtools index marked.bam
   """
 }
-marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter; bam_for_diff_peaks }
+marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter; bam_for_diff_peaks; bam_for_multimapping_density }
 
 process filter {
   label "modules"
@@ -415,6 +415,84 @@ process density {
   tabix -p bed density.bgz
   '''
 
+}
+
+process multimapping_density {
+
+  publishDir params.outdir
+  label 'modules'
+
+  input:
+  file marked_bam from bam_for_multimapping_density
+  file chrom_bucket from file(params.chrom_bucket)
+  file fai from file("${params.genome}.fai")
+
+  output:
+  file "mm_density.starch"
+  file "mm_density.bw"
+  file 'normalized.mm_density.starch'
+  file 'normalized.mm_density.bw'
+
+  shell:
+  window_size = 75
+  bin_size = 20
+  scale = 1_000_000
+  '''
+  # Mark multi-mapping reads as QC-pass!
+  samtools view -h "!{marked_bam}" |
+  awk 'BEGIN{OFS="\t"} /XA:Z/ {$2 = and(or($2, 2), compl(512))} 1' |
+  samtools view --threads 3 -F 512 -o filtered.bam
+  samtools index filtered.bam
+
+
+  # Generate density
+  mkfifo density.bed
+
+  bam2bed -d \
+  < filtered.bam \
+  | cut -f1-6 \
+  | awk '{ if( $6=="+" ){ s=$2; e=$2+1 } else { s=$3-1; e=$3 } print $1 "\t" s "\t" e "\tid\t" 1 }' \
+  | sort-bed - \
+  > density.bed \
+  &
+
+  unstarch "!{chrom_bucket}" \
+  | bedmap --faster --echo --count --delim "\t" - density.bed \
+  | awk -v "binI=!{bin_size}" -v "win=!{window_size}" \
+        'BEGIN{ halfBin=binI/2; shiftFactor=win-halfBin } { print $1 "\t" $2 + shiftFactor "\t" $3-shiftFactor "\tid\t" i $4}' \
+  | starch - \
+  > mm_density.starch
+
+  # Bigwig
+  "/home/solexa/stampipes/scripts/bwa/starch_to_bigwig.bash" \
+    mm_density.starch \
+    mm_density.bw \
+    "!{fai}" \
+    "!{bin_size}"
+
+  # # Tabix
+  # unstarch density.starch | bgzip > density.bgz
+  # tabix -p bed density.bgz
+
+  rm density.bed
+
+  # Normalized density
+  unstarch mm_density.starch \
+    | awk -v allcounts=$(samtools view -c filtered.bam) \
+          -v extranuclear_counts=$(samtools view -c "filtered.bam" chrM chrC) \
+          -v scale=!{scale} \
+          'BEGIN{ tagcount=allcounts-extranuclear_counts }
+           { z=$5;
+             n=(z/tagcount)*scale;
+             print $1 "\t" $2 "\t" $3 "\t" $4 "\t" n }' \
+    | starch - > normalized.mm_density.starch
+
+  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+    normalized.mm_density.starch \
+    normalized.mm_density.bw \
+    "!{fai}" \
+    "!{bin_size}"
+  '''
 }
 
 process normalize_density {
