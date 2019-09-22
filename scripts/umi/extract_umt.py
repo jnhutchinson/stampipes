@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from Bio import SeqIO
 import argparse
@@ -60,7 +60,7 @@ def attach_umt(r1, r2):
     if not r1_len:
         return (None, None)
 
-    r2_len = find_stem_len(r1)
+    r2_len = find_stem_len(r2)
     if not r2_len:
         return (None, None)
 
@@ -69,10 +69,10 @@ def attach_umt(r1, r2):
 
     r1.id += umt_add
     r1.name = ""
-    r1.description = " ".join(string.split(r1.description)[1:])
+    r1.description = " ".join(r1.description.split()[1:])
 
     r2.id += umt_add
-    r2.description = " ".join(string.split(r2.description)[1:])
+    r2.description = " ".join(r2.description.split()[1:])
     r2.name = ""
 
     # Check for presence of UMT in mate - this indicates a short fragment that needs trimmed
@@ -122,7 +122,7 @@ def main(argv):
         r2_seqIO = SeqIO.parse(r2_in, "fastq")
         try:
             while True:
-                (r1, r2) = attach_umt(r1_seqIO.next(), r2_seqIO.next())
+                (r1, r2) = attach_umt(next(r1_seqIO), next(r2_seqIO))
                 # Only write Fastq records for which we find stems
                 if r1 is not None and r2 is not None:
                     r1_out.write(r1.format("fastq"))
