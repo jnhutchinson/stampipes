@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e -o pipefail
 
-version=2.1.0
+version=2.1.1
 
 cd "$(dirname "$0")"
 
