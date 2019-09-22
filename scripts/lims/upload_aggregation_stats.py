@@ -39,6 +39,8 @@ def upload_stats(api, aggregation, stats={}):
     response = api.post_single_result(url_addition="stat/create", json=data)
     if response is None:
         raise Exception("Upload failed")
+        
+    log.info(response)
 
 def upload_spot(api, aggregation, spot_file):
     if not os.path.exists(spot_file):
@@ -54,19 +56,30 @@ def upload_spot(api, aggregation, spot_file):
 def upload_file(api, aggregation, counts_file):
     count_content = open(counts_file, 'r')
 
+    log.info("uploading {}".format(counts_file))
     stats = {}
     for line in count_content:
         values = line.split()
 
         if len(values) < 2:
+            log.warn("skipping {}".format(values))
             continue
 
         stat_type_name = values[0]
         value = values[1]
 
+        try:
+            float(value)
+        except ValueError:
+            log.warn("skipping stat-type '{}' with non-numeric value '{}'".format(stat_type_name, value))
+            continue
+
+
         if not stat_type_name:
+            log.warn("skipping {}".format(stat_type_name))
             continue
         stats[stat_type_name] = value
+        log.debug( "{} : {}".format(stat_type_name, value))
     count_content.close()
     upload_stats(api, aggregation, stats)
 
@@ -90,6 +103,10 @@ from the command line."""
         requests_log.setLevel(logging.WARN)
 
     api = setup_api()
+
+    if poptions.aggregation_id is None:
+        log.critical("No --aggregation specified")
+        sys.exit(2)
     aggregation = aggregations.get_aggregation(api, poptions.aggregation_id)
     if poptions.counts_file:
         for count_file in poptions.counts_file:
