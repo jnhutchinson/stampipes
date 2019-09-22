@@ -16,7 +16,6 @@ stem_lengths = [11, 10, 9, 8]
 
 mismatched_stems = set()
 
-umtstats = {'trimmed': 0, 'no_stem': 0}
 
 def parseArgs():
     parser = argparse.ArgumentParser(
@@ -70,15 +69,34 @@ def attach_umt(r1, r2):
 
     r1.id += umt_add
     r1.name = ""
-    r1.description = " ".join(r1.description.split()[1:])
+    r1.description = " ".join(string.split(r1.description)[1:])
 
     r2.id += umt_add
-    r2.description = " ".join(r2.description.split()[1:])
+    r2.description = " ".join(string.split(r2.description)[1:])
     r2.name = ""
 
-    # Trim UMT & stem out of read
+    # Check for presence of UMT in mate - this indicates a short fragment that needs trimmed
+
+    # Save stem & UMT for trimming use
+    stem1 = r1[:UMI_LEN + r1_len]
+    stem2 = r2[:UMI_LEN + r2_len:]
+
+    # Trim UMT & stem out of start of read
     r1 = r1[UMI_LEN + r1_len:]
     r2 = r2[UMI_LEN + r2_len:]
+
+    # Trim ends, if necessary
+    rev_stem1 = str(stem1.seq.reverse_complement())
+    rev_stem2 = str(stem2.seq.reverse_complement())
+    str_r1 = str(r1.seq)
+    str_r2 = str(r2.seq)
+    for x in range(UMI_LEN, -12, -1):
+        x1 = x + r2_len
+        x2 = x + r1_len
+        if str_r1[-x1:] == rev_stem2[:x1] and str_r2[-x2:] == rev_stem1[:x2]:
+            r1 = r1[:-x1]
+            r2 = r2[:-x2]
+            break
 
     return (r1, r2)
 
@@ -92,7 +110,7 @@ def setup_mismatches(num_mismatches):
 
 def main(argv):
     args = parseArgs()
-    logging.basicConfig(level=logging.INFO, format=log_format)
+    logging.basicConfig(level=logging.WARN, format=log_format)
     setup_mismatches(args.mismatches)
 
     with open(args.r1_fastq) as r1_in, \
@@ -104,23 +122,13 @@ def main(argv):
         r2_seqIO = SeqIO.parse(r2_in, "fastq")
         try:
             while True:
-                (r1, r2) = attach_umt(r1_seqIO.__next__(), r2_seqIO.__next__())
+                (r1, r2) = attach_umt(r1_seqIO.next(), r2_seqIO.next())
                 # Only write Fastq records for which we find stems
                 if r1 is not None and r2 is not None:
-                    umtstats['trimmed'] += 1
                     r1_out.write(r1.format("fastq"))
                     r2_out.write(r2.format("fastq"))
-                else:
-                    umtstats['no_stem'] += 1
-
         except StopIteration:
             logging.info("EOF reached")
 
-    logging.info("Trimmed: %d" % umtstats['trimmed'])
-    logging.info("No stem: %d" % umtstats['no_stem'])
-
 if __name__ == "__main__":
     main(sys.argv)
-
-
-
