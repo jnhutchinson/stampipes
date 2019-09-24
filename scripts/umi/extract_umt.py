@@ -79,7 +79,7 @@ def attach_umt(r1, r2):
 
     # Save stem & UMT for trimming use
     stem1 = r1[:UMI_LEN + r1_len]
-    stem2 = r2[:UMI_LEN + r2_len:]
+    stem2 = r2[:UMI_LEN + r2_len]
 
     # Trim UMT & stem out of start of read
     r1 = r1[UMI_LEN + r1_len:]
@@ -96,7 +96,13 @@ def attach_umt(r1, r2):
         if str_r1[-x1:] == rev_stem2[:x1] and str_r2[-x2:] == rev_stem1[:x2]:
             r1 = r1[:-x1]
             r2 = r2[:-x2]
-            break
+            return (r1, r2)
+    # Check specifically for "we didn't trim off one base of adapter sequence"
+    x1 = UMI_LEN+r2_len
+    x2 = UMI_LEN+r1_len
+    if str_r1[-x1-1:-1] == rev_stem2[:x1] and str_r2[-x2-1:-1] == rev_stem1[:x2]:
+        r1 = r1[:-x1-1]
+        r2 = r2[:-x2-1]
 
     return (r1, r2)
 
