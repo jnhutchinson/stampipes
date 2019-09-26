@@ -352,6 +352,7 @@ process feature_counts {
     -P \
     --fracOverlap .5 \
     -s 2 \
+    -D 10000 \
     -t exon \
     -g gene_id \
     -a "${annotation}" \
