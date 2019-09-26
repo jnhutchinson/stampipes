@@ -149,15 +149,12 @@ process trimmed_fastq {
   file bam from to_kallisto
 
   output:
-  set file('r1.fastq'), file('r2.fastq') into trimmed_fastq
+  set file('r1.fastq.gz'), file('r2.fastq.gz') into trimmed_fastq
 
   script:
   """
-  samtools sort -n "$bam" --threads 8 \
-  | tee >(
-    samtools view -u -f  64 "$bam" | samtools fastq - > r1.fastq
-      ) \
-  | samtools view -u -f 128 "$bam" | samtools fastq - > r2.fastq
+  samtools sort -n "$bam" --threads 8 -u \
+  | samtools fastq - -1 r1.fastq.gz -2 r2.fastq.gz --threads 4
   """
 }
 
