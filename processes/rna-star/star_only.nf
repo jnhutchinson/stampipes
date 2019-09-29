@@ -5,19 +5,19 @@ params.r2 = ""
 
 params.adapter_p5 = ""
 params.adapter_p7 = ""
+params.refdir = "/net/seq/data/genomes/human/GRCh38/noalts-sequins/"
+params.stranded = true
 
 params.seed = 12345
 params.outdir = "output"
-
-params.refdir = "/net/seq/data/genomes/human/GRCh38/noalts-sequins/"
+params.star_threads = 8
 
 starIndexDir = "${params.refdir}/STARgenome-gencode-v25"
 rsemIndexDir = "${params.refdir}/RSEMgenome-gencode-v25"
 
-params.star_threads = 8
-params.rsem_threads = 8
 
 process trim {
+  cpus 2
 
   input:
   file r1 from file(params.r1)
@@ -64,14 +64,14 @@ process star {
   file 'Aligned.toTranscriptome.out.bam' into transcriptBam
 
   script:
-
+  strandOpt = params.stranded ? "" : "--outSamstrandField intronMotif"
   """
   # TODO: Update this??
   echo -e '@CO\tANNID:gencode.basic.tRNA.annotation.gtf.gz' > commentslong.txt
 
   STAR \
     --genomeDir "ref/"  \
-    --readFilesIn "$r1" "$r2"   \
+    --readFilesIn "${r1}" "${r2}"   \
     --outSAMunmapped Within --outFilterType BySJout \
     --outSAMattributes NH HI AS NM MD    \
     --outFilterMultimapNmax 20   \
@@ -84,13 +84,53 @@ process star {
     --alignSJDBoverhangMin 1 \
     --sjdbScore 1 \
     --readFilesCommand zcat \
-    --runThreadN ${threads} \
+    --runThreadN "${threads}" \
     --limitBAMsortRAM 30000000000 \
     --outSAMtype BAM SortedByCoordinate \
     --quantMode TranscriptomeSAM \
     --outSAMheaderCommentFile commentslong.txt \
     --outSAMheaderHD '@HD' 'VN:1.4' 'SO:coordinate'
-    # TODO: add stranded options
+    $strandOpt
+  """
+}
 
+process coverage {
+  module 'STAR'
+
+  input:
+  file bam from coordinateBam
+
+  output:
+  file 'Signal/*bg' into bedGraph
+
+  script:
+  strandOpt = params.stranded ? "Stranded" : "Unstranded"
+  """
+  STAR \
+    --runMode inputAlignmentsFromBAM \
+    --inputBAMfile Aligned.sortedByCoord.out.bam \
+    --outWigType bedGraph \
+    --outFileNamePrefix ./Signal/ \
+    --outWigReferencesPrefix chr \
+    --outWigStrand "${strandOpt}"
+  """
+}
+
+process bigWig {
+  module 'kentutils'
+  publishDir params.outdir
+
+  input:
+  file bedgraph from bedGraph.flatten()
+  file chroms from file("${refdir}/chrNameLength.txt")
+
+  output:
+  file("*.bw")
+
+  script:
+  """
+  grep ^chr "${chroms}" > chrNL.txt
+  grep ^chr "${bedgraph}" | sort -k1,1 -k2,2n > sig.tmp
+  bedGraphToBigWig sig.tmp chrNL.txt "${bedgraph}.bw"
   """
 }
