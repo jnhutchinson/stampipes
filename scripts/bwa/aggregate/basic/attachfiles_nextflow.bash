@@ -1,9 +1,7 @@
 # Uploads important files as attachments to an aggregation object on the LIMS
 # Required environment names:
 #  * STAMPIPES
-#  * LIBRARY_NAME
-#  * GENOME
-#  * AGGREGATION_DIR
+#  * PEAK_CALLER
 #  * AGGREGATION_ID
 
 set -e -u -o pipefail
@@ -31,12 +29,16 @@ attach_file  marked.bam      all-alignments-bam  bam
 attach_file  marked.bam.bai  bam-index           bam-index
 
 # Densities
-attach_file  density.starch             density-bed-starch-windowed         starch
-attach_file  density.bw                 density-bigwig-windowed             bigwig
-attach_file  density.bgz                density-tabix-bgz                   bgz
-attach_file  normalized.density.starch  normalized-density-bed-starch       starch
-attach_file  normalized.density.bw      normalized-density-bigwig-windowed  bigwig
-attach_file  normalized.density.bgz     normalized-density-tabix-bgz        bgz
+attach_file  density.starch                density-bed-starch-windowed            starch
+attach_file  density.bw                    density-bigwig-windowed                bigwig
+attach_file  density.bgz                   density-tabix-bgz                      bgz
+attach_file  normalized.density.starch     normalized-density-bed-starch          starch
+attach_file  normalized.density.bw         normalized-density-bigwig-windowed     bigwig
+attach_file  normalized.density.bgz        normalized-density-tabix-bgz           bgz
+attach_file  mm_density.starch             mm-density-bed-starch-windowed         starch
+attach_file  mm_density.bw                 mm-density-bigwig-windowed             bigwig
+attach_file  normalized.mm_density.starch  normalized-mm-density-bed-starch       starch
+attach_file  normalized.mm_density.bw      normalized-mm-density-bigwig-windowed  bigwig
 
 # Cut counts
 attach_file  cutcounts.bw       cutcounts-bw         bigwig
