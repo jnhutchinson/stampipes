@@ -639,7 +639,7 @@ bash fastqc.bash
 python3 "$STAMPIPES/scripts/alignprocess.py" \
   --flowcell "$flowcell"                     \
   --auto_aggregate                           \
-  --qsub_queue queue0                        \
+  --qsub-queue queue0                        \
   --outfile run_alignments.bash
 
 # Set up of flowcell aggregations
