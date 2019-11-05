@@ -7,11 +7,12 @@ cd "$here"
 
 STAMPIPES=$PWD/../../..
 export STAMPIPES
-nextflow run $STAMPIPES/processes/bwa/aggregate/basic.nf \
-  -profile test,cluster,modules \
+nextflow run "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
+  -profile test,docker \
   "$@"
 
 # Verify
+source ../../test_helper.bash
 
 function cmp_picard() {
   name=$(basename "$1")
@@ -59,5 +60,10 @@ cmp_picard "hs_motifs_svmlight.cols.txt"
 cmp_picard "hs_motifs_svmlight.rows.txt"
 cmp_picard "hs_motifs_svmlight.txt"
 cmp_picard "prox_dist.info"
+
+verify check_starch normalized.density.starch
+verify check_starch mm_density.starch
+verify check_starch normalized.mm_density.starch
+verify check_text preseq.txt
 
 echo "Testing completed successfully"
