@@ -352,7 +352,7 @@ process cutcounts {
   | starch - > cutcounts.starch
 
   # Bigwig
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     cutcounts.starch \
     cutcounts.bw \
     "${fai}"
@@ -404,7 +404,7 @@ process density {
   > density.starch
 
   # Bigwig
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     density.starch \
     density.bw \
     "!{fai}" \
@@ -464,7 +464,7 @@ process multimapping_density {
   > mm_density.starch
 
   # Bigwig
-  "/home/solexa/stampipes/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     mm_density.starch \
     mm_density.bw \
     "!{fai}" \
@@ -487,7 +487,7 @@ process multimapping_density {
              print $1 "\t" $2 "\t" $3 "\t" $4 "\t" n }' \
     | starch - > normalized.mm_density.starch
 
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     normalized.mm_density.starch \
     normalized.mm_density.bw \
     "!{fai}" \
@@ -524,7 +524,7 @@ process normalize_density {
              print $1 "\t" $2 "\t" $3 "\t" $4 "\t" n }' \
     | starch - > normalized.density.starch
 
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     normalized.density.starch \
     normalized.density.bw \
     "!{fai}" \
