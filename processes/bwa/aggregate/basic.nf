@@ -11,7 +11,7 @@ params.readlength = 36
 
 params.peakcaller = "hotspot2"
 
-params.bias = ""
+params.bias = "."
 params.chunksize = 5000
 
 params.hotspot_id = "default"
@@ -687,7 +687,7 @@ process learn_dispersion {
   cpus = 8
 
   when:
-  params.bias != ""
+  params.bias != "."
 
   input:
   file ref from file("${params.genome}.fa")
