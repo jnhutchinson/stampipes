@@ -169,8 +169,9 @@ RUN apt-get install -y \
       bc \
       bowtie \
       build-essential \
-      libboost-dev \
       coreutils \
+      gawk \
+      libboost-dev \
       libgsl-dev \
       littler \
       openjdk-8-jre \

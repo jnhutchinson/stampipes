@@ -440,7 +440,7 @@ process multimapping_density {
   '''
   # Mark multi-mapping reads as QC-pass!
   samtools view -h "!{marked_bam}" |
-  awk 'BEGIN{OFS="\t"} /XA:Z/ {$2 = and(or($2, 2), compl(512))} 1' |
+  gawk 'BEGIN{OFS="\t"} /XA:Z/ {$2 = and(or($2, 2), compl(512))} 1' |
   samtools view --threads 3 -F 512 -o filtered.bam
   samtools index filtered.bam
 
