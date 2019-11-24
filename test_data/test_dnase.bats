@@ -53,14 +53,51 @@ export STAMPIPES=$root
   cmp_text r1.spot.out
   cmp_text tagcounts.txt
 
-  cmp_text peaks/filtered.SPOT.txt
-  cmp_starch peaks/filtered.allcalls.starch
-  cmp_starch peaks/filtered.cutcounts.starch
-  cmp_starch peaks/filtered.density.starch
+  cmp_text peaks/nuclear.SPOT.txt
+  cmp_starch peaks/nuclear.allcalls.starch
+  cmp_starch peaks/nuclear.cutcounts.starch
+  cmp_starch peaks/nuclear.density.starch
   for fdr in 0.05 0.01 0.001 ; do
-    cmp_starch peaks/filtered.hotspots.fdr$fdr.starch
-    cmp_starch peaks/filtered.peaks.fdr$fdr.narrowpeaks.starch
-    cmp_starch peaks/filtered.peaks.fdr$fdr.starch
+    cmp_starch peaks/nuclear.hotspots.fdr$fdr.starch
+    cmp_starch peaks/nuclear.peaks.narrowpeaks.fdr$fdr.starch
+    cmp_starch peaks/nuclear.peaks.fdr$fdr.starch
   done
 
+}
+
+@test 'DNase aggregation single-end' {
+  cd $BATS_TEST_DIRNAME/dnase/aggregation_singleend
+  nextflow run "$root/processes/bwa/aggregate/basic.nf" -profile test,cluster,modules --bams "../alignment_singleend/expected/marked.bam" -resume --paired false -process.errorStrategy="ignore" -ansi-log
+
+  cmp_picard MarkDuplicates.picard
+
+  cmp_starch cutcounts.starch
+  cmp_starch density.starch
+  cmp_starch mm_density.starch
+  cmp_starch normalized.density.starch
+  cmp_starch normalized.mm_density.starch
+  cmp_starch fragments.starch
+
+  cmp_bam filtered.bam
+  cmp_bam merged.bam
+
+  cmp_text adapter.counts.txt
+  cmp_text hs_motifs_svmlight.txt
+  cmp_text r1.spot.out
+  cmp_text tagcounts.txt
+
+  cmp_text peaks/nuclear.SPOT.txt
+  cmp_starch peaks/nuclear.allcalls.starch
+  cmp_starch peaks/nuclear.cutcounts.starch
+  cmp_starch peaks/nuclear.density.starch
+
+  for fdr in 0.05 0.01 0.001 ; do
+    cmp_starch peaks/nuclear.hotspots.fdr$fdr.starch
+    cmp_starch peaks/nuclear.peaks.fdr$fdr.starch
+  done
+
+  # I named these wrong
+  cmp_starch peaks/nuclear.peaks.fdr0.001.narrowpeaks.starch
+  cmp_starch peaks/nuclear.peaks.fdr0.01.narrowpeaks.starch
+  cmp_starch peaks/nuclear.peaks.narrowpeaks.fdr0.05.starch
 }

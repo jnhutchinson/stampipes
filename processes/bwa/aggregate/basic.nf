@@ -17,6 +17,8 @@ params.chunksize = 5000
 params.hotspot_id = "default"
 params.hotspot_index = "."
 
+params.paired = true
+
 
 def helpMessage() {
   log.info"""
@@ -227,7 +229,8 @@ process spot_score {
   file 'r1.hotspot.info'
 
   script:
-  """
+  if (params.paired) {
+  start = """
   # random sample
 	samtools view -h -F 12 -f 3 "$bam" \
 		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
@@ -235,7 +238,19 @@ process spot_score {
 		> nuclear.bam
 	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
   samtools view -b -f 0x0040 subsample.bam > r1.bam
-
+  """
+  } else {
+   start = """
+  # random sample
+	samtools view -h -F 12 "$bam" \
+		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
+		| samtools view -uS - \
+		> nuclear.bam
+	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
+  ln -s subsample.bam r1.bam
+  """
+  }
+  start + """
   # hotspot
   bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
     \$HOTSPOT_DIR \
@@ -540,6 +555,7 @@ process insert_sizes {
   label "modules"
 
   publishDir params.outdir
+  when params.paired
 
   input:
   file nuclear_bam from bam_for_inserts
