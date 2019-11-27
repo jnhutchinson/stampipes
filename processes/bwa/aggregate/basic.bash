@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=2.5.1
+version=2.6.0
 export NXF_VER=18.10.1  # The version of nextflow to run. 18.10.1 includes conda
 
 cd "$(dirname "$0")"
@@ -59,6 +59,12 @@ if [[ -z "$PEAK_CALLER" ]] ; then
   fi
 fi
 
+if [[ -n "$PAIRED" ]] ; then
+  pairflag=true
+else
+  pairflag=false
+fi
+
 # Run the whole process
 nextflow run \
   "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
@@ -75,6 +81,7 @@ nextflow run \
   --hotspot_id "AG$AGGREGATION_ID" \
   --bias "$STAMPIPES_DATA/footprints/vierstra_et_al.txt" \
   --UMI="$UMI" \
+  --paired "$pairflag" \
   --outdir "$outdir" \
   --threads 3 \
   -profile cluster,modules \

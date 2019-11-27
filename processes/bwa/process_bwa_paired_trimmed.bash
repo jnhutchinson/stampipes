@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e -o pipefail
 
-version=2.1.2
+version=2.3.0
 
 cd "$(dirname "$0")"
 
@@ -34,6 +34,8 @@ if [[ (-n "$ADAPTER_P7") && (-n "$ADAPTER_P5") ]]; then
   echo -e "P7\t$ADAPTER_P7\nP5\t$ADAPTER_P5" > "$tmpfile"
   rsync --checksum "$tmpfile" "$adapterfile"
   rm "$tmpfile"
+else
+  touch "$adapterfile"
 fi
 
 # Tell LIMS we're starting alignment
