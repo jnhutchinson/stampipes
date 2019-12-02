@@ -2,102 +2,106 @@
 
 load test_helper
 
-require_exe nextflow docker
-
 root="$BATS_TEST_DIRNAME/.."
 export STAMPIPES=$root
+export NXF_VER=19.10.0
 
 @test 'DNase alignment pipeline' {
   cd $BATS_TEST_DIRNAME/dnase/alignment
-  nextflow run "$root/processes/bwa/process_bwa_paired_trimmed.nf" -profile test,docker  -resume
+  nextflow run "$root/processes/bwa/process_bwa_paired_trimmed.nf" -profile "$(get_profile)"  -resume -ansi-log false
 
-  cmp_picard "MarkDuplicates.picard"
-  cmp_picard "CollectInsertSizeMetrics.picard"
-  cmp_text "tagcounts.txt"
-  cmp_text "subsample.r1.spot.out"
-  cmp_starch "density.bed.starch"
-  cmp_bam "filtered.bam"
-  cmp_bam "marked.bam"
+  verify check_text "MarkDuplicates.picard"
+  verify check_text "CollectInsertSizeMetrics.picard"
+  verify check_text "tagcounts.txt"
+  verify check_text "subsample.r1.spot.out"
+  verify check_starch "density.bed.starch"
+  verify check_bam "filtered.bam"
+  verify check_bam "marked.bam"
 
 }
 
 @test 'DNase pipeline, single-end' {
   cd $BATS_TEST_DIRNAME/dnase/alignment_singleend
-  nextflow run "$root/processes/bwa/process_bwa_paired_trimmed.nf" -profile test,cluster,docker -resume -ansi-log false -process.scratch=false --r2="." --debug
+  nextflow run "$root/processes/bwa/process_bwa_paired_trimmed.nf" -profile "$(get_profile)" -resume -ansi-log false -process.scratch=false --r2="."
 
-  cmp_picard "MarkDuplicates.picard"
-  cmp_picard "tagcounts.txt"
-  cmp_picard "subsample.r1.spot.out"
-  cmp_starch "density.bed.starch"
-  cmp_bam "filtered.bam"
-  cmp_bam "marked.bam"
+  verify check_text "MarkDuplicates.picard"
+  verify check_text "tagcounts.txt"
+  verify check_text "subsample.r1.spot.out"
+  verify check_starch "density.bed.starch"
+  verify check_bam "filtered.bam"
+  verify check_bam "marked.bam"
 
 }
 
 @test 'DNase aggregation' {
   cd $BATS_TEST_DIRNAME/dnase/aggregation
-  nextflow run "$root/processes/bwa/aggregate/basic.nf" -profile test,docker -resume
+  nextflow run "$root/processes/bwa/aggregate/basic.nf" -profile "$(get_profile)"  -resume -ansi-log false
 
-  cmp_picard CollectInsertSizeMetrics.picard
-  cmp_picard MarkDuplicates.picard
+  verify check_text CollectInsertSizeMetrics.picard
+  verify check_text MarkDuplicates.picard
 
-  cmp_starch cutcounts.starch
-  cmp_starch density.starch
-  cmp_starch fragments.starch
+  verify check_starch cutcounts.starch
+  verify check_starch density.starch
+  verify check_starch fragments.starch
 
-  cmp_bam filtered.bam
-  cmp_bam merged.bam
+  verify check_bam filtered.bam
+  verify check_bam merged.bam
 
-  cmp_text adapter.counts.txt
-  cmp_text hs_motifs_svmlight.txt
-  cmp_text r1.spot.out
-  cmp_text tagcounts.txt
+  verify check_text adapter.counts.txt
+  verify check_text hs_motifs_svmlight.txt
+  verify check_text r1.spot.out
+  verify check_text tagcounts.txt
 
-  cmp_text peaks/nuclear.SPOT.txt
-  cmp_starch peaks/nuclear.allcalls.starch
-  cmp_starch peaks/nuclear.cutcounts.starch
-  cmp_starch peaks/nuclear.density.starch
+  verify check_text peaks/nuclear.SPOT.txt
+  verify check_starch peaks/nuclear.allcalls.starch
+  verify check_starch peaks/nuclear.cutcounts.starch
+  verify check_starch peaks/nuclear.density.starch
+
   for fdr in 0.05 0.01 0.001 ; do
-    cmp_starch peaks/nuclear.hotspots.fdr$fdr.starch
-    cmp_starch peaks/nuclear.peaks.narrowpeaks.fdr$fdr.starch
-    cmp_starch peaks/nuclear.peaks.fdr$fdr.starch
+    verify check_starch peaks/nuclear.hotspots.fdr$fdr.starch
+    verify check_starch peaks/nuclear.peaks.fdr$fdr.starch
   done
+
+  # I named these wrong
+  verify check_starch peaks/nuclear.peaks.fdr0.001.narrowpeaks.starch
+  verify check_starch peaks/nuclear.peaks.fdr0.01.narrowpeaks.starch
+  verify check_starch peaks/nuclear.peaks.narrowpeaks.fdr0.05.starch
 
 }
 
 @test 'DNase aggregation single-end' {
   cd $BATS_TEST_DIRNAME/dnase/aggregation_singleend
-  nextflow run "$root/processes/bwa/aggregate/basic.nf" -profile test,cluster,modules --bams "../alignment_singleend/expected/marked.bam" -resume --paired false -process.errorStrategy="ignore" -ansi-log
+  nextflow run "$root/processes/bwa/aggregate/basic.nf" -profile "$(get_profile)" --bams "../alignment_singleend/expected/marked.bam" -resume --paired false -process.errorStrategy="ignore" -ansi-log false
 
-  cmp_picard MarkDuplicates.picard
+  verify check_text MarkDuplicates.picard
 
-  cmp_starch cutcounts.starch
-  cmp_starch density.starch
-  cmp_starch mm_density.starch
-  cmp_starch normalized.density.starch
-  cmp_starch normalized.mm_density.starch
-  cmp_starch fragments.starch
+  verify check_starch cutcounts.starch
+  verify check_starch density.starch
+  verify check_starch mm_density.starch
+  verify check_starch normalized.density.starch
+  verify check_starch normalized.mm_density.starch
+  verify check_starch fragments.starch
 
-  cmp_bam filtered.bam
-  cmp_bam merged.bam
+  verify check_bam filtered.bam
+  verify check_bam merged.bam
 
-  cmp_text adapter.counts.txt
-  cmp_text hs_motifs_svmlight.txt
-  cmp_text r1.spot.out
-  cmp_text tagcounts.txt
+  verify check_text adapter.counts.txt
+  verify check_text hs_motifs_svmlight.txt
+  verify check_text r1.spot.out
+  verify check_text tagcounts.txt
 
-  cmp_text peaks/nuclear.SPOT.txt
-  cmp_starch peaks/nuclear.allcalls.starch
-  cmp_starch peaks/nuclear.cutcounts.starch
-  cmp_starch peaks/nuclear.density.starch
+  verify check_text peaks/nuclear.SPOT.txt
+  verify check_starch peaks/nuclear.allcalls.starch
+  verify check_starch peaks/nuclear.cutcounts.starch
+  verify check_starch peaks/nuclear.density.starch
 
   for fdr in 0.05 0.01 0.001 ; do
-    cmp_starch peaks/nuclear.hotspots.fdr$fdr.starch
-    cmp_starch peaks/nuclear.peaks.fdr$fdr.starch
+    verify check_starch peaks/nuclear.hotspots.fdr$fdr.starch
+    verify check_starch peaks/nuclear.peaks.fdr$fdr.starch
   done
 
   # I named these wrong
-  cmp_starch peaks/nuclear.peaks.fdr0.001.narrowpeaks.starch
-  cmp_starch peaks/nuclear.peaks.fdr0.01.narrowpeaks.starch
-  cmp_starch peaks/nuclear.peaks.narrowpeaks.fdr0.05.starch
+  verify check_starch peaks/nuclear.peaks.fdr0.001.narrowpeaks.starch
+  verify check_starch peaks/nuclear.peaks.fdr0.01.narrowpeaks.starch
+  verify check_starch peaks/nuclear.peaks.narrowpeaks.fdr0.05.starch
 }

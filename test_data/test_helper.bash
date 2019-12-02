@@ -2,6 +2,10 @@
 
 EXPECTED_DIR=${EXPECTED_DIR:-expected}
 
+function get_profile() {
+  echo 'test,docker'
+}
+
 function compare() {
 	local func=$1
 	local actual=$2
