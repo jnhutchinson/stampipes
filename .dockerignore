@@ -2,6 +2,7 @@ test_data/*
 **GRCh38*
 singularity/*
 
+data/*
 master*
 work/
 **/work/
