@@ -18,7 +18,7 @@ sys.path.insert(
 ))
 
 from stamlims_api.lims import aggregations, content_types
-from stamlims_api.rest import setup_api
+from stamlims_api.rest import LIMS_URL_OPT_VAR, LIMS_TOKEN_OPT_VAR, RAISE_ON_ERROR_VAR, setup_api
 
 lane_tags = None
 flowcell_lane_cache = dict()
@@ -230,19 +230,19 @@ def url_join(*args):
 class UploadLIMS(object):
 
     def __init__(self, api_url, token):
-       self.fastqc_tags = None
-       self.count_types = {}
-       self.flowcelllane_contenttype = None
-       self.alignment_contenttype = None
-       self.aggregation_contenttype = None
-       self.flowcell_lane_cache = {}
-       self.alignment_counts = {}
-       self.picard_metrics = None
-       self.fastqc_counts = {}
-       self.api = setup_api({'LIMS_URL_OPT_VAR': api_url,
-                             'LIMS_TOKEN_OPT_VAR': token})
-       self.api.raise_on_error = True
-       self.get_cache = {}
+        self.fastqc_tags = None
+        self.count_types = {}
+        self.flowcelllane_contenttype = None
+        self.alignment_contenttype = None
+        self.aggregation_contenttype = None
+        self.flowcell_lane_cache = {}
+        self.alignment_counts = {}
+        self.picard_metrics = None
+        self.fastqc_counts = {}
+        self.api = setup_api({rest.LIMS_URL_OPT_VAR: api_url,
+                              rest.LIMS_TOKEN_OPT_VAR: token,
+                              rest.RAISE_ON_ERROR_VAR: True})
+        self.get_cache = {}
 
     def get(self, url):
         if url not in self.get_cache:
@@ -332,7 +332,7 @@ class UploadLIMS(object):
 
         data = {
             "processing_completed": datetime.datetime.now(),
-            "needs_reprocessing": False, 
+            "needs_reprocessing": False,
         }
 
         results = self.patch(url, data=data)
