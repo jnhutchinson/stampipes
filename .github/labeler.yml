@@ -1,0 +1,20 @@
+# Add '@domain/dnase' label to any change within the bwa pipeline
+@domain/dnase:
+  - processes/bwa/*
+  - processes/bwa/**/*
+  - scripts/bwa/**/
+  - scripts/bwa/**/*
+  
+@domain/rna:
+  - processes/rna-star/*
+  - processes/rna-star/**/*
+  - scripts/rna-star/**/
+  - scripts/rna-star/**/*
+  
+@domain/lims-integration:
+  - scripts/lims/*
+  - scripts/lims/**/*
+  
+# Add 'test' label to any change to test_data files within the source dir
+test:
+  - test_data/**/*
