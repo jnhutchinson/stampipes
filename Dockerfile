@@ -184,8 +184,8 @@ RUN apt-get install -y \
       zlib1g-dev
 
 COPY ./requirements.pip.txt /stampipes/
-RUN pip install -r /stampipes/requirements.pip.txt
-RUN pip3 install -r /stampipes/requirements.pip.txt
+RUN python2 -m pip --no-cache install -r /stampipes/requirements.pip.txt
+RUN python3 -m pip --no-cache install -r /stampipes/requirements.pip.txt
 
 COPY ./scripts /stampipes/scripts
 COPY ./processes /stampipes/processes
@@ -200,7 +200,7 @@ COPY --from=build-samtools /usr/local/bin/samtools /usr/local/bin
 COPY --from=build-bedops /bedops/bin /usr/local/bin
 ENV HOTSPOT_DIR /hotspot
 COPY --from=build-hotspot1 /hotspot/hotspot-distr/ $HOTSPOT_DIR
-COPY --from=build-kentutils /kentUtils-302.0.0/bin/ /usr/local/bin/
+COPY --from=build-kentutils /kentUtils-302.0.0/bin/*ToBigWig /usr/local/bin/
 COPY --from=build-bedtools /bedtools2/bin/ /usr/local/bin/
 COPY --from=build-preseq /preseq/preseq /usr/local/bin/
 COPY --from=get-picard /picard.jar /usr/local/lib/picard.jar
