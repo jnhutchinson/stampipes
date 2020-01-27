@@ -3,30 +3,30 @@
 from ubuntu:18.04 as build-base
 RUN apt-get update
 RUN apt-get install -y \
-      build-essential \
-      git \
-      wget \
-      zlib1g-dev
+    build-essential \
+    git \
+    wget \
+    zlib1g-dev
 
 
 ###########
 # Build BWA
 from build-base as build-bwa
 RUN apt-get install -y \
-      build-essential \
-      git \
-      g++ \
-      gcc \
-      git \
-      openjdk-8-jre \
-      perl \
-      python \
-      zlib1g-dev
+    build-essential \
+    git \
+    g++ \
+    gcc \
+    git \
+    openjdk-8-jre \
+    perl \
+    python \
+    zlib1g-dev
 # Install BWA - do some magicks so it compiles with musl.c
 RUN   git clone https://github.com/lh3/bwa.git \
-      && cd bwa \
-      && git checkout 0.7.12 \
-      && make
+    && cd bwa \
+    && git checkout 0.7.12 \
+    && make
 
 # ################
 # # Build Kallisto
@@ -65,28 +65,29 @@ RUN apt-get install -y \
     g++ \
     git \
     libbz2-dev \
+    libcurl4-openssl-dev \
     liblzma-dev \
     make \
     ncurses-dev \
     wget \
     zlib1g-dev
-RUN wget --quiet https://github.com/samtools/samtools/releases/download/1.7/samtools-1.7.tar.bz2 \
-      && tar xf samtools-1.7.tar.bz2 \
-      && cd samtools-1.7 \
-      && make install
+RUN wget --quiet https://github.com/samtools/samtools/releases/download/1.10/samtools-1.10.tar.bz2 \
+    && tar xf samtools-1.10.tar.bz2 \
+    && cd samtools-1.10 \
+    && make install
 
 #####################
 # Build trim-adapters
 FROM build-base as build-trim-adapters
 RUN apt-get install -y \
-      build-essential \
-      libboost-dev \
-      git \
-      zlib1g-dev
+    build-essential \
+    libboost-dev \
+    git \
+    zlib1g-dev
 RUN git clone https://bitbucket.org/jvierstra/bio-tools.git \
-      && cd bio-tools \
-      && git checkout 6fe54fa5a3 \
-      && make
+    && cd bio-tools \
+    && git checkout 6fe54fa5a3 \
+    && make
 
 ########
 # Picard
@@ -97,65 +98,65 @@ RUN wget --quiet https://github.com/broadinstitute/picard/releases/download/2.8.
 # Bedops
 from build-base as build-bedops
 RUN apt-get install -y \
-      build-essential \
-      git \
-      libbz2-dev
+    build-essential \
+    git \
+    libbz2-dev
 RUN git clone https://github.com/bedops/bedops.git \
-      && cd bedops \
-      && git checkout v2.4.35 \
-      && make \
-      && make install
+    && cd bedops \
+    && git checkout v2.4.35 \
+    && make \
+    && make install
 
 ##########
 # Hotspot1
 from build-base as build-hotspot1
 RUN apt-get install -y \
-      build-essential \
-      git \
-      libgsl-dev \
-      wget
+    build-essential \
+    git \
+    libgsl-dev \
+    wget
 RUN git clone https://github.com/StamLab/hotspot.git \
-      && cd hotspot \
-      && git checkout v4.1.1 \
-      && cd hotspot-distr/hotspot-deploy \
-      && make
+    && cd hotspot \
+    && git checkout v4.1.1 \
+    && cd hotspot-distr/hotspot-deploy \
+    && make
 
 ###########
 # Kentutils
 from build-base as build-kentutils
 RUN apt-get install -y \
-      build-essential \
-      git \
-      libmysqlclient-dev \
-      libpng-dev \
-      libssh-dev \
-      wget \
-      zlib1g-dev
+    build-essential \
+    git \
+    libmysqlclient-dev \
+    libpng-dev \
+    libssh-dev \
+    wget \
+    zlib1g-dev
 RUN wget --quiet https://github.com/ENCODE-DCC/kentUtils/archive/v302.0.0.tar.gz \
-      && tar xf v302.0.0.tar.gz \
-      && cd kentUtils-302.0.0 \
-      && make
+    && tar xf v302.0.0.tar.gz \
+    && cd kentUtils-302.0.0 \
+    && make
 
 ##########
 # Bedtools
 from build-base as build-bedtools
 RUN apt-get install -y \
-      python
+    python
 RUN wget --quiet https://github.com/arq5x/bedtools2/releases/download/v2.25.0/bedtools-2.25.0.tar.gz \
-      && tar xf bedtools-2.25.0.tar.gz \
-      && cd bedtools2 \
-      && make
+    && tar xf bedtools-2.25.0.tar.gz \
+    && cd bedtools2 \
+    && make
 
 ########
 # Preseq
 from build-base as build-preseq
 RUN apt-get install -y \
-      libgsl-dev
+    libgsl-dev
 RUN git clone --recurse-submodules https://github.com/smithlabcode/preseq.git \
-   && cd preseq \
-   && git checkout v2.0.3 \
-   && git submodule update \
-   && make
+    && cd preseq \
+    && git checkout v2.0.3 \
+    && git submodule update \
+    && make
 
 
 #############
@@ -165,23 +166,23 @@ from ubuntu:18.04 as stampipes
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update
 RUN apt-get install -y \
-      bash \
-      bc \
-      bowtie \
-      build-essential \
-      coreutils \
-      gawk \
-      libboost-dev \
-      libgsl-dev \
-      littler \
-      openjdk-8-jre \
-      python-dev \
-      python-pip \
-      python3 \
-      python3-pip \
-      tabix \
-      wget \
-      zlib1g-dev
+    bash \
+    bc \
+    bowtie \
+    build-essential \
+    coreutils \
+    gawk \
+    libboost-dev \
+    libgsl-dev \
+    littler \
+    openjdk-8-jre \
+    python-dev \
+    python-pip \
+    python3 \
+    python3-pip \
+    tabix \
+    wget \
+    zlib1g-dev
 
 COPY ./requirements.pip.txt /stampipes/
 RUN python2 -m pip --no-cache install -r /stampipes/requirements.pip.txt
@@ -206,6 +207,7 @@ COPY --from=build-preseq /preseq/preseq /usr/local/bin/
 COPY --from=get-picard /picard.jar /usr/local/lib/picard.jar
 
 # Make alias for picard
-RUN echo -e '#!/bin/bash\njava -jar /usr/local/lib/picard.jar $@' \
-      > /usr/local/bin/picard \
-      && chmod +x /usr/local/bin/picard
+RUN echo '#!/bin/bash' > /usr/local/bin/picard \
+    && echo 'java -jar /usr/local/lib/picard.jar $@' \
+    >> /usr/local/bin/picard \
+    && chmod +x /usr/local/bin/picard
