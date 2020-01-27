@@ -215,7 +215,7 @@ process align {
 
 
   output:
-  file 'out.bam' into unfiltered_bam_paired
+  file 'out.cram' into unfiltered_bam_paired
 
   script:
   """
@@ -240,7 +240,11 @@ process align {
     out1.sai out2.sai \
     "$trimmed_r1" "$trimmed_r2" \
   | samtools view -b -t "$genome".fai - \
-  > out.bam
+  | samtools view \
+      -T "$genome" \
+      --output-fmt cram \
+      --output-fmt-option "lossy_names=0,version=3.0" \
+      -o out.cram
   """
 
 }
@@ -260,7 +264,7 @@ process align_single_end {
   file '*' from file("${params.genome}.sa")
 
   output:
-  file 'out.bam' into unfiltered_bam_single
+  file 'out.cram' into unfiltered_bam_single
 
   script:
   """
@@ -277,7 +281,7 @@ process align_single_end {
     out.sai \
     "$fastq" \
   | samtools view -b -t "$genome".fai - \
-  > out.bam
+  > out.cram
   """
 }
 
@@ -293,14 +297,17 @@ process filter_bam {
   file nuclear_chroms from file(nuclear_chroms)
 
   output:
-  file 'filtered.bam' into filtered_bam
+  file 'filtered.cram' into filtered_bam
 
   script:
   """
   python3 \$STAMPIPES/scripts/bwa/filter_reads.py \
-  "$unfiltered_bam" \
-  filtered.bam \
-  "$nuclear_chroms"
+    "$unfiltered_bam" \
+    /dev/stdout \
+    "$nuclear_chroms" \
+  | samtools view --output-fmt cram \
+  --output-fmt-option "version=3.0" \
+  -o filtered.cram
   """
 }
 
@@ -315,13 +322,14 @@ process sort_bam {
   file filtered_bam
 
   output:
-  file 'sorted.bam' into sorted_bam
+  file 'sorted.cram' into sorted_bam
 
   script:
   """
   samtools sort \
     -l 0 -m 1G -@ "${params.threads}" "$filtered_bam" \
-    > sorted.bam
+    --output-fmt-option "version=3.0" \
+    -o sorted.cram
   """
 }
 
@@ -330,15 +338,15 @@ process sort_bam {
  */
 process merge_bam {
   input:
-  file 'sorted_bam_*' from sorted_bam.collect()
+  file 'sorted_cram_*' from sorted_bam.collect()
 
   output:
-  file 'merged.bam' into merged_bam
+  file 'merged.cram' into merged_bam
 
   script:
   """
-  samtools merge merged.bam sorted_bam*
-  samtools index merged.bam
+  samtools merge merged.cram sorted_cram*
+  samtools index merged.cram
   """
 }
 
@@ -355,32 +363,38 @@ process mark_duplicates {
   file(merged_bam) from merged_bam
 
   output:
-  file 'marked.bam' into marked_bam
-  file 'marked.bam' into marked_bam_for_counts
+  file 'marked.cram' into marked_bam
+  file 'marked.cram' into marked_bam_for_counts
   file 'MarkDuplicates.picard'
 
 
   script:
   if (params.UMI)
     """
+    samtools view -u $merged_bam > tmp.bam
     picard RevertOriginalBaseQualitiesAndAddMateCigar \
-      INPUT=$merged_bam OUTPUT=cigar.bam \
+      INPUT=tmp.bam OUTPUT=cigar.cram \
       VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
 
-    picard UmiAwareMarkDuplicatesWithMateCigar INPUT=cigar.bam OUTPUT=marked.bam \
+    picard UmiAwareMarkDuplicatesWithMateCigar INPUT=cigar.cram OUTPUT=marked.bam \
       METRICS_FILE=MarkDuplicates.picard UMI_TAG_NAME=XD ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+
+    samtools view marked.bam -o marked.cram --output-fmt-option "version=3.0"
     """
   else
     """
+    samtools view -u $merged_bam > tmp.bam
     picard RevertOriginalBaseQualitiesAndAddMateCigar \
-      INPUT=$merged_bam OUTPUT=cigar.bam \
+      INPUT=tmp.bam OUTPUT=cigar.cram \
       VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
 
-    picard MarkDuplicatesWithMateCigar INPUT=cigar.bam OUTPUT=marked.bam \
+    picard MarkDuplicatesWithMateCigar INPUT=cigar.cram OUTPUT=marked.bam \
       METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
       MINIMUM_DISTANCE=300
+
+    samtools view marked.bam -o marked.cram --output-fmt-option "version=3.0"
     """
 }
 
@@ -399,12 +413,14 @@ process filter_bam_to_unique {
   file marked_bam
 
   output:
-  set file('filtered.bam'), file('filtered.bam.bai') into uniquely_mapping_bam
+  set file('filtered.cram'), file('filtered.cram.crai') into uniquely_mapping_bam
 
   script:
   """
-  samtools view $marked_bam -b -F $filter_flag > filtered.bam
-  samtools index filtered.bam
+  samtools view $marked_bam -F $filter_flag \
+  --output-fmt-option "version=3.0" \
+  -o filtered.cram
+  samtools index filtered.cram
   """
 
 }
@@ -427,7 +443,7 @@ process bam_counts {
   script:
   """
   python3 \$STAMPIPES/scripts/bwa/bamcounts.py \
-    "$sorted_bam" \
+    <(samtools view -u "$sorted_bam") \
     bam.counts.txt
   """
 }
