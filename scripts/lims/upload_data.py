@@ -18,7 +18,7 @@ sys.path.insert(
 ))
 
 from stamlims_api.lims import aggregations, content_types
-from stamlims_api.rest import LIMS_URL_OPT_VAR, LIMS_TOKEN_OPT_VAR, RAISE_ON_ERROR_VAR, setup_api
+from stamlims_api import rest
 
 lane_tags = None
 flowcell_lane_cache = dict()
@@ -239,9 +239,9 @@ class UploadLIMS(object):
         self.alignment_counts = {}
         self.picard_metrics = None
         self.fastqc_counts = {}
-        self.api = setup_api({rest.LIMS_URL_OPT_VAR: api_url,
-                              rest.LIMS_TOKEN_OPT_VAR: token,
-                              rest.RAISE_ON_ERROR_VAR: True})
+        self.api = rest.setup_api({rest.LIMS_URL_OPT_VAR: api_url,
+                                   rest.LIMS_TOKEN_OPT_VAR: token,
+                                   rest.RAISE_ON_ERROR_VAR: True})
         self.get_cache = {}
 
     def get(self, url):
