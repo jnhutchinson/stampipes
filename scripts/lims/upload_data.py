@@ -960,6 +960,7 @@ class UploadLIMS(object):
                 "object_id": object_id,
                 "content_type": content_type['id'],
                 "metric": metric['id'],
+                "label": label,
             })
 
         if existing and 'raw_data' in existing and existing['raw_data'] == picard_metric:
