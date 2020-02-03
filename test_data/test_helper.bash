@@ -29,7 +29,9 @@ check_starch() {
 }
 
 check_bam() {
-	samtools view "$1"
+	samtools view "$1" \
+        | awk '$2 >= 4096 { $2 -= 4096 } 1' \
+        |  perl -ne '@x=split/\s/; print join " ",sort @x, "\n"'
 }
 
 check_text() {

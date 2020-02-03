@@ -280,8 +280,7 @@ process align_single_end {
     "$genome" \
     out.sai \
     "$fastq" \
-  | samtools view -b -t "$genome".fai - \
-  > out.cram
+  | samtools view -t "$genome".fai - -o out.cram --output-fmt-option "version=3.0"
   """
 }
 
