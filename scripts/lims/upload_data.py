@@ -553,7 +553,7 @@ class UploadLIMS(object):
         result = self.post("flowcell_lane_count_type/", data=data)
 
         if result.ok:
-            self.count_types[name] = result.json()
+            self.count_types[name] = result
         else:
             self.count_types[name] = None
             log.warn("Could not create count type %s (%s)" % (name, str(result)))
@@ -858,7 +858,7 @@ class UploadLIMS(object):
             # replace content
             if 'raw_data' not in report or report['raw_data'] != upload['raw_data']:
                 log.info("Updating report %s" % upload['label'])
-                result = self.patch(report['url'], data=upload)
+                result = self.patch(url=report['url'], data=upload)
 
                 if result:
                     log.debug(result)
@@ -869,7 +869,7 @@ class UploadLIMS(object):
             result = self.post("fastqc_report/", data=upload)
 
             if result:
-                log.debug(result.json)
+                log.debug(result)
             else:
                 log.error("Could not upload new FastQC report")
 
