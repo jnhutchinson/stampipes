@@ -11,6 +11,7 @@ module load python/3.5.1
 module load anaconda/2.1.0-dev
 
 source "$PYTHON3_ACTIVATE"
+source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 
 if [[ $(wc -w <<< "$BAM_FILES") -gt 1 ]] ; then
   bamfiles="$(sed 's/\s\+/,/g' <<< "$BAM_FILES")"

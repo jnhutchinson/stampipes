@@ -13,6 +13,7 @@ module load nextflow
 module load python/3.5.1
 
 source "$PYTHON3_ACTIVATE"
+source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 
 adapterfile="adapters.txt"
 
