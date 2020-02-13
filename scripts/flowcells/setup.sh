@@ -567,10 +567,31 @@ source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 
 # copy files
 mkdir -p "$analysis_dir"
-rsync -avP "$copy_from_dir" "$analysis_dir/"
 rsync -avP "$illumina_dir/InterOp" "$analysis_dir/"
 rsync -avP "$illumina_dir/RunInfo.xml" "$analysis_dir/"
 rsync -avP "$samplesheet" "$analysis_dir"
+
+# Copy each sample by itself, checking to see if we have a project_share_directory set
+# This is very important to keep customer data separate from internal data.
+(
+    cd "$copy_from_dir"
+    for dir in Project*/Sample* ; do
+        samp_number=\$(sed '/.*DS\([0-9]*\).*/\1/)
+        [[ -n "\$samp_number" ]]
+        destination=\$(jq '.libraries[] | select(.sample == \$samp_number) | .project_share_directory')
+        if [[ -z "\$destination" ]] ; then
+            destination=$analysis_dir
+        elif [[ ! -d "\$destination ]] ; then
+            echo "Destination \$destination does not exist! Please create it." >&2
+            exit 1
+        else
+            destination_dir=\$destination_dir/fastq
+        fi
+        destination_dir=\$destination_dir/\$dir
+        mkdir -p "\$destination_dir"
+        rsync "\$dir" "\$destination_dir/"
+    done
+)
 
 # create fastqc and collation scripts
 cd "$analysis_dir"

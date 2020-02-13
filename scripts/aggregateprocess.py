@@ -83,7 +83,7 @@ def parser_setup():
 
 class ProcessSetUp(object):
 
-    def __init__(self, args, api_url, token, aggregation_base_directory): 
+    def __init__(self, args, api_url, token, aggregation_base_directory):
 
         self.token = token
         self.api_url = api_url
@@ -159,6 +159,10 @@ class ProcessSetUp(object):
 
     def set_aggregation_folder(self, aggregation_info, library_info):
         dir_name = os.path.join("LN%d" % library_info["number"], "aggregation-%d" % aggregation_info["id"])
+        share_dir = aggregation_info.get("project_share_directory")
+        if share_dir:
+            return os.path.join(share_dir, "aggregations", dir_name)
+
         if self.aggregation_base_directory:
             return os.path.join(self.aggregation_base_directory, dir_name)
 
