@@ -576,22 +576,22 @@ rsync -avP "$samplesheet" "$analysis_dir"
 (
     cd "$copy_from_dir"
     for dir in Project*/Sample* ; do
-        samp_number=\$(sed '/.*DS\([0-9]*\).*/\1/)
+        samp_number=\$(sed 's/.*DS\([0-9]*\).*/\1/' <<< "\$dir")
         [[ -n "\$samp_number" ]]
-        destination=\$(jq '.libraries[] | select(.sample == \$samp_number) | .project_share_directory')
+        destination=\$(jq -c -r ".libraries[] | select(.sample == \$samp_number) | .project_share_directory" ../processing.json)
         if [[ -z "\$destination" ]] ; then
             destination=$analysis_dir
-        elif [[ ! -d "\$destination ]] ; then
+        elif [[ ! -d "\$destination" ]] ; then
             echo "Destination \$destination does not exist! Please create it." >&2
             exit 1
         else
-            destination_dir=\$destination_dir/fastq
+            destination=\$destination/fastq
         fi
-        destination_dir=\$destination_dir/\$dir
-        mkdir -p "\$destination_dir"
-        rsync "\$dir" "\$destination_dir/"
+        destination=\$destination/\$dir
+        mkdir -p "\$destination"
+        rsync -a "\$dir/" "\$destination/"
     done
-)
+
 
 # create fastqc and collation scripts
 cd "$analysis_dir"
