@@ -294,10 +294,14 @@ class ProcessSetUp(object):
         flowcell_directory = processing_info['flowcell']['directory']
 
         if not flowcell_directory:
-            logging.error("Alignment %d has no flowcell directory for flowcell %s" % (align_id, processing_info['flowcell']['label']))
-            return False
+            share_dir = lane.get("project_share_directory")
+            if share_dir:
+                flowcell_directory = os.path.join(share_dir, "alignments")
+            else:
+                logging.error("Alignment %d has no flowcell directory for flowcell %s" % (align_id, processing_info['flowcell']['label']))
+                return False
 
-        fastq_directory = os.path.join(processing_info['flowcell']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
+        fastq_directory = os.path.join(flowcell_directory, "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
 
         # Reset the alignment's sample name if we decied not to use the barcode index mask
         if self.no_mask:
