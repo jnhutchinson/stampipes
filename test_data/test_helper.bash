@@ -1,50 +1,45 @@
 #!/bin/bash
 
-function require_exe() {
-  exitstatus=0
-  for exe in "$@" ; do
-    if ! command -v "$exe" >/dev/null; then
-      exitstatus=1
-      echo "Could not find $exe, will not run tests" > /dev/stderr
-    fi
-  done
-  return $exitstatus
+EXPECTED_DIR=${EXPECTED_DIR:-expected}
+
+function get_profile() {
+  echo 'test,docker'
 }
 
-function cmp_text() {
-  name=$1
-  echo "Comparing $name..."
-  diff "expected/$name" "output/$name"
+function compare() {
+	local func=$1
+	local actual=$2
+	local expected=$3
+
+	if [[ ! -f "$actual" ]] ; then echo "# Output file not found: $actual" ; return 1; fi
+	if [[ ! -f "$expected" ]] ; then  echo "# Ref file not found: $expected" ; return 1; fi
+
+	cmp <($func "$actual") <($func "$expected") 2>/dev/null
 }
 
-function cmp_picard() {
-  name=$1
-  expected=$(grep -v '^#' "expected/$name")
-  actual=$(grep -v '^#' "output/$name")
+function verify() {
+  local func=$1
+  local filename=$2
 
-  echo "Comparing $name..."
-  diff <(echo "$expected") <(echo "$actual")
+  compare "$func" "output/$filename" "$EXPECTED_DIR/$filename"
 }
 
-function cmp_starch() {
-  name=$1
-  if ! command -v unstarch ; then
-    echo "Cannot verify $name, unstarch is not available"
-    return 0
-  fi
-  echo "Comparing $name..."
-  cmp <(unstarch "expected/$name") <(unstarch "output/$name") \
-    || (echo "$name does not match" ; false)
+check_starch() {
+	unstarch "$1"
 }
 
-function cmp_bam() {
-  name=$1
-  if ! command -v samtools ; then
-    echo "Cannot verify $name, samtools is not available"
-    return 0
-  fi
-  echo "Comparing $name..."
-  cmp <(samtools view "expected/$name") <(samtools view "output/$name") \
-    || (echo "$name does not match" ; false)
+check_bam() {
+	samtools view "$1"
+}
 
+check_text() {
+	sed '/^#/d' "$1"
+}
+
+check_gzipped() {
+  zcat < "$1"
+}
+
+check_text_sorted() {
+	sed '/^#/d;s/\s\+/ /g' "$1" | sort
 }

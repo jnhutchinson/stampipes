@@ -11,9 +11,11 @@ params.UMI = false
 params.trim_to = 0
 params.genome = ""
 params.r1 = ""
-params.r2 = ""
+params.r2 = "."
 params.outdir = "output"
 params.readlength = 36
+
+paired = params.r2 != "." & params.r2 != ""
 
 nuclear_chroms = "$params.genome" + ".nuclear.txt"
 dataDir = "$baseDir/../../data"
@@ -34,7 +36,7 @@ def helpMessage() {
     """.stripIndent();
 }
 
-if (params.help || !params.r1 || !params.r2 || !params.genome){
+if (params.help || !params.r1 || !params.genome){
   helpMessage();
   exit 0;
 }
@@ -56,6 +58,7 @@ process split_r1_fastq {
 
   output:
   file('split_r1*gz') into split_r1 mode flatten
+  file('split_r1*gz') into split_r1_extra mode flatten
 
   script:
   """
@@ -65,6 +68,7 @@ process split_r1_fastq {
   """
 }
 process split_r2_fastq {
+  when paired
   input:
   file(r2) from file(params.r2)
   val fastq_line_chunks
@@ -179,7 +183,6 @@ process fastq_counts {
 
   input:
   file(r1) from file(params.r1)
-  file(r2) from file(params.r2)
 
   output:
   file 'fastq.counts' into fastq_counts
@@ -212,7 +215,7 @@ process align {
 
 
   output:
-  file 'out.bam' into unfiltered_bam
+  file 'out.bam' into unfiltered_bam_paired
 
   script:
   """
@@ -241,6 +244,44 @@ process align {
   """
 
 }
+
+process align_single_end {
+
+  when !paired
+
+  input:
+  file fastq from split_r1_extra
+  file genome from file(params.genome)
+  file '*' from file("${params.genome}.amb")
+  file '*' from file("${params.genome}.ann")
+  file '*' from file("${params.genome}.bwt")
+  file '*' from file("${params.genome}.fai")
+  file '*' from file("${params.genome}.pac")
+  file '*' from file("${params.genome}.sa")
+
+  output:
+  file 'out.bam' into unfiltered_bam_single
+
+  script:
+  """
+  bwa aln \
+    -Y -l 32 -n 0.04 \
+    -t "${params.threads}" \
+    "$genome" \
+    "$fastq" \
+    > out.sai
+
+  bwa samse \
+    -n 10 \
+    "$genome" \
+    out.sai \
+    "$fastq" \
+  | samtools view -b -t "$genome".fai - \
+  > out.bam
+  """
+}
+
+unfiltered_bam = unfiltered_bam_paired.mix(unfiltered_bam_single)
 
 /*
  * Step 2b: filter bam files to have only good reads
@@ -397,6 +438,7 @@ process bam_counts {
 process insert_size {
 
   publishDir params.outdir
+  when paired
 
   input:
   set file(bam), file(bai) from bam_for_insert
@@ -441,7 +483,8 @@ process spot_score {
   file 'spotdups.txt'
 
   script:
-  """
+  if (paired) {
+    start = """
   # random sample
   samtools view -h -F 12 -f 3 "$bam" \
     | awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
@@ -449,7 +492,20 @@ process spot_score {
     -o paired.bam
   bash \$STAMPIPES/scripts/bam/random_sample.sh paired.bam subsample.bam 5000000
         samtools view -1 -f 0x0040 subsample.bam -o subsample.r1.bam
+    """
+  } else {
+    start = """
+    # random sample
+    samtools view -h -F 12 "$bam" \
+      | awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
+      | samtools view -1 - \
+      -o paired.bam
+    bash \$STAMPIPES/scripts/bam/random_sample.sh paired.bam subsample.bam 5000000
+    ln -s subsample.bam subsample.r1.bam
+    """
+  }
 
+  start + """
   # hotspot
   bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
     \$HOTSPOT_DIR \
@@ -528,21 +584,21 @@ process density_files {
 /*
  * Metrics: total counts
  */
+
+all_counts = fastq_counts.mix(trim_counts, bam_counts).collect()
 process total_counts {
 
   publishDir params.outdir
 
   input:
-  file 'fastqcounts*' from fastq_counts.collect()
-  file 'trimcounts*' from trim_counts.collect()
-  file 'bamcounts*' from bam_counts.collect()
+  file 'allcounts*' from all_counts.collect()
 
   output:
   file 'tagcounts.txt'
 
   script:
   """
-  cat *counts* \
+  cat allcounts* \
   | awk '
   { x[\$1] += \$2 }
   END {for (i in x) print i "\t" x[i]}

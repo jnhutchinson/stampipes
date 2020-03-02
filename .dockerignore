@@ -1,3 +1,8 @@
 test_data/*
 **GRCh38*
 singularity/*
+
+master*
+work/
+**/work/
+.git

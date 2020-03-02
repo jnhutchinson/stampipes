@@ -153,7 +153,8 @@ RUN apt-get install -y \
       libgsl-dev
 RUN git clone --recurse-submodules https://github.com/smithlabcode/preseq.git \
    && cd preseq \
-   && git checkout v2.0.1 \
+   && git checkout v2.0.3 \
+   && git submodule update \
    && make
 
 
@@ -168,8 +169,9 @@ RUN apt-get install -y \
       bc \
       bowtie \
       build-essential \
-      libboost-dev \
       coreutils \
+      gawk \
+      libboost-dev \
       libgsl-dev \
       littler \
       openjdk-8-jre \

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=2.5.1
+version=2.6.0
 export NXF_VER=18.10.1  # The version of nextflow to run. 18.10.1 includes conda
 
 cd "$(dirname "$0")"
@@ -58,6 +58,12 @@ if [[ -z "$PEAK_CALLER" ]] ; then
   else
     PEAK_CALLER=hotspot2
   fi
+fi
+
+if [[ -n "$PAIRED" ]] ; then
+  pairflag=true
+else
+  pairflag=false
 fi
 
 # Run the whole process

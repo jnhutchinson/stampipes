@@ -11,11 +11,13 @@ params.readlength = 36
 
 params.peakcaller = "hotspot2"
 
-params.bias = ""
+params.bias = "."
 params.chunksize = 5000
 
 params.hotspot_id = "default"
 params.hotspot_index = "."
+
+params.paired = true
 
 
 def helpMessage() {
@@ -227,7 +229,8 @@ process spot_score {
   file 'r1.hotspot.info'
 
   script:
-  """
+  if (params.paired) {
+  start = """
   # random sample
 	samtools view -h -F 12 -f 3 "$bam" \
 		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
@@ -235,7 +238,19 @@ process spot_score {
 		> nuclear.bam
 	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
   samtools view -b -f 0x0040 subsample.bam > r1.bam
-
+  """
+  } else {
+   start = """
+  # random sample
+	samtools view -h -F 12 "$bam" \
+		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
+		| samtools view -uS - \
+		> nuclear.bam
+	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
+  ln -s subsample.bam r1.bam
+  """
+  }
+  start + """
   # hotspot
   bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
     \$HOTSPOT_DIR \
@@ -352,7 +367,7 @@ process cutcounts {
   | starch - > cutcounts.starch
 
   # Bigwig
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     cutcounts.starch \
     cutcounts.bw \
     "${fai}"
@@ -404,7 +419,7 @@ process density {
   > density.starch
 
   # Bigwig
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     density.starch \
     density.bw \
     "!{fai}" \
@@ -440,7 +455,7 @@ process multimapping_density {
   '''
   # Mark multi-mapping reads as QC-pass!
   samtools view -h "!{marked_bam}" |
-  awk 'BEGIN{OFS="\t"} /XA:Z/ {$2 = and(or($2, 2), compl(512))} 1' |
+  gawk 'BEGIN{OFS="\t"} /XA:Z/ {$2 = and(or($2, 2), compl(512))} 1' |
   samtools view --threads 3 -F 512 -o filtered.bam
   samtools index filtered.bam
 
@@ -464,7 +479,7 @@ process multimapping_density {
   > mm_density.starch
 
   # Bigwig
-  "/home/solexa/stampipes/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     mm_density.starch \
     mm_density.bw \
     "!{fai}" \
@@ -487,7 +502,7 @@ process multimapping_density {
              print $1 "\t" $2 "\t" $3 "\t" $4 "\t" n }' \
     | starch - > normalized.mm_density.starch
 
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     normalized.mm_density.starch \
     normalized.mm_density.bw \
     "!{fai}" \
@@ -524,7 +539,7 @@ process normalize_density {
              print $1 "\t" $2 "\t" $3 "\t" $4 "\t" n }' \
     | starch - > normalized.density.starch
 
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     normalized.density.starch \
     normalized.density.bw \
     "!{fai}" \
@@ -540,6 +555,7 @@ process insert_sizes {
   label "modules"
 
   publishDir params.outdir
+  when params.paired
 
   input:
   file nuclear_bam from bam_for_inserts
@@ -687,7 +703,7 @@ process learn_dispersion {
   cpus = 8
 
   when:
-  params.bias != ""
+  params.bias != "."
 
   input:
   file ref from file("${params.genome}.fa")
