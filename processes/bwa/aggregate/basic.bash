@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=2.6.0
+version=2.7.0-beta
 export NXF_VER=18.10.1  # The version of nextflow to run. 18.10.1 includes conda
 
 cd "$(dirname "$0")"
@@ -66,12 +66,19 @@ else
   pairflag=false
 fi
 
+# Switch if ATAC detected.
+# TODO: wrap atac.nf into the basic.nf process?
+nf_file=$STAMPIPES/processes/bwa/aggregate/basic.nf
+if [[ "$ASSAY" =~ ATAC ]] ; then
+  nf_file=$STAMPIPES/processes/bwa/aggregate/atac.nf
+fi
+
 # Run the whole process
 (
   module purge
   module load jdk nextflow
   nextflow run \
-    "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
+    "$nf_file" \
     -c "$STAMPIPES/nextflow.config" \
     -w "$workdir" \
     --bams "$bamfiles" \
