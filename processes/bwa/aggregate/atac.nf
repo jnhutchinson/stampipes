@@ -11,11 +11,13 @@ params.readlength = 36
 
 params.peakcaller = "hotspot2"
 
-params.bias = ""
+params.bias = "."
 params.chunksize = 5000
 
 params.hotspot_id = "default"
 params.hotspot_index = "."
+
+params.paired = true
 
 
 def helpMessage() {
@@ -71,12 +73,13 @@ process dups {
   file 'MarkDuplicates.picard'
 
   script:
-  if (params.UMI)
+  if (params.UMI) {
     cmd = "UmiAwareMarkDuplicatesWithMateCigar"
     extra = "UMI_TAG_NAME=XD"
-  if (!params.UMI)
+  } else {
     cmd = "MarkDuplicatesWithMateCigar"
-    extra = ""
+    extra = "MINIMUM_DISTANCE=300"
+  }
   """
   picard RevertOriginalBaseQualitiesAndAddMateCigar \
     "INPUT=${merged}" OUTPUT=cigar.bam \
@@ -86,8 +89,7 @@ process dups {
       INPUT=cigar.bam OUTPUT=marked.bam \
       $extra \
       METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
-      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
-      MINIMUM_DISTANCE=300
+      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
 
   samtools index marked.bam
   """
@@ -264,7 +266,8 @@ process spot_score {
   file 'spotdups.picard'
 
   script:
-  """
+  if (params.paired) {
+  start = """
   # random sample
 	samtools view -h -F 12 -f 3 "$bam" \
 		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
@@ -272,7 +275,19 @@ process spot_score {
 		> nuclear.bam
 	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
   samtools view -b -f 0x0040 subsample.bam > r1.bam
-
+  """
+  } else {
+   start = """
+  # random sample
+	samtools view -h -F 12 "$bam" \
+		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
+		| samtools view -uS - \
+		> nuclear.bam
+	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
+  ln -s subsample.bam r1.bam
+  """
+  }
+  start + """
   # hotspot
   bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
     \$HOTSPOT_DIR \
@@ -358,6 +373,9 @@ process preseq {
   input:
   file nuclear_bam
 
+  when:
+  !params.UMI
+
   output:
   file 'preseq.txt'
   file 'preseq_targets.txt'
@@ -411,7 +429,7 @@ process cutcounts {
   | starch - > cutcounts.starch
 
   # Bigwig
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     cutcounts.starch \
     cutcounts.bw \
     "${fai}"
@@ -463,7 +481,7 @@ process density {
   > density.starch
 
   # Bigwig
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     density.starch \
     density.bw \
     "!{fai}" \
@@ -505,7 +523,7 @@ process normalize_density {
              print $1 "\t" $2 "\t" $3 "\t" $4 "\t" n }' \
     | starch - > normalized.density.starch
 
-  "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+  "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
     normalized.density.starch \
     normalized.density.bw \
     "!{fai}" \
@@ -521,6 +539,7 @@ process insert_sizes {
   label "modules"
 
   publishDir params.outdir
+  when params.paired
 
   input:
   file nuclear_bam from bam_for_inserts

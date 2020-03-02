@@ -10,8 +10,12 @@ UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
 
 # All peaks files start with this:
 PEAKS_PREFIX="peaks/nuclear"
+if [[ "$ASSAY" =~ ATAC ]] ; then
+  PEAKS_PREFIX="peaks/nuclear_shifted"
+fi
 
 ATTACH_AGGREGATION="python3 $UPLOAD_SCRIPT --attach_file_contenttype AggregationData.aggregation --attach_file_objectid ${AGGREGATION_ID}"
+
 
 function attach_file() {
   local file=$1
@@ -21,6 +25,12 @@ function attach_file() {
   $ATTACH_AGGREGATION --attach_file "$file" \
     --attach_file_purpose "$purpose" \
     --attach_file_type "$filetype"
+}
+
+function maybe_attach() {
+  if [[ -s "$1" ]] ; then
+    attach_file "$@"
+  fi
 }
 
 $ATTACH_AGGREGATION --attach_directory "$(readlink -f ..)" --attach_file_purpose aggregation-directory
@@ -35,10 +45,10 @@ attach_file  density.bgz                   density-tabix-bgz                    
 attach_file  normalized.density.starch     normalized-density-bed-starch          starch
 attach_file  normalized.density.bw         normalized-density-bigwig-windowed     bigwig
 attach_file  normalized.density.bgz        normalized-density-tabix-bgz           bgz
-attach_file  mm_density.starch             mm-density-bed-starch-windowed         starch
-attach_file  mm_density.bw                 mm-density-bigwig-windowed             bigwig
-attach_file  normalized.mm_density.starch  normalized-mm-density-bed-starch       starch
-attach_file  normalized.mm_density.bw      normalized-mm-density-bigwig-windowed  bigwig
+maybe_attach_file  mm_density.starch             mm-density-bed-starch-windowed         starch
+maybe_attach_file  mm_density.bw                 mm-density-bigwig-windowed             bigwig
+maybe_attach_file  normalized.mm_density.starch  normalized-mm-density-bed-starch       starch
+maybe_attach_file  normalized.mm_density.bw      normalized-mm-density-bigwig-windowed  bigwig
 
 # Cut counts
 attach_file  cutcounts.bw       cutcounts-bw         bigwig
