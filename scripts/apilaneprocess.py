@@ -178,6 +178,9 @@ class ProcessSetUp(object):
             return False
 
         fastq_directory = lane["directory"]
+        alt_dir = lane.get("project_share_directory", "")
+        if alt_dir:
+            fastq_directory = os.path.join(alt_dir, "fastq", "Project_%s" % lane["project"], "Sample_%s" % lane["samplesheet_name"])
 
         barcode = "NoIndex" if lane['barcode_index'] is None else lane['barcode_index']
         spreadsheet_name = "%s_%s_L00%d" % (lane['samplesheet_name'], barcode, lane['lane'])
