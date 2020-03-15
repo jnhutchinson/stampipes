@@ -91,7 +91,8 @@ fi
     --hotspot_index "$HOTSPOT_INDEX" \
     --hotspot_id "AG$AGGREGATION_ID" \
     --bias "$STAMPIPES_DATA/footprints/vierstra_et_al.txt" \
-    --UMI="$UMI" \
+    --UMI "$UMI" \
+    --paired "$pairflag" \
     --outdir "$outdir" \
     --threads 3 \
     -profile cluster,modules \
