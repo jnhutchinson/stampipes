@@ -27,7 +27,7 @@ function attach_file() {
     --attach_file_type "$filetype"
 }
 
-function maybe_attach() {
+function maybe_attach_file() {
   if [[ -s "$1" ]] ; then
     attach_file "$@"
   fi
