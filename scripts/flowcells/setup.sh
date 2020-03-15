@@ -591,6 +591,7 @@ rsync -avP "$samplesheet" "$analysis_dir"
         mkdir -p "\$destination"
         rsync -a "\$dir/" "\$destination/"
     done
+)
 
 
 # create fastqc and collation scripts
