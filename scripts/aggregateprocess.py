@@ -354,6 +354,15 @@ class ProcessSetUp(object):
                     paired_ended = None
         return paired_ended
 
+    def get_category_for_assay(self, assay_url):
+        assay_info = self.api_single_result(url=assay_url)
+        category_url = assay_info["category"]
+        if category_url is None:
+            logging.warn("Assay %s has no category" % (assay_name))
+            return None
+        category_info = self.api_single_result(url=category_url)
+        return category_info["slug"]
+
     def add_script(self, aggregation_id, aggregation_folder, library_number):
         with open(self.outfile, "a") as runfile:
             if self.simple_output:
@@ -417,6 +426,8 @@ class ProcessSetUp(object):
         flowcell = self.get_example_flowcell(aggregation_id, aggregation_lanes)
         paired = self.get_all_flowcell_paired(aggregation_id, aggregation_lanes)
 
+        assay_category = self.get_category_for_assay(sample_info["assay"])
+
         logging.info("Aggregation %d folder: %s" % (aggregation_id, aggregation_folder))
         logging.debug(aggregation)
 
@@ -466,6 +477,7 @@ class ProcessSetUp(object):
         env_vars["AGGREGATION_FOLDER"] = aggregation_folder
         env_vars["READ_LENGTH"] = flowcell["read_length"]
         env_vars["ASSAY"] = sample_info["assay_name"]
+        env_vars["ASSAY_CATEGORY"] = assay_category
         env_vars["PAIRED"] = paired
 
         if aggregation["umi"]:
