@@ -1,11 +1,14 @@
 #!/bin/bash
+# shellcheck disable=SC1090
 
 set -o errexit
 set -o pipefail
 
 # Dependencies
-source $MODULELOAD
-source $PYTHON3_ACTIVATE
+source "$MODULELOAD"
+source "$PYTHON3_ACTIVATE"
+
+source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 
 #########
 # Options
@@ -57,10 +60,8 @@ done
 
 if [ -z "$flowcell" ] ; then
     echo "No flowcell label specified"
-    flowcell=$(basename $(pwd) | cut -f4 -d_ | cut -c2-10)
+    flowcell=$(basename "$PWD" | cut -f4 -d_ | cut -c2-10)
     echo "Guessing $flowcell..."
-    #usage >&2
-    #exit 1
 fi
 
 #######################
@@ -332,7 +333,7 @@ _U_
     queue="queue2"
     minidemux="True"
     # placeholder
-    cp /net/fileserv0/projects/vol2/dchee7/datastore/talens/sample_sheets/SampleSheet.csv > SampleSheet.csv
+    cat /net/fileserv0/projects/vol2/dchee7/datastore/talens/sample_sheets/SampleSheet.csv > SampleSheet.csv
     bcl_tasks=1
     set +e
     read -d '' unaligned_command  << _U_
@@ -401,6 +402,7 @@ if [[ -n "$minidemux" ]]; then
 
 cat > run_bcl2fastq.sh <<__BCL2FASTQ__
 #!/bin/bash
+source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 
 source $MODULELOAD
 module load bcl2fastq2/2.17.1.14
@@ -516,6 +518,7 @@ __BCL2FASTQ__
 
 cat > run_bcl2fastq_2.sh <<__BCL2FASTQ__
 # !/bin/bash
+source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 source $MODULELOAD
 module load bcl2fastq2/2.17.1.14
 source $PYTHON3_ACTIVATE
@@ -539,14 +542,15 @@ for i in "\${inputfiles[@]}" ; do
 
    jobid=\$(sbatch --export=ALL -J dmx\$(basename "\$i") -o .dmx\$(basename "\$i").o%A -e .dmx\$(basename "\$i").e%A --partition $queue --ntasks=1 --cpus-per-task=1 --mem-per-cpu=4000 --parsable --oversubscribe <<__DEMUX__
 #!/bin/bash
-   python3 $STAMPIPES/scripts/flowcells/demux_fastq.py   \
-     \$suffix                     \
-     --processing "$json"             \
-     --outdir "$copy_from_dir"        \
-     --mismatches "$dmx_mismatches"   \
-     --lane "\$lane"                  \
-     --ignore_failed_lanes            \
-     "\$i"
+    source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
+    python3 $STAMPIPES/scripts/flowcells/demux_fastq.py   \
+      \$suffix                     \
+      --processing "$json"             \
+      --outdir "$copy_from_dir"        \
+      --mismatches "$dmx_mismatches"   \
+      --lane "\$lane"                  \
+      --ignore_failed_lanes            \
+      "\$i"
 __DEMUX__
    )
    DEMUX_JOBIDS="\$DEMUX_JOBIDS,\$jobid"
@@ -559,13 +563,36 @@ fi
 # copy files and prep collation/fastqc
 copy_jobid=\$(sbatch --export=ALL -J "c-$flowcell" \$dmx_dependency -o "c-$flowcell.o%A" -e "c-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COPY__'
 #!/bin/bash
+source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 
 # copy files
 mkdir -p "$analysis_dir"
-rsync -avP "$copy_from_dir" "$analysis_dir/"
 rsync -avP "$illumina_dir/InterOp" "$analysis_dir/"
 rsync -avP "$illumina_dir/RunInfo.xml" "$analysis_dir/"
 rsync -avP "$samplesheet" "$analysis_dir"
+
+# Copy each sample by itself, checking to see if we have a project_share_directory set
+# This is very important to keep customer data separate from internal data.
+(
+    cd "$copy_from_dir"
+    for dir in Project*/Sample* ; do
+        samp_number=\$(sed 's/.*DS\([0-9]*\).*/\1/' <<< "\$dir")
+        [[ -n "\$samp_number" ]]
+        destination=\$(jq -c -r ".libraries[] | select(.sample == \$samp_number) | .project_share_directory" ../processing.json)
+        if [[ -z "\$destination" ]] ; then
+            destination=$analysis_dir
+        elif [[ ! -d "\$destination" ]] ; then
+            echo "Destination \$destination does not exist! Please create it." >&2
+            exit 1
+        else
+            destination=\$destination/fastq
+        fi
+        destination=\$destination/\$dir
+        mkdir -p "\$destination"
+        rsync -a "\$dir/" "\$destination/"
+    done
+)
+
 
 # create fastqc and collation scripts
 cd "$analysis_dir"
@@ -601,6 +628,7 @@ fi
 # Collate
 sbatch --export=ALL -J "collate-$flowcell" \$copy_dependency -o "collate-$flowcell.o%A" -e "collate-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=1000 --parsable --oversubscribe <<'__COLLATE__'
 #!/bin/bash
+source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 
 cd "$analysis_dir"
 $link_command
@@ -639,7 +667,7 @@ bash fastqc.bash
 python3 "$STAMPIPES/scripts/alignprocess.py" \
   --flowcell "$flowcell"                     \
   --auto_aggregate                           \
-  --qsub_queue queue0                        \
+  --qsub-queue queue0                        \
   --outfile run_alignments.bash
 
 # Set up of flowcell aggregations

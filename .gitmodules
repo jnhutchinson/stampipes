@@ -1,0 +1,3 @@
+[submodule "stamlims_api"]
+	path = scripts/lims/stamlims_api
+	url = https://github.com/Altius/stamlims_api

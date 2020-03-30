@@ -192,7 +192,7 @@ class ProcessSetUp(object):
         alignment = self.api_single_result("flowcell_lane_alignment/%d/" % (align_id))
 
         if self.redo_completed or not alignment['complete_time']:
-            self.create_script(processing_info)
+            self.create_script(processing_info, alignment["id"])
         else:
             logging.info("Skipping completed alignment %d" % align_id)
 
@@ -277,11 +277,10 @@ class ProcessSetUp(object):
             script_path = os.path.expandvars(process_template["process_version"]["script_location"])
         return open(script_path, 'r').read()
 
-    def create_script(self, processing_info):
+    def create_script(self, processing_info, align_id):
 
         lane = processing_info["libraries"][0]
-        alignment = lane["alignments"][0]
-        align_id = alignment["id"]
+        alignment = [a for a in lane["alignments"] if a["id"] == align_id][0]
 
         if not "process_template" in alignment:
             logging.error("Alignment %d has no process template" % align_id)
@@ -294,11 +293,14 @@ class ProcessSetUp(object):
 
         flowcell_directory = processing_info['flowcell']['directory']
 
+        share_dir = lane.get("project_share_directory")
+        if share_dir:
+            flowcell_directory = os.path.join(share_dir, "alignments")
         if not flowcell_directory:
             logging.error("Alignment %d has no flowcell directory for flowcell %s" % (align_id, processing_info['flowcell']['label']))
             return False
 
-        fastq_directory = os.path.join(processing_info['flowcell']['directory'], "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
+        fastq_directory = os.path.join(flowcell_directory, "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
 
         # Reset the alignment's sample name if we decied not to use the barcode index mask
         if self.no_mask:

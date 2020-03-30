@@ -7,10 +7,11 @@ cd "$(dirname "$0")"
 
 source "$MODULELOAD"
 module purge
-module load jdk
-module load nextflow
 module load python/3.5.1
 module load anaconda/2.1.0-dev
+
+source "$PYTHON3_ACTIVATE"
+source "$STAMPIPES/scripts/sentry/sentry-lib.bash"
 
 if [[ $(wc -w <<< "$BAM_FILES") -gt 1 ]] ; then
   bamfiles="$(sed 's/\s\+/,/g' <<< "$BAM_FILES")"
@@ -66,29 +67,33 @@ else
 fi
 
 # Run the whole process
-nextflow run \
-  "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
-  -c "$STAMPIPES/nextflow.config" \
-  -w "$workdir" \
-  --bams "$bamfiles" \
-  --genome "$GENOME_INDEX" \
-  --mappable "$MAPPABLE_REGIONS" \
-  --chrom_sizes "$CHROM_SIZES" \
-  --peakcaller "$PEAK_CALLER" \
-  --centers "$CENTER_SITES" \
-  --chrom_bucket "$CHROM_BUCKET" \
-  --hotspot_index "$HOTSPOT_INDEX" \
-  --hotspot_id "AG$AGGREGATION_ID" \
-  --bias "$STAMPIPES_DATA/footprints/vierstra_et_al.txt" \
-  --UMI="$UMI" \
-  --paired "$pairflag" \
-  --outdir "$outdir" \
-  --threads 3 \
-  -profile cluster,modules \
-  -with-report nextflow.report.html \
-  -with-dag nextflow.flowchart.html \
-  -with-timeline nextflow.timeline.html \
-  -resume
+(
+  module purge
+  module load jdk nextflow
+  nextflow run \
+    "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
+    -c "$STAMPIPES/nextflow.config" \
+    -w "$workdir" \
+    --bams "$bamfiles" \
+    --genome "$GENOME_INDEX" \
+    --mappable "$MAPPABLE_REGIONS" \
+    --chrom_sizes "$CHROM_SIZES" \
+    --peakcaller "$PEAK_CALLER" \
+    --centers "$CENTER_SITES" \
+    --chrom_bucket "$CHROM_BUCKET" \
+    --hotspot_index "$HOTSPOT_INDEX" \
+    --hotspot_id "AG$AGGREGATION_ID" \
+    --bias "$STAMPIPES_DATA/footprints/vierstra_et_al.txt" \
+    --UMI="$UMI" \
+    --paired "$pairflag" \
+    --outdir "$outdir" \
+    --threads 3 \
+    -profile cluster,modules \
+    -with-report nextflow.report.html \
+    -with-dag nextflow.flowchart.html \
+    -with-timeline nextflow.timeline.html \
+    -resume
+)
 
 export PEAK_CALLER
 ( cd "$outdir" \
