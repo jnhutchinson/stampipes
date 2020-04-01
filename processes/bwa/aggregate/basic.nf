@@ -293,13 +293,14 @@ process count_adapters {
 
   input:
   file(bam) from bam_for_adapter_counts
+  file(adapters) from file("${dataDir}/adapters/alladapters.fa")
 
   output:
   file('adapter.counts.txt')
 
   script:
   """
-  bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${bam}" \
+  bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${bam}" "${adapters}" \
   | sed 's/^/adapter\t/' \
   > adapter.counts.txt
   """
