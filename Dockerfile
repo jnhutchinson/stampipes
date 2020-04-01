@@ -1,7 +1,10 @@
 ############
 # Build base
-from ubuntu:18.04 as build-base
+FROM ubuntu:18.04 as apt-base
+RUN echo 'Built on march 30th 2020'
 RUN apt-get update
+
+FROM apt-base as build-base
 RUN apt-get install -y \
     build-essential \
     git \
@@ -161,10 +164,9 @@ RUN git clone --recurse-submodules https://github.com/smithlabcode/preseq.git \
 
 #############
 # Final image
-from ubuntu:18.04 as stampipes
+from apt-base as stampipes
 
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update
 RUN apt-get install -y \
     bash \
     bc \
