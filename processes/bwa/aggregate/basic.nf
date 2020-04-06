@@ -19,6 +19,8 @@ params.hotspot_index = "."
 
 params.paired = true
 
+ref_fasta = file("${params.genome}.fa")
+ref_fai = file("${ref_fasta}.fai")
 
 def helpMessage() {
   log.info"""
@@ -46,15 +48,21 @@ process merge {
 
   input:
   file 'in*.bam' from bams
+  file ref from ref_fasta
 
   output:
-  file 'merged.bam' into merged
+  file 'merged.cram' into merged
 
   publishDir params.outdir
 
   script:
   """
-  samtools merge 'merged.bam' in*.bam
+  samtools merge \
+    --output-fmt 'cram' \
+         'merged.cram' \
+        --output-fmt-option "lossy_names=0,version=3.0" \
+        --reference "${ref}" \
+    in*.bam
   """
 }
 
@@ -66,10 +74,11 @@ process dups {
 
   input:
   file(merged)
+  file ref from ref_fasta
 
   output:
-  file 'marked.bam' into marked_bam
-  file 'marked.bam.bai'
+  file 'marked.cram' into marked_bam
+  file 'marked.cram.crai'
   file 'MarkDuplicates.picard'
 
   script:
@@ -81,8 +90,9 @@ process dups {
     extra = "MINIMUM_DISTANCE=300"
   }
   """
+  samtools view -u "${merged}" > merged.bam
   picard RevertOriginalBaseQualitiesAndAddMateCigar \
-    "INPUT=${merged}" OUTPUT=cigar.bam \
+    "INPUT=merged.bam" OUTPUT=cigar.bam \
     VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
 
   picard "${cmd}" \
@@ -91,7 +101,7 @@ process dups {
       METRICS_FILE=MarkDuplicates.picard ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
       READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
 
-  samtools index marked.bam
+  samtools view -T "${ref}" -o "marked.cram" --output-fmt-option "lossy_names=0,version=3.0" --write-index marked.bam
   """
 }
 marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter; bam_for_diff_peaks; bam_for_multimapping_density }
@@ -103,14 +113,18 @@ process filter {
 
   input:
   file bam from bam_for_filter
+  file ref from ref_fasta
 
   output:
-  file "filtered.bam" into filtered_bam
+  file "filtered.cram" into filtered_bam
 
   script:
   flag = params.UMI ? 1536 : 512
   """
-  samtools view -b -F "${flag}" marked.bam > filtered.bam
+  samtools view -F "${flag}" "${bam}" \
+    --output-fmt-option "lossy_names=0,version=3.0" \
+    -T "${ref}" \
+    -o filtered.cram
   """
 }
 filtered_bam.into { bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
@@ -282,7 +296,7 @@ process bam_counts {
   script:
   """
   python3 \$STAMPIPES/scripts/bwa/bamcounts.py \
-    "$bam" \
+    <(samtools view -u "$bam") \
     tagcounts.txt
   """
 }
@@ -337,7 +351,7 @@ process cutcounts {
   publishDir params.outdir
 
   input:
-  file(fai) from file("${params.genome}.fai")
+  file(fai) from ref_fai
   file(filtered_bam) from bam_for_cutcounts
 
   output:
@@ -388,7 +402,7 @@ process density {
   input:
   file filtered_bam from bam_for_density
   file chrom_bucket from file(params.chrom_bucket)
-  file fai from file("${params.genome}.fai")
+  file fai from ref_fai
 
   output:
   file 'density.starch'
@@ -441,7 +455,7 @@ process multimapping_density {
   input:
   file marked_bam from bam_for_multimapping_density
   file chrom_bucket from file(params.chrom_bucket)
-  file fai from file("${params.genome}.fai")
+  file fai from ref_fai
 
   output:
   file "mm_density.starch"
@@ -517,7 +531,7 @@ process normalize_density {
 
   input:
   set(file(filtered_bam), file(density)) from to_normalize
-  file(fai) from file("${params.genome}.fai")
+  file(fai) from ref_fai
 
   output:
   file 'normalized.density.starch'
@@ -567,8 +581,9 @@ process insert_sizes {
 
   script:
   """
+  samtools view -u "${nuclear_bam}" -o nuclear.bam
   picard CollectInsertSizeMetrics \
-    "INPUT=${nuclear_bam}" \
+    "INPUT=nuclear.bam" \
     OUTPUT=CollectInsertSizeMetrics.picard \
     HISTOGRAM_FILE=CollectInsertSizeMetrics.picard.pdf \
     VALIDATION_STRINGENCY=LENIENT \
@@ -707,7 +722,7 @@ process learn_dispersion {
   params.bias != "."
 
   input:
-  file ref from file("${params.genome}.fa")
+  file ref from ref_fasta
   file bam from bam_for_footprints
   //file bai
   file spots from hotspot_calls_for_bias
@@ -769,7 +784,7 @@ process compute_deviation {
   input:
   set file(interval), file(dispersion), file(bam), file(bai) from intervals.combine(dispersion)
   file(bias) from file(params.bias)
-  file(ref) from file("${params.genome}.fa")
+  file(ref) from ref_fasta
 
   output:
   file 'deviation.out' into deviations
