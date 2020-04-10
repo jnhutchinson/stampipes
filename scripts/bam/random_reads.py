@@ -11,7 +11,12 @@ def main():
     parser.add_argument("outfile")
     parser.add_argument("paired_reads_count")
     parser.add_argument("paired_reads_count_to_select")
+    parser.add_argument("--singleend", action="store_true")
+    parser.add_argument("--seed", default=None)
     args = parser.parse_args()
+
+    if args.seed:
+        random.seed(int(args.seed))
 
     # bam file to read from
     infile = args.infile
@@ -56,6 +61,17 @@ def main():
     find_last_mate = False
     # iterating through reads in the input file
     for alignment in in_alignment_file:
+
+        # Easy path for single-end data.
+        if args.singleend:
+            if current_index_in_file == sorted_read_indexes[current_index_in_indexes]:
+                current_index_in_indexes += 1
+                out_alignment_file.write(alignment)
+                if current_index_in_indexes == len(sorted_read_indexes):
+                    break
+            current_index_in_file += 1
+            continue
+
         # if read name is in 'already_read_map' means that this read is the second part of paired read
         # so we do not increment 'current_index_in_file', just move on
         if alignment.query_name in already_read_map:

@@ -113,7 +113,7 @@ process filter {
   samtools view -b -F "${flag}" marked.bam > filtered.bam
   """
 }
-filtered_bam.into { bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
+filtered_bam.into { bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
 
 process filter_nuclear {
   label "modules"
@@ -125,6 +125,7 @@ process filter_nuclear {
   file 'nuclear.bam' into nuclear_bam
   file 'nuclear.bam' into bam_for_hotspot2
   file 'nuclear.bam' into bam_for_macs2
+  file 'nuclear.bam' into bam_for_spot_score
 
   script:
   """
@@ -228,45 +229,30 @@ process spot_score {
   file 'r1.spot.out'
   file 'r1.hotspot.info'
 
-  script:
-  if (params.paired) {
-  start = """
-  # random sample
-	samtools view -h -F 12 -f 3 "$bam" \
-		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
-		| samtools view -uS - \
-		> nuclear.bam
-	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
-  samtools view -b -f 0x0040 subsample.bam > r1.bam
-  """
-  } else {
-   start = """
-  # random sample
-	samtools view -h -F 12 "$bam" \
-		| awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
-		| samtools view -uS - \
-		> nuclear.bam
-	bash \$STAMPIPES/scripts/bam/random_sample.sh nuclear.bam subsample.bam 5000000
-  ln -s subsample.bam r1.bam
-  """
-  }
-  start + """
-  # hotspot
-  bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
-    \$HOTSPOT_DIR \
-    \$PWD \
-    \$PWD/r1.bam \
-    "${genome_name}" \
-    "${params.readlength}" \
+  shell:
+  depth = 5_000_000
+  '''
+	bash "$STAMPIPES/scripts/bam/random_sample_read1.sh" \
+    "!{bam}" \
+    r1.bam \
+    "!{depth}"
+
+  bash "$STAMPIPES/scripts/SPOT/runhotspot.bash" \
+    "$HOTSPOT_DIR" \
+    "$PWD" \
+    "$PWD/r1.bam" \
+    "!{genome_name}" \
+    "!{params.readlength}" \
     DNaseI
 
   starch --header r1-both-passes/r1.hotspot.twopass.zscore.wig \
     > r1.spots.starch
 
-  bash \$STAMPIPES/scripts/SPOT/info.sh \
+  bash "$STAMPIPES/scripts/SPOT/info.sh" \
     r1.spots.starch hotspot1 r1.spot.out \
     > r1.hotspot.info
-  """
+  '''
+
 }
 
 process bam_counts {
