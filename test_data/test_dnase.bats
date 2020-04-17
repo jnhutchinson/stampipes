@@ -67,6 +67,13 @@ export NXF_VER=19.10.0
   verify check_starch peaks/nuclear.peaks.fdr0.01.narrowpeaks.starch
   verify check_starch peaks/nuclear.peaks.narrowpeaks.fdr0.05.starch
 
+  # footprints
+  zcat < expected/dm.json.gz > expected/dm.json
+  verify check_text dm.json
+  verify check_starch interval.all.bedgraph.starch
+  for t in 0.2 0.1 0.05 0.01 0.001 0.0001 ; do
+    verify check_gzipped interval.all.fps.$t.bed.gz
+  done
 }
 
 @test 'DNase aggregation single-end' {
@@ -104,4 +111,12 @@ export NXF_VER=19.10.0
   verify check_starch peaks/nuclear.peaks.fdr0.001.narrowpeaks.starch
   verify check_starch peaks/nuclear.peaks.fdr0.01.narrowpeaks.starch
   verify check_starch peaks/nuclear.peaks.narrowpeaks.fdr0.05.starch
+
+  # footprints
+  zcat < expected/dm.json.gz > expected/dm.json
+  verify check_text dm.json
+  verify check_starch interval.all.bedgraph.starch
+  for t in 0.2 0.1 0.05 0.01 0.001 0.0001 ; do
+    verify check_gzipped interval.all.fps.$t.bed.gz
+  done
 }

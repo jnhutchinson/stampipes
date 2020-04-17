@@ -1,8 +1,8 @@
 ############
 # Build base
 from ubuntu:18.04 as build-base
-RUN apt-get update
-RUN apt-get install -y \
+RUN apt-get update && \
+    apt-get install -y \
       build-essential \
       git \
       wget \
@@ -163,18 +163,31 @@ RUN git clone --recurse-submodules https://github.com/smithlabcode/preseq.git \
 from ubuntu:18.04 as stampipes
 
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update
-RUN apt-get install -y \
+
+RUN apt-get update && \
+    apt-get install -y \
       bash \
       bc \
       bowtie \
       build-essential \
       coreutils \
       gawk \
+      gfortran \
+      git \
+      libblas-dev  \
       libboost-dev \
+      libbz2-dev \
+      libcurl4-openssl-dev \
       libgsl-dev \
+      liblapack-dev \
+      liblzma-dev \
+      libmysqlclient-dev \
+      libpng-dev \
+      libssl-dev \
+      libz-dev \
       littler \
       openjdk-8-jre \
+      python \
       python-dev \
       python-pip \
       python3 \
@@ -184,8 +197,21 @@ RUN apt-get install -y \
       zlib1g-dev
 
 COPY ./requirements.pip.txt /stampipes/
+COPY ./requirements.pip3.txt /stampipes/
+RUN pip install --upgrade pip
 RUN pip install -r /stampipes/requirements.pip.txt
-RUN pip3 install -r /stampipes/requirements.pip.txt
+RUN pip3 install -r /stampipes/requirements.pip3.txt
+
+# Install footprints
+RUN git clone https://github.com/jvierstra/genome-tools.git \
+        && cd genome-tools \
+        && git checkout dfa1a35ac7a59da175d521f24e73f8d6fd79e6e3 \
+        && python setup.py install \
+        && cd .. \
+        && git clone https://github.com/jvierstra/footprint-tools.git \
+        && cd footprint-tools \
+        && git checkout eb6a172e51ab19cd7c16699bd4755975ae8b72f7 \
+        && python setup.py install
 
 COPY ./scripts /stampipes/scripts
 COPY ./processes /stampipes/processes

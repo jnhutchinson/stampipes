@@ -18,6 +18,7 @@ params.hotspot_id = "default"
 params.hotspot_index = "."
 
 params.paired = true
+params.seed = 12345
 
 
 def helpMessage() {
@@ -697,6 +698,7 @@ process learn_dispersion {
   //file bai
   file spots from hotspot_calls_for_bias
   file bias from file(params.bias)
+  val seed from params.seed
 
   output:
   set file('dm.json'), file(bam), file ("${bam}.bai") into dispersion
@@ -716,6 +718,7 @@ process learn_dispersion {
   ftd-learn-dispersion-model \
     --bm $bias \
     --half-win-width 5 \
+    --seed $seed \
     --processors 8 \
     $bam \
     $ref \
@@ -755,6 +758,7 @@ process compute_deviation {
   set file(interval), file(dispersion), file(bam), file(bai) from intervals.combine(dispersion)
   file(bias) from file(params.bias)
   file(ref) from file("${params.genome}.fa")
+  val seed from params.seed
 
   output:
   file 'deviation.out' into deviations
@@ -768,6 +772,7 @@ process compute_deviation {
   --smooth-clip 0.01 \
   --dm "$dispersion" \
   --fdr-shuffle-n 50 \
+  --seed "$seed" \
   --processors 4 \
   "$bam" \
   "$ref" \
