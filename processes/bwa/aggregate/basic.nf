@@ -177,6 +177,7 @@ process hotspot2 {
   file(mappable) from file(params.mappable)
   file(chrom_sizes) from file(params.chrom_sizes)
   file(centers) from file(params.centers)
+  file(info_script) from file("${baseDir}/../../../scripts/SPOT/info.sh")
 
 
   output:
@@ -201,7 +202,7 @@ process hotspot2 {
   mv nuclear.peaks.narrowpeaks.starch nuclear.peaks.narrowpeaks.fdr0.05.starch
   mv nuclear.peaks.starch nuclear.peaks.fdr0.05.starch
 
-  bash \$STAMPIPES/scripts/SPOT/info.sh \
+  bash "../${info_script}" \
     nuclear.hotspots.fdr0.05.starch hotspot2 nuclear.SPOT.txt \
     > nuclear.hotspot2.info
 
@@ -280,13 +281,14 @@ process count_adapters {
 
   input:
   file(bam) from bam_for_adapter_counts
+  file(adapter_file) from file("${baseDir}/../../data/adapters/alladapters.fa")
 
   output:
   file('adapter.counts.txt')
 
   script:
   """
-  bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${bam}" \
+  bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${bam}" "${adapter_file}" \
   | sed 's/^/adapter\t/' \
   > adapter.counts.txt
   """
