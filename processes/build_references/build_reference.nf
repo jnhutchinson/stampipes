@@ -8,6 +8,7 @@ params.genome = ""
 params.readlength = 36
 params.outdir = "output"
 params.nuclearchromosomes = ""
+params.blacklist = ""
 
 genome_name = file(params.genome).baseName
 readlengths = params.readlength.tokenize(',')
@@ -61,8 +62,6 @@ process bowtie_index {
 
 process mappability {
 
-  publishDir "${params.outdir}/annotations"
-
   input:
   file genome from file(params.genome)
   val read_length from Channel.from(readlengths)
@@ -80,6 +79,30 @@ process mappability {
     | sed 's/\\s\$//' \
     | sort-bed - \
     > "${genome_name}.K${read_length}.mappable_only.bed"
+  """
+}
+
+process exclude_blacklist {
+
+  publishDir "${params.outdir}/annotations"
+
+  input:
+  file blacklist from file(params.blacklist)
+  set val(read_length), file(mappable) from mappable
+
+  output:
+  set val(read_length), file(mappable) into blacklisted_mappable
+
+  script:
+  infile = "in.bed"
+  """
+  if [[ -n "${blacklist}" ]] ; then
+    mv "${mappable}" in.bed
+    bedops -d "${infile}" "${blacklist}" \
+    | bedmap --delim "\t" --echo --echo-map - "${infile}" \
+    | cut -f1-3,7- \
+    > "${mappable}"
+  fi
   """
 }
 
@@ -142,7 +165,7 @@ process hotspot2 {
 
   input:
   file chrom_sizes
-  set val(read_length), file(mappable) from mappable
+  set val(read_length), file(mappable) from blacklisted_mappable
   val n from 100
 
   output:
