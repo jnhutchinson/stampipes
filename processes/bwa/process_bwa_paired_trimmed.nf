@@ -41,6 +41,14 @@ if (params.help || !params.r1 || !params.genome){
   exit 0;
 }
 
+adaps = file(params.adapter_file)
+        .readLines()
+        .collectEntries {
+          [it.split()[0], it.split()[1]]
+        }
+
+adapters = Channel.value([adaps['P7'], adaps['P5']])
+
 // Some renaming for easier usage later
 genome = params.genome
 genome_name = file(params.genome).baseName
@@ -62,8 +70,8 @@ process split_r1_fastq {
 
   script:
   """
-  zcat $r1 \
-  | split -l $fastq_line_chunks \
+  zcat "${r1}" \
+  | split -l "${fastq_line_chunks}" \
     --filter='gzip -1 > \$FILE.gz' - 'split_r1'
   """
 }
@@ -78,8 +86,8 @@ process split_r2_fastq {
 
   script:
   """
-  zcat $r2 \
-  | split -l $fastq_line_chunks \
+  zcat "${r2}" \
+  | split -l "${fastq_line_chunks}" \
     --filter='gzip -1 > \$FILE.gz' - 'split_r2'
   """
 }
@@ -94,7 +102,7 @@ process trim_adapters {
   input:
   file split_r1
   file split_r2
-  file adapters from file(params.adapter_file)
+  set val(P7), val(P5) from adapters
 
   output:
   set file('trim.R1.fastq.gz'), file('trim.R2.fastq.gz') into trimmed
@@ -102,18 +110,19 @@ process trim_adapters {
 
   script:
   """
-  trim-adapters-illumina \
-    -f "$adapters" \
-    -1 P5 -2 P7 \
-    --threads=${params.threads} \
-    "$split_r1" \
-    "$split_r2"  \
-    "trim.R1.fastq.gz" \
-    "trim.R2.fastq.gz" \
+  cutadapt \
+    -a "${P7}" -A "${P5}" \
+    --pair-adapters \
+    --pair-filter both \
+    --cores "${params.threads}" \
+    -o "trim.R1.fastq.gz" \
+    -p "trim.R2.fastq.gz" \
+    "${split_r1}" \
+    "${split_r2}"  \
   &> trimstats.txt
 
-  awk '{print "adapter-trimmed\t" \$NF * 2}' \
-  < trimstats.txt \
+  sed 's/,//g' < trimstats.txt \
+  | awk '/Read 1 with adapter/ {print "adapter-trimmed\t" \$5 * 2}' \
   > trim.counts.txt
   """
 }

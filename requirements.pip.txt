@@ -1,8 +1,10 @@
-numpy>=1.14.5
-pysam>=0.14.1
-scipy>=1.1.0
-sklearn>=0.0
-cython>=0.22
+Cython==0.29.16
 matplotlib==2.2.4
-pyfaidx>=0.4.2
+numpy==1.16.6
+pyfaidx==0.5.8
+pysam==0.15.4
+scipy==1.2.3
+setuptools==44
+sklearn>=0.0
 statsmodels==0.11.0
+zipp==1.2.0

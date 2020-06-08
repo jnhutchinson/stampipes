@@ -75,18 +75,6 @@ RUN wget --quiet https://github.com/samtools/samtools/releases/download/1.7/samt
       && cd samtools-1.7 \
       && make install
 
-#####################
-# Build trim-adapters
-FROM build-base as build-trim-adapters
-RUN apt-get install -y \
-      build-essential \
-      libboost-dev \
-      git \
-      zlib1g-dev
-RUN git clone https://bitbucket.org/jvierstra/bio-tools.git \
-      && cd bio-tools \
-      && git checkout 6fe54fa5a3 \
-      && make
 
 ########
 # Picard
@@ -197,10 +185,11 @@ RUN apt-get update && \
       zlib1g-dev
 
 COPY ./requirements.pip.txt /stampipes/
+RUN python2 -m pip install --upgrade pip
+RUN python2 -m pip install -r /stampipes/requirements.pip.txt
 COPY ./requirements.pip3.txt /stampipes/
-RUN pip install --upgrade pip
-RUN pip install -r /stampipes/requirements.pip.txt
-RUN pip3 install -r /stampipes/requirements.pip3.txt
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install -r /stampipes/requirements.pip3.txt
 
 # Install footprints
 RUN git clone https://github.com/jvierstra/genome-tools.git \
@@ -221,7 +210,6 @@ ENV STAMPIPES=/stampipes
 
 # Copy in dependencies
 COPY --from=build-bwa /bwa/bwa /usr/local/bin/
-COPY --from=build-trim-adapters /bio-tools/apps/trim-adapters-illumina/trim-adapters-illumina /usr/local/bin/
 COPY --from=build-samtools /usr/local/bin/samtools /usr/local/bin
 COPY --from=build-bedops /bedops/bin /usr/local/bin
 ENV HOTSPOT_DIR /hotspot
