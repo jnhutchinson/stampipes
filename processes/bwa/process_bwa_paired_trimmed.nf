@@ -113,13 +113,13 @@ process trim_adapters {
   cutadapt \
     -a "${P7}" -A "${P5}" \
     --pair-adapters \
-    --pair-filter both \
+    --minimum-length 1 \
     --cores "${params.threads}" \
     -o "trim.R1.fastq.gz" \
     -p "trim.R2.fastq.gz" \
     "${split_r1}" \
     "${split_r2}"  \
-  &> trimstats.txt
+  > trimstats.txt
 
   sed 's/,//g' < trimstats.txt \
   | awk '/Read 1 with adapter/ {print "adapter-trimmed\t" \$5 * 2}' \
