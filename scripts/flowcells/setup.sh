@@ -153,6 +153,9 @@ link_command="#no linking to do"
 source "$STAMPIPES/scripts/lims/api_functions.sh"
 lims_put_by_url "$(lims_get_all "flowcell_run/?label=$flowcell" | jq -r .url)prepare_for_processing/"
 
+# Make sure that "Prepare for Processing" has completed.
+sleep 300
+
 # Get and read the processing script
 python3 "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
 run_type=$(     jq -r '.flowcell.run_type'          "$json" )
