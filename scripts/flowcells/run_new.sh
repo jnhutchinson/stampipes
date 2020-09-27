@@ -3,7 +3,7 @@
 # Where new flowcells are created
 flowcell_root=${1:-$SEQUENCER_MOUNT}
 # Will only check directories from the last $days_back days
-days_back=${2:-2}
+days_back=${2:-10}
 
 set -e -u -o pipefail
 
