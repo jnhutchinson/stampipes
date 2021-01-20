@@ -25,12 +25,14 @@ OPTIONS:
 -v        Verbose
 -f        Flowcell Label
 -d        Requires by-hand demuxing
+-x        No sleep (running by hand)
 EOF
 }
 
 verbose=
 demux=
-while getopts ":hvdf:" opt ; do
+nosleep=
+while getopts ":hvdxf:" opt ; do
     case $opt in
     h)
         usage
@@ -41,6 +43,9 @@ while getopts ":hvdf:" opt ; do
         ;;
     d)
         demux=true
+        ;;
+    x)
+        nosleep=true
         ;;
     f)
         flowcell="$OPTARG"
@@ -105,6 +110,30 @@ make_hiseq_samplesheet(){
 
   }
 
+make_novaseq_samplesheet(){
+  name=Stamlab
+  date=$(date '+%m/%d/%Y')
+  cat <<__SHEET__
+[Header]
+Investigator Name,$name
+Project Name,$name
+Experiment Name,$name
+Date,$date
+Workflow,GenerateFASTQ
+
+[Settings]
+
+[Data]
+Lane,SampleID,SampleName,index,index2
+1,none,none,GGGGGGGG,GGGGGGGG
+__SHEET__
+
+if [ -z "$demux" ] ; then
+  # This bit of cryptic magic generates the samplesheet part.
+  jq -r '.libraries[] | select(.failed == false) | [(.lane|tostring), .samplesheet_name,.samplesheet_name,.barcode1.reverse_sequence, .barcode2.reverse_sequence,""] | join(",") ' "$json" 
+fi
+}
+
 make_nextseq_samplesheet(){
   name=Stamlab
   date=$(date '+%m/%d/%Y')
@@ -154,7 +183,9 @@ source "$STAMPIPES/scripts/lims/api_functions.sh"
 lims_put_by_url "$(lims_get_all "flowcell_run/?label=$flowcell" | jq -r .url)prepare_for_processing/"
 
 # Make sure that "Prepare for Processing" has completed.
-sleep 300
+if [[ -z "$nosleep" ]] ; then
+  sleep 300
+fi
 
 # Get and read the processing script
 python3 "$STAMPIPES/scripts/lims/get_processing.py" -f "$flowcell" -o "$json"
@@ -181,6 +212,45 @@ else # Set some options for manual demultiplexing
 fi
 
 case $run_type in
+"Novaseq 6000 S2")
+    echo "Novaseq 6000: S2 (non-pooled)"
+    parallel_env="-pe threads 6"
+    link_command=""
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--nextseq"
+    queue="queue0"
+    make_novaseq_samplesheet > SampleSheet.csv
+    bcl_tasks=1
+
+    # The quadruple-backslash syntax on this is messy and gross.
+    # It works, though, and the output is readable.
+    # read -d '' always exits with status 1, so we ignore error
+
+    # The NSLOTS lines are for scaling the various threads (2 per slot).
+    # WARNING: Does not work for threads < 4
+    # Table:
+    # NSLOTS  l w d p   total
+    # 4       1 1 2 4 = 8
+    # 5       1 1 2 5 = 9
+    # 6       2 2 3 6 = 13
+    # 7       2 2 3 7 = 14
+    # 8       2 2 4 8 = 16
+    set +e
+    read -d '' unaligned_command  << _U_
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
+      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
+      --demultiplexing-threads \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
+_U_
+    set -e
+
+;;
 "NextSeq 500")
     echo "Regular NextSeq 500 run detected"
     parallel_env="-pe threads 6"
