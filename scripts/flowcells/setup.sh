@@ -111,6 +111,7 @@ make_hiseq_samplesheet(){
   }
 
 make_novaseq_samplesheet(){
+  lanecount=$1
   name=Stamlab
   date=$(date '+%m/%d/%Y')
   cat <<__SHEET__
@@ -125,8 +126,10 @@ Workflow,GenerateFASTQ
 
 [Data]
 Lane,SampleID,SampleName,index,index2
-1,none,none,GGGGGGGG,GGGGGGGG
 __SHEET__
+for i in $(seq $lanecount) ; do
+  echo "$i,none,none,GGGGGGGG,GGGGGGGG"
+done
 
 if [ -z "$demux" ] ; then
   # This bit of cryptic magic generates the samplesheet part.
@@ -184,6 +187,7 @@ lims_put_by_url "$(lims_get_all "flowcell_run/?label=$flowcell" | jq -r .url)pre
 
 # Make sure that "Prepare for Processing" has completed.
 if [[ -z "$nosleep" ]] ; then
+  echo "sleeping for 5 minutes to wait for LIMS to set up... (skip with -x if you're sure it's ready)"
   sleep 300
 fi
 
@@ -212,15 +216,42 @@ else # Set some options for manual demultiplexing
 fi
 
 case $run_type in
+
+"Novaseq 6000 S1")
+    echo "Novaseq 6000: S1 (non-pooled)"
+    parallel_env="-pe threads 6"
+    link_command=""
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--novaseq"
+    queue="queue0"
+    make_novaseq_samplesheet 2 > SampleSheet.csv
+    bcl_tasks=1
+
+    set +e
+    read -d '' unaligned_command  << _U_
+    PATH=/home/nelsonjs/src/bcl2fastq2/bin/:\$PATH
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
+_U_
+    set -e
+;;
+
 "Novaseq 6000 S2")
     echo "Novaseq 6000: S2 (non-pooled)"
     parallel_env="-pe threads 6"
     link_command=""
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
-    bc_flag="--nextseq"
+    bc_flag="--novaseq"
     queue="queue0"
-    make_novaseq_samplesheet > SampleSheet.csv
+    make_novaseq_samplesheet 2 > SampleSheet.csv
     bcl_tasks=1
 
     # The quadruple-backslash syntax on this is messy and gross.
@@ -238,14 +269,53 @@ case $run_type in
     # 8       2 2 4 8 = 16
     set +e
     read -d '' unaligned_command  << _U_
+    PATH=/home/nelsonjs/src/bcl2fastq2/bin/:\$PATH
     bcl2fastq \\\\
       --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
       --use-bases-mask "$bcl_mask" \\\\
       --output-dir "$fastq_dir" \\\\
       --barcode-mismatches "$mismatches" \\\\
-      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
-      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 4 )) \\\\
-      --demultiplexing-threads \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
+_U_
+    set -e
+
+;;
+"Novaseq 6000 S4")
+    echo "Novaseq 6000: S4 (non-pooled)"
+    parallel_env="-pe threads 6"
+    link_command=""
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--novaseq"
+    queue="queue0"
+    make_novaseq_samplesheet 4 > SampleSheet.csv
+    bcl_tasks=1
+
+    # The quadruple-backslash syntax on this is messy and gross.
+    # It works, though, and the output is readable.
+    # read -d '' always exits with status 1, so we ignore error
+
+    # The NSLOTS lines are for scaling the various threads (2 per slot).
+    # WARNING: Does not work for threads < 4
+    # Table:
+    # NSLOTS  l w d p   total
+    # 4       1 1 2 4 = 8
+    # 5       1 1 2 5 = 9
+    # 6       2 2 3 6 = 13
+    # 7       2 2 3 7 = 14
+    # 8       2 2 4 8 = 16
+    set +e
+    read -d '' unaligned_command  << _U_
+    PATH=/home/nelsonjs/src/bcl2fastq2/bin/:\$PATH
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
       --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
 _U_
     set -e
