@@ -113,7 +113,8 @@ class ProcessSetUp(object):
 
     def setup_flowcell(self, flowcell_label):
 
-        lanes = self.api.get_list_result(url_addition="flowcell_lane", query_arguments={"flowcell__label": flowcell_label}, page_size=500)
+        # Novaseq flowcells can have way above 500 lanes...
+        lanes = self.api.get_list_result(url_addition="flowcell_lane", query_arguments={"flowcell__label": flowcell_label}, page_size=500, item_limit=5000)
 
         if not lanes:
             logging.error("Flowcell %s has no lanes" % flowcell_label)
