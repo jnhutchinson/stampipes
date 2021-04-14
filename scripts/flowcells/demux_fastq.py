@@ -159,9 +159,9 @@ def split_file(filename, barcodes, labels):
             [012]:                  #
             ([YN]):                 # Fail/pass chastity filtering
             [01]:                   #
-            ( [AGCTN] {6,8} )       # First barcode
+            ( [AGCTN] {6,20} )       # First barcode
             \+?                     # Optional separator (+)
-            ( [AGCTN] {6,8} )?      # Optionally, second barcode
+            ( [AGCTN] {6,20} )?      # Optionally, second barcode
             $
             """, re.X)
 
