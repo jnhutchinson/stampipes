@@ -52,7 +52,7 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
 
 # Set peak_caller to macs2 for Chip-seq data
 if [[ -z "$PEAK_CALLER" ]] ; then
-  if [[ "$ASSAY_CATEGORY" == chipseq ]] ; then
+  if [[ "$ASSAY_CATEGORY" == chipseq || "$ASSAY_CATEGORY" == fiberseq ]] ; then
     PEAK_CALLER=macs2
   else
     PEAK_CALLER=hotspot2
