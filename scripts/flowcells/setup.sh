@@ -810,7 +810,7 @@ bash fastqc.bash
 python3 "$STAMPIPES/scripts/alignprocess.py" \
   --flowcell "$flowcell"                     \
   --auto_aggregate                           \
-  --qsub-queue queue0                        \
+  --qsub-queue queue2                        \
   --outfile run_alignments.bash
 
 # Set up of flowcell aggregations
