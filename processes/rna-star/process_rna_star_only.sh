@@ -54,8 +54,8 @@ fi
 if [[ -n "$PAIRED" ]] ; then
   if [[ ( "$ADAPTER_P7"  == "NOTAVAILABLE" ) || ( "$ADAPTER_P5" == "NOTAVAILABLE" ) ]] ; then
     # distinguish trimming needs further upstream in the future, for now copy so they always get saved independently
-    cp $R1_FASTQ $TRIM_R1
-    cp $R2_FASTQ $TRIM_R2
+    cp "$R1_FASTQ" "$TRIM_R1"
+    cp "$R2_FASTQ" "$TRIM_R2"
   else
     if [[ ( ! -e "$TRIM_R1" ) || ( ! -e "$TRIM_R2" ) ]] ; then
       trim-adapters-illumina -f "$ADAPTER_FILE" \
@@ -67,8 +67,18 @@ if [[ -n "$PAIRED" ]] ; then
         "$TRIM_R2.tmp" \
         &> "$outdir/adapter_trimming.txt"
 
-      mv "$TRIM_R1.tmp" "$TRIM_R1"
-      mv "$TRIM_R2.tmp" "$TRIM_R2"
+      if [[ "$LIBRARY_KIT" == "SMARTer Stranded Total RNA-Seq Kit v3-Pico" ]] ; then
+        python "$STAMPIPES/scripts/fastq/takara_umt.py" \
+          --readlength "$READLENGTH" \
+          <(zcat "$TRIM_R1.tmp") \
+          <(zcat "$TRIM_R2.tmp") \
+          >(gzip -c > "$TRIM_R1") \
+          >(gzip -c > "$TRIM_R2") \
+          > takara_umt.log
+      else
+        mv "$TRIM_R1.tmp" "$TRIM_R1"
+        mv "$TRIM_R2.tmp" "$TRIM_R2"
+      fi
     fi
   fi
 else
