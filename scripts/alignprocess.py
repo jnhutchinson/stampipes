@@ -342,6 +342,7 @@ class ProcessSetUp(object):
         env_vars["GENOME"]      = alignment['genome_index']
         env_vars["ASSAY"]       = lane['assay']
         env_vars["READLENGTH"]  = processing_info['flowcell']['read_length']
+        env_vars["LIBRARY_KIT"] = processing_info['libraries'][0]['library_kit_method']
 
         if processing_info['flowcell']['paired_end']:
             env_vars["PAIRED"] = "True"
