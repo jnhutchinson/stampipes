@@ -1,7 +1,6 @@
 package main
 
 /*
-
 import (
 	"io"
 	"sync"
@@ -57,22 +56,68 @@ func (rr *RecordReader) ReadChunk() ([]Record, error) {
 	}
 
 	dataPos := 0
-	//chunk := make([]Record, 0, rr.chunkSize)
+	chunk := make([]Record, 0, rr.chunkSize)
 
 	for {
+		break
 		// Read fastq record
 		//recordStart := dataPos
 
 		record := recordPool.Get().(Record)
 		record.reset()
+		recordStart := dataPos
 
 		// Read till description
 		for {
 			if rr.data[dataPos] == ' ' {
+				dataPos++
 				break
 			}
 			dataPos++
 		}
+
+		// Read till barcode
+		numColon := 0
+		for {
+			if rr.data[dataPos] == ':' {
+				numColon++
+				if numColon == 3 {
+					dataPos++
+					break
+				}
+			}
+			dataPos++
+		}
+		barcodeStart := dataPos
+		// Read till newline
+		for {
+			if rr.data[dataPos] == '\n' {
+				dataPos++
+				break
+			}
+			dataPos++
+		}
+		barcodeEnd := dataPos - 1
+
+		// Read rest of data
+		newlineCount := 0
+		for {
+			if rr.data[dataPos] == '\n' {
+				newlineCount++
+				if newlineCount == 3 {
+					dataPos++
+					break
+				}
+			}
+			dataPos++
+		}
+		recordEnd := dataPos
+		record.data = append(record.data, rr.data[recordStart:recordEnd]...)
+		record.barcode = record.data[barcodeStart-recordStart : barcodeEnd-recordStart]
+
+		chunk = append(chunk, record)
 	}
+	return chunk, nil
 }
+
 */

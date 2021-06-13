@@ -1,12 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"io"
-
 	"github.com/shenwei356/bio/seqio/fastx"
 )
 
+/*
 func writeFastx(record *fastx.Record, w io.Writer) error {
 
 	buf := make([]byte, 0,
@@ -60,10 +58,11 @@ func writeFastx(record *fastx.Record, w io.Writer) error {
 		return err
 	}
 	if n != len(buf) {
-		return fmt.Errorf("Did not write all %d bytes, only %d", len(buf), n)
+		return fmt.Errorf("did not write all %d bytes, only %d", len(buf), n)
 	}
 	return nil
 }
+*/
 
 func demux(config *Config) error {
 
@@ -71,7 +70,7 @@ func demux(config *Config) error {
 	// Open all outputs!
 	destinations := make(map[string]*RecordWriter)
 	fileLookup := make(map[string]*RecordWriter)
-	for barcode, filename := range config.destinations {
+	for barcode, filename := range config.Destinations {
 		/*
 			fh, err := os.Create(filename)
 			if err != nil {
@@ -101,7 +100,7 @@ func demux(config *Config) error {
 	lastColonPos := -1
 
 	// First try: No channels
-	for _, inputFilename := range config.inputs {
+	for _, inputFilename := range config.Inputs {
 		/*
 			f, err := os.Open(inputFilename)
 			if err != nil {
@@ -129,7 +128,6 @@ func demux(config *Config) error {
 				return chunk.Err
 			}
 			for _, record := range chunk.Data {
-				continue
 
 				// record := fq.Read()
 				//if err != nil {
@@ -164,12 +162,12 @@ func demux(config *Config) error {
 	return nil
 }
 
-func factorial(n int) int {
-	if n <= 2 {
-		return n
-	}
-	return n * factorial(n-1)
-}
+// func factorial(n int) int {
+// 	if n <= 2 {
+// 		return n
+// 	}
+// 	return n * factorial(n-1)
+// }
 
 // mismatches
 func mismatches(input string, distance int) (out []string) {

@@ -46,8 +46,8 @@ func NewRecordWriter(filename string, cachesize int) (*RecordWriter, error) {
 
 	w := RecordWriter{
 		cache:   make([]*fastx.Record, 0, cachesize),
-		records: make(chan []*fastx.Record, 0), // 0 means unbuffered.
-		errors:  make(chan error, 0),
+		records: make(chan []*fastx.Record), // 0 means unbuffered.
+		errors:  make(chan error),
 		writer:  writer,
 	}
 
