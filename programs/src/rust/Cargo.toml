@@ -2,3 +2,6 @@
 members = [
   "umt_tagger",
 ]
+
+[profile.release]
+lto = "thin"
