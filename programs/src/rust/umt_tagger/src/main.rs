@@ -6,17 +6,20 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "umt_tagger", about = "Moves UMTs from the read name to a tag")]
 struct Opt {
-    /// Set the number of threads used by the underlying htslib.
+    /// Set the number of threads used for compression.
+    ///
     /// These threads are shared between the reader and writer.
-    /// There is one additional "main" thread used to do the work of moving the UMTs.
+    /// There is one additional "main" thread used.
     #[structopt(short = "@", long = "threads", default_value = "2")]
     threads: u32,
 
+    #[structopt(verbatim_doc_comment)]
     /// Set the compression level of the resulting BAM file.
+    ///
     /// 0: No compression (similar to `samtools view -u`)
     /// 1: Fastest compression
     /// 9: Best compression
-    #[structopt(short = "z", long = "compression", default_value = "6")]
+    #[structopt(short = "z", long = "compression", value_name = "level", default_value = "6")]
     compression_level: u32,
 
     /// Path to the input BAM file.
@@ -26,7 +29,6 @@ struct Opt {
 
     /// Path to the output BAM file to be created.
     /// If omitted or `-`, will read from standard input.
-    // Output file, stdout if not present
     #[structopt(parse(from_os_str))]
     output: Option<PathBuf>,
 
@@ -35,7 +37,7 @@ struct Opt {
     separator: char,
 
     /// Tagname to use
-    #[structopt(short = "tag", long = "tagname", default_value = "RX")]
+    #[structopt(short = "t", long = "tagname", default_value = "RX")]
     tagname: String,
 }
 
@@ -66,13 +68,10 @@ fn run(options: Opt) {
 
     let mut record = bam::Record::new();
     while let Some(result) = bam.read(&mut record) {
-        match result {
-            Ok(_) => {
-                move_tag(&mut record, tagname, separator);
-                output.write(&record).expect("Could not write read");
-            },
-            Err(_) => panic!("BAM parsing failed...")
-        }
+        result.expect("BAM parsing failed");
+
+        move_tag(&mut record, tagname, separator);
+        output.write(&record).expect("Could not write read");
     }
 }
 
