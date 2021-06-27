@@ -20,13 +20,13 @@ export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
 export TARGET_BAM=Aligned.toTranscriptome.out.bam
 export GENOME_BAM=Aligned.toGenome.out.bam
-export MARKED_BAM=duplicate-marked.bam
+export NODUPS_BAM=Aligned.toGenome.noDups.bam
 export TRIMS_R1=trims.R1.fastq.gz
 export TRIMS_R2=trims.R2.fastq.gz
 
 if [[ -n "$UMI_METHOD" ]] ; then
   export HAVE_UMI=1
-  export BAM_TO_USE=$MARKED_BAM
+  export BAM_TO_USE=$NODUPS_BAM
 else 
   export HAVE_UMI=0
   export BAM_TO_USE=$GENOME_BAM
@@ -335,12 +335,14 @@ if [[ "$HAVE_UMI" == 1 ]] ; then
   samtools view -f2 -F256 cigar.bam -o cigar_no_supp.bam
   picard UmiAwareMarkDuplicatesWithMateCigar \
     INPUT=cigar_no_supp.bam \
-    OUTPUT=$MARKED_BAM \
+    OUTPUT=$NODUPS_BAM \
     METRICS_FILE=picard.MarkDuplicates.txt \
     ASSUME_SORTED=true \
     VALIDATION_STRINGENCY=SILENT \
     READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
-    UMI_TAG_NAME=RX
+    UMI_TAG_NAME=RX \
+    UMI_METRICS=umi_metrics.txt \
+    REMOVE_DUPLICATES=true
 
   # Remove intermediate files
   rm cigar.bam cigar_no_supp.bam
