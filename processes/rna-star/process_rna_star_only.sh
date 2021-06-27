@@ -1,3 +1,9 @@
+# Check for special UMTs
+if [[ "$LIBRARY_KIT" == "SMARTer Stranded Total RNA-Seq Kit v3-Pico" ]] ; then
+  UMI=True
+  UMI_METHOD=takara-umt
+fi
+
 source "$MODULELOAD"
 module load samtools/1.3
 module load gcc/4.7.2     # for adapter trimming
@@ -67,7 +73,7 @@ if [[ -n "$PAIRED" ]] ; then
         "$TRIM_R2.tmp" \
         &> "$outdir/adapter_trimming.txt"
 
-      if [[ "$LIBRARY_KIT" == "SMARTer Stranded Total RNA-Seq Kit v3-Pico" ]] ; then
+      if [[ "$UMI_METHOD" == "takara-umt" ]] ; then
         python "$STAMPIPES/scripts/fastq/takara_umt.py" \
           --readlength "$READLENGTH" \
           <(zcat "$TRIM_R1.tmp") \
@@ -75,6 +81,7 @@ if [[ -n "$PAIRED" ]] ; then
           >(gzip -c > "$TRIM_R1") \
           >(gzip -c > "$TRIM_R2") \
           > takara_umt.log
+        rm "$TRIM_R1.tmp" "$TRIM_R2.tmp"
       else
         mv "$TRIM_R1.tmp" "$TRIM_R1"
         mv "$TRIM_R2.tmp" "$TRIM_R2"
