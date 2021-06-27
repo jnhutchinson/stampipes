@@ -479,6 +479,7 @@ class ProcessSetUp(object):
         env_vars["ASSAY"] = sample_info["assay_name"]
         env_vars["ASSAY_CATEGORY"] = assay_category
         env_vars["PAIRED"] = paired
+        env_vars["LIBRARY_KIT"] = '"' + library_info['library_kit_method'] + '"'
 
         if aggregation["umi"]:
             env_vars["UMI"] = True
