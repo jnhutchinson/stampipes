@@ -20,8 +20,27 @@ export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
 export TARGET_BAM=Aligned.toTranscriptome.out.bam
 export GENOME_BAM=Aligned.toGenome.out.bam
+export MARKED_BAM=duplicate-marked.bam
 export TRIMS_R1=trims.R1.fastq.gz
 export TRIMS_R2=trims.R2.fastq.gz
+
+if [[ -n "$UMI_METHOD" ]] ; then
+  export HAVE_UMI=1
+  export BAM_TO_USE=$MARKED_BAM
+else 
+  export HAVE_UMI=0
+  export BAM_TO_USE=$GENOME_BAM
+fi
+
+# This will be set to the SLURM job IDs to wait for if we are removing dups
+WAIT_FOR_DUPS=
+
+function make_dependency_param() {
+  # input: List of jobids, like  `,1234,1235,1236`
+  # output: Suitable for SLURM input, like `--dependency=afterok:1234:1235:1236`
+  local jobids=$1
+  echo "$jobids" | sed -e 's/^,/--dependency=afterany:/;s/,/:/g'
+}
 
 if [ -n "$REDO_AGGREGATION" ]; then
     bash $STAMPIPES/scripts/rna-star/aggregate/reset.bash
@@ -278,8 +297,8 @@ hostname
 echo "START PICARD: "
 date
 
-picard CollectInsertSizeMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
-picard CollectRnaSeqMetrics INPUT=Aligned.toGenome.out.bam OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND_SPECIFICITY="SECOND_READ_TRANSCRIPTION_STRAND"
+picard CollectInsertSizeMetrics INPUT=$GENOME_BAM OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
+picard CollectRnaSeqMetrics INPUT=$GENOME_BAM OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND_SPECIFICITY="SECOND_READ_TRANSCRIPTION_STRAND"
 
 cat picard.RnaSeqMetrics.txt | grep -A 1 "METRICS CLASS" | sed 1d | tr '\t' '\n' > rna_stats_summary.info
 cat picard.RnaSeqMetrics.txt | grep -A 2 "METRICS CLASS" | sed 1d | sed 1d | tr '\t' '\n' | paste rna_stats_summary.info - > tmp.txt && mv tmp.txt rna_stats_summary.info
@@ -305,19 +324,53 @@ hostname
 echo "START DUPLICATES: "
 date
 
-picard MarkDuplicates INPUT=Aligned.toGenome.out.bam OUTPUT=/dev/null METRICS_FILE=picard.MarkDuplicates.txt ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+if [[ "$HAVE_UMI" == 1 ]] ; then
+  # Add Mate Cigar information; required by UMI-aware MarkDuplicates
+  picard RevertOriginalBaseQualitiesAndAddMateCigar \
+    "INPUT=$GENOME_BAM OUTPUT=cigar.bam \
+    VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
+
+  # Remove non-primary reads (also required)
+  # TODO: Do we need -f2 ?
+  samtools view -f2 -F256 cigar.bam -o cigar_no_supp.bam
+  picard UmiAwareMarkDuplicatesWithMateCigar \
+    INPUT=cigar_no_supp.bam \
+    OUTPUT=$MARKED_BAM \
+    METRICS_FILE=picard.MarkDuplicates.txt \
+    ASSUME_SORTED=true \
+    VALIDATION_STRINGENCY=SILENT \
+    READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
+    UMI_TAG_NAME=RX
+
+  # Remove intermediate files
+  rm cigar.bam cigar_no_supp.bam
+else
+  # No UMI info, proceed as normal
+  picard MarkDuplicates \
+    INPUT=$GENOME_BAM \
+    OUTPUT=/dev/null \
+    METRICS_FILE=picard.MarkDuplicates.txt \
+    ASSUME_SORTED=true \
+    VALIDATION_STRINGENCY=SILENT \
+    READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+fi
+
 
 echo "FINISH DUPLICATES: "
 date
 
 __TC__
 )
-   PROCESSING="$PROCESSING,$jobid"
+  PROCESSING="$PROCESSING,$jobid"
+  if [[ $HAVE_UMI == 1 ]] ; then
+    WAIT_FOR_DUPS=$(make_dependency_param ",$jobid")
+  fi
 fi
+
 
 # adapter counts
 if [ ! -s "adapter_counts.info" ] ; then
-    jobid=$(sbatch --export=ALL -J "$adaptercounts_job" -o "$adaptercounts_job.o%A" -e "$adaptercounts_job.e%A" $dependencies_pb --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
+    jobid=$(sbatch --export=ALL -J "$adaptercounts_job" -o "$adaptercounts_job.o%A" -e "$adaptercounts_job.e%A" $WAIT_FOR_DUPS --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 set -x -e -o pipefail
 
@@ -327,7 +380,7 @@ hostname
 echo "START: adapter counts"
 date
 
-adaptercount=\$(bash "$STAMPIPES/scripts/bam/count_adapters.sh" "Aligned.toGenome.out.bam")
+adaptercount=\$(bash "$STAMPIPES/scripts/bam/count_adapters.sh" "$BAM_TO_USE")
 if [ -n \$adapter_count ]; then
         echo -e "adapter\t\$adaptercount" > "adapter_counts.info"
 fi
@@ -377,7 +430,7 @@ fi
 # this creates a weird fail state if there are sequins alignments found but not enough to do the subsampling, not sure how to fix this other than to change anaquin to fail as it were the above case
 # downstream uploads of information still occur
 if [[ ! -s "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info" && -n "$SEQUINS_REF" ]] ; then
-    jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__ANAQUIN__
+    jobid=$(sbatch --export=ALL -J "$anaquin_job" -o "$anaquin_job.o%A" -e "$anaquin_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__ANAQUIN__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -392,12 +445,12 @@ echo "START ANAQUIN: "
 date
 
 # calculate anaquin align stats on full alignment
-anaquin RnaAlign -rgtf $SEQUINS_REF -usequin $GENOME_BAM -o anaquin_star
+anaquin RnaAlign -rgtf $SEQUINS_REF -usequin $BAM_TO_USE -o anaquin_star
 bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
 
 # create subsample
 DILUTION="0.0001"
-anaquin RnaSubsample -method \$DILUTION -usequin $GENOME_BAM -o anaquin_subsample | samtools view -bS - > \$TMPDIR/temp_subsample.bam
+anaquin RnaSubsample -method \$DILUTION -usequin $BAM_TO_USE -o anaquin_subsample | samtools view -bS - > \$TMPDIR/temp_subsample.bam
 
 # calculate anaquin align stats on subset alignment
 anaquin RnaAlign -rgtf $SEQUINS_REF -usequin \$TMPDIR/temp_subsample.bam -o anaquin_subsample/anaquin_star
