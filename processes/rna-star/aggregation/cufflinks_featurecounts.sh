@@ -24,11 +24,15 @@ export NODUPS_BAM=Aligned.toGenome.noDups.bam
 export TRIMS_R1=trims.R1.fastq.gz
 export TRIMS_R2=trims.R2.fastq.gz
 
+# Check for special UMTs
+if [[ "$LIBRARY_KIT" == "SMARTer Stranded Total RNA-Seq Kit v3-Pico" ]] ; then
+  UMI=True
+  UMI_METHOD=takara-umt
+fi
+
 if [[ -n "$UMI_METHOD" ]] ; then
-  export HAVE_UMI=1
   export BAM_TO_USE=$NODUPS_BAM
 else 
-  export HAVE_UMI=0
   export BAM_TO_USE=$GENOME_BAM
 fi
 
@@ -85,9 +89,69 @@ adaptercounts_job=.AG${AGGREGATION_ID}.adapter
 anaquin_job=.AG${AGGREGATION_ID}.anaquinsub
 bow_rRNA_job=.AG${AGGREGATION_ID}.rRNA
 
+# dups
+if [ ! -s "picard.MarkDuplicates.txt" ] ; then
+    jobid=$(sbatch --export=ALL -J "$dupes_job" -o "$dupes_job.o%A" -e "$dupes_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__TC__
+#!/bin/bash
+
+set -x -e -o pipefail
+
+echo "Hostname: "
+hostname
+
+echo "START DUPLICATES: "
+date
+
+if [[ -n "$UMI" ]] ; then
+  # Add Mate Cigar information; required by UMI-aware MarkDuplicates
+  picard RevertOriginalBaseQualitiesAndAddMateCigar \
+    "INPUT=$GENOME_BAM OUTPUT=cigar.bam \
+    VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
+
+  # Remove non-primary reads (also required)
+  # TODO: Do we need -f2 ?
+  samtools view -f2 -F256 cigar.bam -o cigar_no_supp.bam
+  picard UmiAwareMarkDuplicatesWithMateCigar \
+    INPUT=cigar_no_supp.bam \
+    OUTPUT=$NODUPS_BAM \
+    METRICS_FILE=picard.MarkDuplicates.txt \
+    ASSUME_SORTED=true \
+    VALIDATION_STRINGENCY=SILENT \
+    READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
+    UMI_TAG_NAME=RX \
+    UMI_METRICS=umi_metrics.txt \
+    REMOVE_DUPLICATES=true
+
+  # Remove intermediate files
+  rm cigar.bam cigar_no_supp.bam
+else
+  # No UMI info, proceed as normal
+  picard MarkDuplicates \
+    INPUT=$GENOME_BAM \
+    OUTPUT=/dev/null \
+    METRICS_FILE=picard.MarkDuplicates.txt \
+    ASSUME_SORTED=true \
+    VALIDATION_STRINGENCY=SILENT \
+    READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+fi
+
+
+echo "FINISH DUPLICATES: "
+date
+
+__TC__
+)
+  PROCESSING="$PROCESSING,$jobid"
+  if [[ -n "$UMI" ]] ; then
+    WAIT_FOR_DUPS=$(make_dependency_param ",$jobid")
+  fi
+fi
+
+
+
 # density information, convoluted, can clean up so we skip a lot of these steps
 if [ ! -s "Signal.Unique.both.starch.bgz.tbi" ] ; then
-    jobid=$(sbatch --export=ALL -J "$density_job" -o "$density_job.o%A" -e "$density_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__DEN__
+    jobid=$(sbatch --export=ALL -J "$density_job" -o "$density_job.o%A" -e "$density_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__DEN__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -113,19 +177,19 @@ mkdir -p \$TMPDIR
 
     mkdir -p \$TMPDIR/Signal
 
-    echo STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
-    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Unstranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
+    echo STAR --runMode inputAlignmentsFromBAM --inputBAMfile $BAM_TO_USE --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
+    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $BAM_TO_USE --outWigType bedGraph --outWigStrand Unstranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
     mv \$TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg \$TMPDIR/Signal/Signal.UniqueMultiple.unstranded.out.bg
     mv \$TMPDIR/Signal/Signal.Unique.str1.out.bg \$TMPDIR/Signal/Signal.Unique.unstranded.out.bg
-    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $GENOME_BAM --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
+    STAR --runMode inputAlignmentsFromBAM --inputBAMfile $BAM_TO_USE --outWigType bedGraph --outWigStrand Stranded --outFileNamePrefix \$TMPDIR/Signal/ --outWigReferencesPrefix chr --outTmpDir \$TMPDIR/STAR
 
     grep '^chr' $STARrefDir/chrNameLength.txt > chrNL.txt
 
-    convertBedGraph \$TMPDIR/Signal/Signal.Unique.str1.out.bg         Signal.Unique.str-
-    convertBedGraph \$TMPDIR/Signal/Signal.Unique.str2.out.bg         Signal.Unique.str+
+    convertBedGraph \$TMPDIR/Signal/Signal.Unique.str1.out.bg               Signal.Unique.str-
+    convertBedGraph \$TMPDIR/Signal/Signal.Unique.str2.out.bg               Signal.Unique.str+
     convertBedGraph \$TMPDIR/Signal/Signal.Unique.unstranded.out.bg         Signal.Unique.both
-    convertBedGraph \$TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg Signal.UniqueMultiple.str-
-    convertBedGraph \$TMPDIR/Signal/Signal.UniqueMultiple.str2.out.bg Signal.UniqueMultiple.str+
+    convertBedGraph \$TMPDIR/Signal/Signal.UniqueMultiple.str1.out.bg       Signal.UniqueMultiple.str-
+    convertBedGraph \$TMPDIR/Signal/Signal.UniqueMultiple.str2.out.bg       Signal.UniqueMultiple.str+
     convertBedGraph \$TMPDIR/Signal/Signal.UniqueMultiple.unstranded.out.bg Signal.UniqueMultiple.both
 
     for i in Signal*.tmp ; do
@@ -147,7 +211,7 @@ fi
 
 # cufflinks
 if [ ! -s "isoforms.fpkm_tracking" ] ; then
-    jobid=$(sbatch --export=ALL -J "$cufflinks_job" -o "$cufflinks_job.o%A" -e "$cufflinks_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__CUFF__
+    jobid=$(sbatch --export=ALL -J "$cufflinks_job" -o "$cufflinks_job.o%A" -e "$cufflinks_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__CUFF__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -161,7 +225,7 @@ date
     CUFF=cufflinks
     CUFF_COMMON="--no-update-check --library-type fr-firststrand"
 
-    \$CUFF \$CUFF_COMMON --GTF $ANNOTATION $GENOME_BAM
+    \$CUFF \$CUFF_COMMON --GTF $ANNOTATION $BAM_TO_USE
 
     # delete duplicate rows and sort into identical orders across all samples
     Rscript $STAMPIPES/scripts/rna-star/aggregate/dedupe_sort_cuffout.Rscript genes.fpkm_tracking
@@ -184,7 +248,7 @@ fi
 
 # stringtie
 if [ ! -s "stringtie_rf/abundances.txt" ] ; then
-    jobid=$(sbatch --export=ALL -J "$stringtie_job" -o "$stringtie_job.o%A" -e "$stringtie_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__ST__
+    jobid=$(sbatch --export=ALL -J "$stringtie_job" -o "$stringtie_job.o%A" -e "$stringtie_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe <<__ST__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -195,7 +259,7 @@ hostname
 echo "START STRINGTIE: "
 date
 
-stringtie $GENOME_BAM --rf -p 4 -G $ANNOTATION -o stringtie_rf/transcripts.gtf -A stringtie_rf/abundances.txt
+stringtie $BAM_TO_USE --rf -p 4 -G $ANNOTATION -o stringtie_rf/transcripts.gtf -A stringtie_rf/abundances.txt
 
 echo "FINISH STRINGTIE: "
 date
@@ -207,7 +271,7 @@ fi
 
 # featureCounts
 if [ ! -s "feature_counts.txt" ] ; then
-    jobid=$(sbatch --export=ALL -J "$fcounts_job" -o "$fcounts_job.o%A" -e "$fcounts_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__FC__
+    jobid=$(sbatch --export=ALL -J "$fcounts_job" -o "$fcounts_job.o%A" -e "$fcounts_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__FC__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -220,7 +284,7 @@ date
 
     FCOUNTS=featureCounts
     FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2 -D 10000"
-    \$FCOUNTS \$FCOUNTS_COMMON -t 'exon' -g 'gene_id' -a $ANNOTATION -o feature_counts.txt $GENOME_BAM
+    \$FCOUNTS \$FCOUNTS_COMMON -t 'exon' -g 'gene_id' -a $ANNOTATION -o feature_counts.txt $BAM_TO_USE
 
 echo "FINISH FEATURECOUNTS: "
 date
@@ -231,6 +295,7 @@ __FC__
 fi
 
 # kallisto
+# TODO: Do we need to re-create trims.r1 and trims.r2 from the dup-revmoed file?
 if [ ! -s "kallisto_output/abundance.tsv" ] ; then
     jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
@@ -286,7 +351,7 @@ fi
 
 # picard
 if [[ ! -s "picard.CollectInsertSizes.txt" || ! -s "picard.RnaSeqMetrics.txt" || ! -s "rna_stats_summary.info" ]] ; then
-    jobid=$(sbatch --export=ALL -J "$picard_job" -o "$picard_job.o%A" -e "$picard_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__PIC__
+    jobid=$(sbatch --export=ALL -J "$picard_job" -o "$picard_job.o%A" -e "$picard_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__PIC__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -297,8 +362,8 @@ hostname
 echo "START PICARD: "
 date
 
-picard CollectInsertSizeMetrics INPUT=$GENOME_BAM OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
-picard CollectRnaSeqMetrics INPUT=$GENOME_BAM OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND_SPECIFICITY="SECOND_READ_TRANSCRIPTION_STRAND"
+picard CollectInsertSizeMetrics INPUT=$BAM_TO_USE OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
+picard CollectRnaSeqMetrics INPUT=$BAM_TO_USE OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT=$FLAT_REF STRAND_SPECIFICITY="SECOND_READ_TRANSCRIPTION_STRAND"
 
 cat picard.RnaSeqMetrics.txt | grep -A 1 "METRICS CLASS" | sed 1d | tr '\t' '\n' > rna_stats_summary.info
 cat picard.RnaSeqMetrics.txt | grep -A 2 "METRICS CLASS" | sed 1d | sed 1d | tr '\t' '\n' | paste rna_stats_summary.info - > tmp.txt && mv tmp.txt rna_stats_summary.info
@@ -310,65 +375,6 @@ __PIC__
 )
    PROCESSING="$PROCESSING,$jobid"
 fi
-
-# dups
-if [ ! -s "picard.MarkDuplicates.txt" ] ; then
-    jobid=$(sbatch --export=ALL -J "$dupes_job" -o "$dupes_job.o%A" -e "$dupes_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__TC__
-#!/bin/bash
-
-set -x -e -o pipefail
-
-echo "Hostname: "
-hostname
-
-echo "START DUPLICATES: "
-date
-
-if [[ "$HAVE_UMI" == 1 ]] ; then
-  # Add Mate Cigar information; required by UMI-aware MarkDuplicates
-  picard RevertOriginalBaseQualitiesAndAddMateCigar \
-    "INPUT=$GENOME_BAM OUTPUT=cigar.bam \
-    VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
-
-  # Remove non-primary reads (also required)
-  # TODO: Do we need -f2 ?
-  samtools view -f2 -F256 cigar.bam -o cigar_no_supp.bam
-  picard UmiAwareMarkDuplicatesWithMateCigar \
-    INPUT=cigar_no_supp.bam \
-    OUTPUT=$NODUPS_BAM \
-    METRICS_FILE=picard.MarkDuplicates.txt \
-    ASSUME_SORTED=true \
-    VALIDATION_STRINGENCY=SILENT \
-    READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
-    UMI_TAG_NAME=RX \
-    UMI_METRICS=umi_metrics.txt \
-    REMOVE_DUPLICATES=true
-
-  # Remove intermediate files
-  rm cigar.bam cigar_no_supp.bam
-else
-  # No UMI info, proceed as normal
-  picard MarkDuplicates \
-    INPUT=$GENOME_BAM \
-    OUTPUT=/dev/null \
-    METRICS_FILE=picard.MarkDuplicates.txt \
-    ASSUME_SORTED=true \
-    VALIDATION_STRINGENCY=SILENT \
-    READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
-fi
-
-
-echo "FINISH DUPLICATES: "
-date
-
-__TC__
-)
-  PROCESSING="$PROCESSING,$jobid"
-  if [[ $HAVE_UMI == 1 ]] ; then
-    WAIT_FOR_DUPS=$(make_dependency_param ",$jobid")
-  fi
-fi
-
 
 # adapter counts
 if [ ! -s "adapter_counts.info" ] ; then
