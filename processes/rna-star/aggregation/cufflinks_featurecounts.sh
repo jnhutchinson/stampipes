@@ -38,6 +38,7 @@ fi
 
 # This will be set to the SLURM job IDs to wait for if we are removing dups
 WAIT_FOR_DUPS=
+WAIT_FOR_FASTQ=
 
 function make_dependency_param() {
   # input: List of jobids, like  `,1234,1235,1236`
@@ -69,12 +70,6 @@ if [ ! -s "$GENOME_BAM" ] ; then
   samtools index "$GENOME_BAM"
 fi
 
-# create merged fastqs
-if [ ! -s "$TRIMS_R1" ] ; then
-  samtools sort -n "$GENOME_BAM" -o sorted.bam
-  samtools fastq --threads 2 sorted.bam -1 "$TRIMS_R1" -2 "$TRIMS_R2"
-  rm sorted.bam
-fi
 
 density_job=.AG${AGGREGATION_ID}.star_den
 cufflinks_job=.AG${AGGREGATION_ID}.star_cuff
@@ -88,6 +83,7 @@ dupes_job=.AG${AGGREGATION_ID}.dupes
 adaptercounts_job=.AG${AGGREGATION_ID}.adapter
 anaquin_job=.AG${AGGREGATION_ID}.anaquinsub
 bow_rRNA_job=.AG${AGGREGATION_ID}.rRNA
+fastq_job=.AG${AGGREGATION_ID}.fq
 
 # dups
 if [ ! -s "picard.MarkDuplicates.txt" ] ; then
@@ -147,6 +143,17 @@ __TC__
   fi
 fi
 
+# create merged fastqs
+if [ ! -s "$TRIMS_R1" ] ; then
+    jobid=$(sbatch --export=ALL -J "$fastq_job" -o "$fastq_job.o%A" -e "$fastq_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__FASTQ__
+  samtools sort -n "$BAM_TO_USE" -o sorted.bam
+  samtools fastq --threads 2 sorted.bam -1 "$TRIMS_R1" -2 "$TRIMS_R2"
+  rm sorted.bam
+__FASTQ__
+)
+  PROCESSING="$PROCESSING,$jobid"
+  WAIT_FOR_FASTQ=$(make_dependency_param ",$jobid")
+fi
 
 
 # density information, convoluted, can clean up so we skip a lot of these steps
@@ -297,7 +304,7 @@ fi
 # kallisto
 # TODO: Do we need to re-create trims.r1 and trims.r2 from the dup-revmoed file?
 if [ ! -s "kallisto_output/abundance.tsv" ] ; then
-    jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__KALLISTO__
+    jobid=$(sbatch --export=ALL -J "$kallisto_job" -o "$kallisto_job.o%A" -e "$kallisto_job.e%A" --partition=$QUEUE $WAIT_FOR_FASTQ --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -324,7 +331,7 @@ fi
 
 # kallisto advanced
 if [ ! -s "kallisto_output_adv/abundance.tsv" ] ; then
-    jobid=$(sbatch --export=ALL -J "$kallisto_adv_job" -o "$kallisto_adv_job.o%A" -e "$kallisto_adv_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=64000 --parsable --oversubscribe <<__KALLISTO__
+    jobid=$(sbatch --export=ALL -J "$kallisto_adv_job" -o "$kallisto_adv_job.o%A" -e "$kallisto_adv_job.e%A" --partition=$QUEUE $WAIT_FOR_FASTQ --cpus-per-task=1 --ntasks=1 --mem-per-cpu=64000 --parsable --oversubscribe <<__KALLISTO__
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -403,7 +410,7 @@ fi
 
 # rRNA
 if [ ! -s "ribosomal_counts.info" ] ; then
-    jobid=$(sbatch --export=ALL -J "$bow_rRNA_job" -o "$bow_rRNA_job.o%A" -e "$bow_rRNA_job.e%A" --partition=$QUEUE --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
+    jobid=$(sbatch --export=ALL -J "$bow_rRNA_job" -o "$bow_rRNA_job.o%A" -e "$bow_rRNA_job.e%A" --partition=$QUEUE $WAIT_FOR_FASTQ --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__SCRIPT__
 #!/bin/bash
 
 set -x -e -o pipefail
