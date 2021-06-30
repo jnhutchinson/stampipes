@@ -101,21 +101,20 @@ date
 if [[ -n "$UMI" ]] ; then
   # Add Mate Cigar information; required by UMI-aware MarkDuplicates
   picard RevertOriginalBaseQualitiesAndAddMateCigar \
-    "INPUT=$GENOME_BAM OUTPUT=cigar.bam \
+    "INPUT=$GENOME_BAM" OUTPUT=cigar.bam \
     VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
 
   # Remove non-primary reads (also required)
   # TODO: Do we need -f2 ?
-  samtools view -f2 -F256 cigar.bam -o cigar_no_supp.bam
+  samtools view -F256 cigar.bam -o cigar_no_supp.bam
   picard UmiAwareMarkDuplicatesWithMateCigar \
     INPUT=cigar_no_supp.bam \
-    OUTPUT=$NODUPS_BAM \
+    "OUTPUT=$NODUPS_BAM" \
     METRICS_FILE=picard.MarkDuplicates.txt \
     ASSUME_SORTED=true \
     VALIDATION_STRINGENCY=SILENT \
     READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
     UMI_TAG_NAME=RX \
-    UMI_METRICS=umi_metrics.txt \
     REMOVE_DUPLICATES=true
 
   # Remove intermediate files
@@ -123,7 +122,7 @@ if [[ -n "$UMI" ]] ; then
 else
   # No UMI info, proceed as normal
   picard MarkDuplicates \
-    INPUT=$GENOME_BAM \
+    "INPUT=$GENOME_BAM" \
     OUTPUT=/dev/null \
     METRICS_FILE=picard.MarkDuplicates.txt \
     ASSUME_SORTED=true \
@@ -145,10 +144,11 @@ fi
 
 # create merged fastqs
 if [ ! -s "$TRIMS_R1" ] ; then
-    jobid=$(sbatch --export=ALL -J "$fastq_job" -o "$fastq_job.o%A" -e "$fastq_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=32000 --parsable --oversubscribe <<__FASTQ__
-  samtools sort -n "$BAM_TO_USE" -o sorted.bam
-  samtools fastq --threads 2 sorted.bam -1 "$TRIMS_R1" -2 "$TRIMS_R2"
-  rm sorted.bam
+    jobid=$(sbatch --export=ALL -J "$fastq_job" -o "$fastq_job.o%A" -e "$fastq_job.e%A" --partition=$QUEUE $WAIT_FOR_DUPS --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__FASTQ__
+#!/bin/bash
+samtools sort -n "$BAM_TO_USE" -o sorted.bam
+samtools fastq --threads 2 sorted.bam -1 "$TRIMS_R1" -2 "$TRIMS_R2"
+rm sorted.bam
 __FASTQ__
 )
   PROCESSING="$PROCESSING,$jobid"
