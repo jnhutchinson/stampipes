@@ -466,6 +466,8 @@ class ProcessSetUp(object):
             logging.critical("No script contents")
             return
 
+        kit_method = self.api_single_result(url=library_info['kit_method'])
+
         env_vars = OrderedDict()
 
         env_vars["AGGREGATION_ID"] = aggregation_id
@@ -479,7 +481,7 @@ class ProcessSetUp(object):
         env_vars["ASSAY"] = sample_info["assay_name"]
         env_vars["ASSAY_CATEGORY"] = assay_category
         env_vars["PAIRED"] = paired
-        env_vars["LIBRARY_KIT"] = '"' + library_info['library_kit_method'] + '"'
+        env_vars["LIBRARY_KIT"] = kit_method["name"]
 
         if aggregation["umi"]:
             env_vars["UMI"] = True
