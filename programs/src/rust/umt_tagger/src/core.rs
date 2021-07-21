@@ -82,4 +82,34 @@ mod tests {
             }
         }
     }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        // qname and umt: any non-control characters
+        // sep is constrained to Ascii values
+        // tagname: two uppercase letters
+        // umt must not contain separator
+        fn move_umt_handles_all(qname in "\\PC*", umt in "\\PC*", sep in 0u8..128, tagname in "[A-Z]{2}") {
+            prop_assume!(! umt.contains(sep as char));
+
+            let total_qname = [qname.as_bytes(), &[sep], umt.as_bytes()].concat();
+            let mut record = bam::Record::new();
+            record.set(&total_qname, None, b"AAAA", &[255, 255, 255, 255]);
+
+            move_tag(&mut record, tagname.as_bytes(), sep);
+            assert_eq!(record.qname(), qname.as_bytes());
+            match record.aux(tagname.as_bytes()) {
+                Some(value) => {
+                    if let bam::record::Aux::String(v) = value {
+                        assert_eq!(v, umt.as_bytes());
+                    }
+                }
+                None => {
+                    panic!("Aux field doesn't exist");
+                }
+            }
+        }
+    }
 }
