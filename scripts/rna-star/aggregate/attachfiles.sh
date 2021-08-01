@@ -10,11 +10,11 @@ UPLOAD_SCRIPT=$STAMPIPES/scripts/lims/upload_data.py
 
 ATTACH_AGGREGATION="python3 $UPLOAD_SCRIPT --attach_file_contenttype AggregationData.aggregation --attach_file_objectid ${AGGREGATION_ID}"
 
-$ATTACH_AGGREGATION --attach_directory `pwd` --attach_file_purpose aggregation-directory
+$ATTACH_AGGREGATION --attach_directory "$PWD/.." --attach_file_purpose aggregation-directory
 
 # alignments
-$ATTACH_AGGREGATION --attach_file Aligned.toGenome.out.bam --attach_file_purpose all-alignments-bam --attach_file_type bam
-$ATTACH_AGGREGATION --attach_file Aligned.toTranscriptome.out.bam --attach_file_purpose transcriptome-alignments --attach_file_type bam
+$ATTACH_AGGREGATION --attach_file merged.genome.bam --attach_file_purpose all-alignments-bam --attach_file_type bam
+$ATTACH_AGGREGATION --attach_file merged.transcriptome.bam --attach_file_purpose transcriptome-alignments --attach_file_type bam
 
 # cufflinks
 $ATTACH_AGGREGATION --attach_file genes.fpkm_tracking --attach_file_purpose gene-expression-levels --attach_file_type plaintext
@@ -32,8 +32,8 @@ $ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.str-.bw --attach_file_pu
 $ATTACH_AGGREGATION --attach_file Signal.UniqueMultiple.both.bw --attach_file_purpose all-coverage-bigwig --attach_file_type bigwig
 
 # trimmed fastqs
-$ATTACH_AGGREGATION --attach_file trims.R1.fastq.gz --attach_file_purpose r1-fastq-trimmed --attach_file_type gzipped-fastq
-$ATTACH_AGGREGATION --attach_file trims.R2.fastq.gz --attach_file_purpose r2-fastq-trimmed --attach_file_type gzipped-fastq
+#$ATTACH_AGGREGATION --attach_file trims.R1.fastq.gz --attach_file_purpose r1-fastq-trimmed --attach_file_type gzipped-fastq
+#$ATTACH_AGGREGATION --attach_file trims.R2.fastq.gz --attach_file_purpose r2-fastq-trimmed --attach_file_type gzipped-fastq
 
 # picard uploads
 python3 $UPLOAD_SCRIPT --aggregation_id ${AGGREGATION_ID} --insertsfile picard.CollectInsertSizes.txt

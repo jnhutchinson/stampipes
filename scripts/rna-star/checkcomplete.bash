@@ -4,11 +4,9 @@
 EXIT=0
 
 files=( \
-    "${SAMPLE_NAME}.adapters.txt" \
     "${SAMPLE_NAME}.versions.txt" \
-    "Aligned.sortedByCoord.out.bam" \
-    "Aligned.toTranscriptome.out.bam" \
-    "trimmed/${SAMPLE_NAME}.trimmed.R1.fastq.gz"
+    "output/Aligned.sortedByCoord.out.bam" \
+    "output/Aligned.toTranscriptome.out.bam" \
 )
 
 for FILE in "${files[@]}"; do
