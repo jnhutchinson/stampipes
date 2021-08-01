@@ -4,8 +4,8 @@ data/adapters/*.adapters
 config/ucsc_browser/*.config
 
 data/
-test_data/*/work/
-test_data/*/output/
+test_data/**/work/
+test_data/**/output/
 
 environments/
 
