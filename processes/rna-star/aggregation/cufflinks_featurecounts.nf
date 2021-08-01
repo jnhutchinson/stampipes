@@ -39,10 +39,10 @@ workflow AGG {
 
   // Remove UMI if present
   if (params.umi) {
-    remove_duplicate_reads(merge_genome_bam.out)
+    remove_duplicate_reads(merge_genome_bam.out.bam)
     bam_to_use = remove_duplicate_reads.out.bam
   } else {
-    mark_duplicate_reads(merge_genome_bam.out)
+    mark_duplicate_reads(merge_genome_bam.out.bam)
     bam_to_use = mark_duplicate_reads.out.bam
   }
   bam_to_fastq(bam_to_use)
@@ -97,15 +97,17 @@ process merge_genome_bam {
     file("in*.bam")
 
   output:
-    path("merged.genome.bam")
+    path("merged.genome.bam"), emit: bam
+    path("*bai"), emit: bai
 
   script:
     """
     numbam=\$(ls in*.bam | wc -l)
     if [ \$numbam -eq 1 ] ; then
       cp in*.bam "merged.genome.bam"
+      samtools index merged.genome.bam
     else
-      samtools merge -f "merged.genome.bam" in*.bam
+      samtools merge --write-index -f "merged.genome.bam" in*.bam
     fi
     """
 }
@@ -114,6 +116,7 @@ process merge_genome_bam {
 process remove_duplicate_reads {
   publishDir params.outdir
   module "jdk/2.8.1", "picard/2.8.1", "samtools/1.12"
+  label 'high_mem'
   input:
     path genomebam
 
@@ -176,6 +179,7 @@ process mark_duplicate_reads {
 process bam_to_fastq {
   publishDir params.outdir
   module "samtools/1.12"
+  
   input:
     path input_bam
   output:
