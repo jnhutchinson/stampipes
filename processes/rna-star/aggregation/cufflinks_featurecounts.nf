@@ -15,10 +15,10 @@ params.flatref = null
 
 
 workflow {
-  AGG()
+  RNA_AGG()
 }
-// TODO better name
-workflow AGG {
+
+workflow RNA_AGG {
 
   // Grab params
   transcriptome_bams = params.transcriptomebams.collect {file it}
@@ -127,7 +127,7 @@ process remove_duplicate_reads {
   script:
     """
     # Add Mate Cigar information; required by UMI-aware MarkDuplicates
-    # TOOD: Actually required?
+    # TODO: Actually required?
     picard RevertOriginalBaseQualitiesAndAddMateCigar \
       "INPUT=$genomebam" OUTPUT=cigar.bam \
       VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
