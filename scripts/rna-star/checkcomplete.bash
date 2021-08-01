@@ -1,12 +1,12 @@
-# Requires SAMPLE_NAME and GENOME to be in the environment
+# Requires SAMPLE_NAME, GENOME and OUT_DIR to be in the environment
 # Checks that important files exist and are not size 0
 
 EXIT=0
 
 files=( \
     "${SAMPLE_NAME}.versions.txt" \
-    "output/Aligned.sortedByCoord.out.bam" \
-    "output/Aligned.toTranscriptome.out.bam" \
+    "$OUT_DIR/Aligned.sortedByCoord.out.bam" \
+    "$OUT_DIR/Aligned.toTranscriptome.out.bam" \
 )
 
 for FILE in "${files[@]}"; do

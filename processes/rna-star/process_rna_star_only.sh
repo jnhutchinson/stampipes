@@ -1,3 +1,6 @@
+export VERSION=1.1
+export OUT_DIR=output_$VERSION
+
 # Check for special UMTs
 if [[ "$LIBRARY_KIT" == "SMARTer Stranded Total RNA-Seq Kit v3-Pico" ]] ; then
   UMI=True
@@ -9,8 +12,7 @@ module load openssl-dev jdk nextflow
 source "$PYTHON3_ACTIVATE"
 
 cd "$(dirname "$0")"
-outdir="$(pwd)/output"
-VERSION_FILE="${outdir}/${SAMPLE_NAME}.versions.txt"
+VERSION_FILE="${OUT_DIR}/${SAMPLE_NAME}.versions.txt"
 
 # $STAR_DIR is set by the process template, and are relative to the reference directory
 REFDIR=$(dirname "$BWAINDEX")
@@ -30,9 +32,10 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
 NXF_VER=21.04.1 nextflow run \
   "$STAMPIPES/processes/rna-star/star_alignment.nf" \
   --r1 "$R1_FASTQ" --r2 "$R2_FASTQ" \
-  --starIndexDir "$STAR_dir" \
+  --starIndexDir "$STARdir" \
   --readlength "$READLENGTH" \
   --umimethod "$UMI_METHOD" \
+  --outdir "$OUT_DIR" \
   -profile modules,cluster \
   -resume \
   "$@"
