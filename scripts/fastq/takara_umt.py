@@ -58,6 +58,7 @@ def main():
 
     fragment_count = 0
     trim_count = 0
+    removed_count = 0
     with open(args.r1_fastq) as r1_in, \
             open(args.r2_fastq) as r2_in, \
             open(args.out_r1, 'wt') as r1_out, \
@@ -67,16 +68,20 @@ def main():
         r2_seq_io = SeqIO.parse(r2_in, "fastq")
 
         for (r1, r2) in zip(r1_seq_io, r2_seq_io):
-            (r1, r2, trimmed) = attach_umt(r1, r2, args.readlength)
-            r1_out.write(r1.format("fastq"))
-            r2_out.write(r2.format("fastq"))
             fragment_count += 1
+            (r1, r2, trimmed) = attach_umt(r1, r2, args.readlength)
             if trimmed:
                 trim_count += 1
+            if len(r1.seq) == 0 or len(r2.seq) == 0:
+                removed_count += 1
+                continue
+            r1_out.write(r1.format("fastq"))
+            r2_out.write(r2.format("fastq"))
 
         logging.info("Run complete.")
         logging.info("Total Fragments: %d", fragment_count)
         logging.info("Trimming performed on: %d", trim_count)
+        logging.info("Fragments omitted due to 0-length: %d", removed_count)
 
 
 if __name__ == "__main__":
