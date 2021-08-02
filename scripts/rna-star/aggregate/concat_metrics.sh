@@ -1,13 +1,11 @@
 # makes a concactenated version of all relevant rna seq metrics
 
+rm -f metrics.info
 echo -ne "fastq-total-reads\t" > metrics.info
-zcat -f $TRIMS_R1 | wc -l | awk '{print 2*$1/4}' >> metrics.info
+zcat -f r1.fq.gz | wc -l | awk '{print 2*$1/4}' >> metrics.info
 
 echo -ne "picard2-percent-duplication\t" >> metrics.info
 cat picard.MarkDuplicates.txt | grep 'READ_PAIR' -A 1 | sed 1d | cut -f 9 >> metrics.info
-
-echo -ne "fcounts-assigned\t" >> metrics.info
-cat feature_counts.txt.summary | grep 'Assigned' | cut -f 2 | awk '{print $1}' >> metrics.info
 
 echo -ne "kallisto-palign-default\t" >> metrics.info
 cat kallisto.log | grep 'reads pseudoaligned' | tr ' ' '\t' | cut -f 5 | sed -e 's/,//g' | awk '{print $1*2}' >> metrics.info
