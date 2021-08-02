@@ -1,6 +1,4 @@
-export STAMPIPES=/home/nelsonjs/code/stampipes
-
-VERSION=alpha1
+VERSION=1.1
 OUT_DIR=output_$VERSION
 
 source "$MODULELOAD"
@@ -22,7 +20,7 @@ fi
 
 # record version
 # TODO: Make more clear
-cp $STAMPIPES/version.json "$OUT_DIR"
+cp "$STAMPIPES/version.json" "$OUT_DIR"
 
 GENOME_BAM_FILES=$(sed 's/toTranscriptome/sortedByCoord/g' <<< "$BAM_FILES")
 
@@ -49,7 +47,7 @@ done
 
 echo "transcriptomebams:" >> agg_params.yaml
 for transcriptomebam in $BAM_FILES ; do
-  echo "  - $genomebam" >> agg_params.yaml
+  echo "  - $transcriptomebam" >> agg_params.yaml
 done
 
 set -e
