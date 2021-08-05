@@ -1,5 +1,6 @@
 export VERSION=1.1
 export OUT_DIR=output_$VERSION
+mkdir -p "$OUT_DIR"
 
 # Check for special UMTs
 if [[ "$LIBRARY_KIT" == "SMARTer Stranded Total RNA-Seq Kit v3-Pico" ]] ; then

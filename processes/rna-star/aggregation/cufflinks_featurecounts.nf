@@ -107,7 +107,7 @@ process merge_genome_bam {
       cp in*.bam "merged.genome.bam"
       samtools index merged.genome.bam
     else
-      samtools merge --write-index -f "merged.genome.bam" in*.bam
+      samtools merge --write-index -f "merged.genome.bam##idx##merged.genome.bam.bai" in*.bam
     fi
     """
 }

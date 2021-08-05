@@ -14,6 +14,6 @@ ATTACH_ALIGNMENT="python3 $UPLOAD_SCRIPT --attach_file_contenttype SequencingDat
 cd "${ALIGN_DIR}" || exit 1
 
 $ATTACH_ALIGNMENT --attach_directory "$ALIGN_DIR" --attach_file_purpose alignment-directory
-$ATTACH_ALIGNMENT --attach_file "$OUTDIR/Aligned.toTranscriptome.out.bam" --attach_file_purpose all-alignments-bam  --attach_file_type bam
+$ATTACH_ALIGNMENT --attach_file "$OUT_DIR/Aligned.toTranscriptome.out.bam" --attach_file_purpose all-alignments-bam  --attach_file_type bam
 
 #TODO: Attach more file types

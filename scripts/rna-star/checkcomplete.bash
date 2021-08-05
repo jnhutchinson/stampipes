@@ -4,7 +4,7 @@
 EXIT=0
 
 files=( \
-    "${SAMPLE_NAME}.versions.txt" \
+    "$OUT_DIR/${SAMPLE_NAME}.versions.txt" \
     "$OUT_DIR/Aligned.sortedByCoord.out.bam" \
     "$OUT_DIR/Aligned.toTranscriptome.out.bam" \
 )

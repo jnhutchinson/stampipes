@@ -1,5 +1,6 @@
 VERSION=1.1
 OUT_DIR=output_$VERSION
+mkdir -p "$OUT_DIR"
 
 source "$MODULELOAD"
 module load jdk nextflow
@@ -57,7 +58,8 @@ NXF_VER=21.04.1 nextflow run \
   "$STAMPIPES/processes/rna-star/aggregation/cufflinks_featurecounts.nf" \
   -params-file agg_params.yaml \
   -profile cluster \
-  -resume
+  -resume \
+  -with-trace
 
 
 # Upload results
