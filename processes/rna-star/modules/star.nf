@@ -6,7 +6,7 @@ params.publish = true
 
 process star {
   cpus params.star_threads
-  module 'STAR', 'samtools/1.7'
+  module 'STAR/2.4.2a', 'samtools/1.7'
 
   publishDir params.outdir, enabled: params.publish
 
