@@ -47,7 +47,7 @@ process trim {
 
 process star {
   cpus params.star_threads
-  module 'STAR', 'samtools/1.7'
+  module 'STAR', 'samtools/1.7', 'gcc/4.7.2'
 
   publishDir params.outdir
 

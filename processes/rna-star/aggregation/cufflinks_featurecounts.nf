@@ -330,11 +330,10 @@ process feature_counts {
 
     output:
       path "feature_counts.txt"
+      path "feature_counts.txt.summary"
 
     script:
       """
-      FCOUNTS=featureCounts
-      FCOUNTS_COMMON="--primary -B -C -p -P --fracOverlap .5 -s 2 -D 10000"
       featureCounts --primary -B -C -p -P --fracOverlap .5 -s 2 -D 10000 \
         -t 'exon' -g 'gene_id' \
         -a "$annotation" -o feature_counts.txt "$input_bam"
@@ -409,8 +408,11 @@ process anaquin {
 
   output:
     path "anaquin_star/*"
-    path "anaquin_subsample/*"
-    path "anaquin_subsample/*/*"
+    path "anaquin_subsample/anaquin.log"
+    path "anaquin_subsample/RnaSubsample_summary.stats"
+    path "anaquin_subsample/anaquin_kallisto/*"
+    path "anaquin_subsample/anaquin_star/*"
+    path "anaquin_subsample/kallisto_output/*"
 
   script:
   dilution = 0.0001
