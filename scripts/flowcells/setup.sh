@@ -321,7 +321,47 @@ _U_
     set -e
 
 ;;
+"Novaseq 6000 SP")
+    echo "Novaseq 6000: SP (non-pooled)"
+    parallel_env="-pe threads 6"
+    link_command=""
+    samplesheet="SampleSheet.csv"
+    fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
+    bc_flag="--novaseq"
+    queue="queue0"
+    make_novaseq_samplesheet 4 > SampleSheet.csv
+    bcl_tasks=1
+
+    # The quadruple-backslash syntax on this is messy and gross.
+    # It works, though, and the output is readable.
+    # read -d '' always exits with status 1, so we ignore error
+
+    # The NSLOTS lines are for scaling the various threads (2 per slot).
+    # WARNING: Does not work for threads < 4
+    # Table:
+    # NSLOTS  l w d p   total
+    # 4       1 1 2 4 = 8
+    # 5       1 1 2 5 = 9
+    # 6       2 2 3 6 = 13
+    # 7       2 2 3 7 = 14
+    # 8       2 2 4 8 = 16
+    set +e
+    read -d '' unaligned_command  << _U_
+    PATH=/home/nelsonjs/src/bcl2fastq2/bin/:\$PATH
+    bcl2fastq \\\\
+      --input-dir "${illumina_dir}/Data/Intensities/BaseCalls" \\\\
+      --use-bases-mask "$bcl_mask" \\\\
+      --output-dir "$fastq_dir" \\\\
+      --barcode-mismatches "$mismatches" \\\\
+      --loading-threads        \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --writing-threads        \\\$(( SLURM_CPUS_PER_TASK / 2 )) \\\\
+      --processing-threads     \\\$(( SLURM_CPUS_PER_TASK ))
+_U_
+    set -e
+
+;;
 "NextSeq 500")
+
     echo "Regular NextSeq 500 run detected"
     parallel_env="-pe threads 6"
     link_command="python3 $STAMPIPES/scripts/flowcells/link_nextseq.py -i fastq -o ."
