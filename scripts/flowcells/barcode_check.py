@@ -2,7 +2,7 @@ import sys
 import argparse
 import json
 
-MAX_BARCODE_LENGTH = 8
+MAX_BARCODE_LENGTH = 10
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='Split up fastq files by barcode')
