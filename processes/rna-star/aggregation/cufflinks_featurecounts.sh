@@ -3,6 +3,7 @@ OUT_DIR=output_$VERSION
 mkdir -p "$OUT_DIR"
 
 source "$MODULELOAD"
+module purge
 module load jdk nextflow
 
 export REFDIR="$(dirname $GENOME_INDEX)"
