@@ -4,7 +4,7 @@ mkdir -p "$OUT_DIR"
 
 source "$MODULELOAD"
 module purge
-module load jdk nextflow
+module load jdk nextflow openssl-dev
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
