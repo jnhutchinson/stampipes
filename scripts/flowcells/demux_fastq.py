@@ -98,6 +98,9 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_
         lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
     elif run_type == "HiSeq 4000":
         lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
+    # TODO: Is this always correct?
+    elif run_type.startswith("Novaseq 6000"):
+        lane_libraries = [ l for l in data['libraries'] if l['lane'] == lane ]
     else:
         logging.warn("Run type %s not supported; using all libraries" % run_type)
         lane_libraries = data['libraries']
@@ -156,9 +159,9 @@ def split_file(filename, barcodes, labels):
             [012]:                  #
             ([YN]):                 # Fail/pass chastity filtering
             [01]:                   #
-            ( [AGCTN] {6,8} )       # First barcode
+            ( [AGCTN] {6,20} )       # First barcode
             \+?                     # Optional separator (+)
-            ( [AGCTN] {6,8} )?      # Optionally, second barcode
+            ( [AGCTN] {6,20} )?      # Optionally, second barcode
             $
             """, re.X)
 

@@ -242,17 +242,21 @@ class ProcessSetUp(object):
                    sentinel_dependencies=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterany/g')
                    sbatch --export=ALL -J {job_name} -o {job_name}.o%A -e {job_name}.e%A --partition={queue} --cpus-per-task=1 --ntasks=1 $sentinel_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG1__
                    #!/bin/bash
-                   python $STAMPIPES/scripts/aggregateprocess.py --flowcell {label} --outfile run_aggregations.bash
+                   rm -f run_aggregations.bash
+                   python $STAMPIPES/scripts/aggregateprocess.py --flowcell {label} --outfile run_aggregations.bash --qsub-queue {qqueue}
                    bash run_aggregations.bash
                    __AUTOAGG1__
                    """.format(label=flowcell_label,
                             job_name=aaname_sentinel,
-                            queue=self.qsub_queue))
+                            queue=self.qsub_queue,
+                            qqueue=self.qsub_queue))
 
         outfile.write(contents)
         outfile.close()
 
     def add_script(self, align_id, processing_info, script_file, sample_name):
+
+        ram_megabytes = 2000
 
         if not self.outfile:
             logging.debug("Writing script to stdout")
@@ -266,7 +270,7 @@ class ProcessSetUp(object):
         else:
             outfile.write("cd %s && " % os.path.dirname(script_file))
             fullname = "%s%s-%s-ALIGN#%d" % (self.qsub_prefix,sample_name,processing_info['flowcell']['label'],align_id)
-            outfile.write("jobid=$(sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=16000 --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n)\nPROCESSING=\"$PROCESSING,$jobid\"\n\n" % (fullname, fullname, fullname, self.qsub_queue, script_file))
+            outfile.write("jobid=$(sbatch --export=ALL -J %s -o %s.o%%A -e %s.e%%A --partition=%s --cpus-per-task=1 --ntasks=1 --mem-per-cpu=%d --parsable --oversubscribe <<__ALIGNPROC__\n#!/bin/bash\nbash %s\n__ALIGNPROC__\n)\nPROCESSING=\"$PROCESSING,$jobid\"\n\n" % (fullname, fullname, fullname, self.qsub_queue, ram_megabytes, script_file))
         outfile.close()
 
     def get_script_template(self, process_template):
@@ -293,13 +297,12 @@ class ProcessSetUp(object):
 
         flowcell_directory = processing_info['flowcell']['directory']
 
+        share_dir = lane.get("project_share_directory")
+        if share_dir:
+            flowcell_directory = os.path.join(share_dir, "alignments")
         if not flowcell_directory:
-            share_dir = lane.get("project_share_directory")
-            if share_dir:
-                flowcell_directory = os.path.join(share_dir, "alignments")
-            else:
-                logging.error("Alignment %d has no flowcell directory for flowcell %s" % (align_id, processing_info['flowcell']['label']))
-                return False
+            logging.error("Alignment %d has no flowcell directory for flowcell %s" % (align_id, processing_info['flowcell']['label']))
+            return False
 
         fastq_directory = os.path.join(flowcell_directory, "Project_%s" % lane['project'], "Sample_%s" % lane['samplesheet_name'])
 
@@ -318,7 +321,7 @@ class ProcessSetUp(object):
         r1_fastq = self.get_lane_file(lane["id"], "r1-fastq")
 
         if not r1_fastq:
-            logging.error("Missing r1-fastq for lane %d (alignment %d)" % (lane["id"], alignment["id"]))
+            logging.error("Missing r1-fastq for lane %d (alignment %d) - check dir %s" % (lane["id"], alignment["id"], fastq_directory))
             return False
 
         if processing_info['flowcell']['paired_end']:
@@ -339,6 +342,7 @@ class ProcessSetUp(object):
         env_vars["GENOME"]      = alignment['genome_index']
         env_vars["ASSAY"]       = lane['assay']
         env_vars["READLENGTH"]  = processing_info['flowcell']['read_length']
+        env_vars["LIBRARY_KIT"] = '"' + processing_info['libraries'][0]['library_kit_method'] + '"'
 
         if processing_info['flowcell']['paired_end']:
             env_vars["PAIRED"] = "True"

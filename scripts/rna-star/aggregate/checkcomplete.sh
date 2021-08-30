@@ -3,13 +3,14 @@
 
 EXIT=0
 
+outdir=output
+
 # list of files
 files=( \
-    "Aligned.toGenome.out.bam" \
-    "Aligned.toGenome.out.bam.bai" \
-    "Aligned.toTranscriptome.out.bam" \
+    "merged.genome.bam" \
+    "merged.genome.bam.bai" \
+    "merged.transcriptome.bam" \
     "feature_counts.txt" \
-    "feature_counts.txt.summary" \
     "genes.fpkm_tracking" \
     "isoforms.fpkm_tracking" \
     "kallisto.log" \
@@ -21,7 +22,6 @@ files=( \
     "Signal.Unique.str+.bw" \
     "adapter_counts.info" \
     "ribosomal_counts.info" \
-    "trims.R1.fastq.gz" \
     "kallisto_output/abundance.tsv" \
     "kallisto_output_adv/abundance.tsv" \
 )
@@ -29,7 +29,6 @@ files=( \
 # Paired files only exist for paired-end aggregations.
 paired_files=( \
     "picard.CollectInsertSizes.txt" \
-    "trims.R2.fastq.gz" \
 )
 
 # list of sequins files

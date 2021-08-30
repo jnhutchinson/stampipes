@@ -1,3 +1,5 @@
+echo "WARNING: This process is deprecated. Please use process_rna_star_only.sh"
+
 source "$MODULELOAD"
 module load samtools/1.3
 module load gcc/4.7.2     # for adapter trimming
@@ -7,6 +9,7 @@ module load coreutils/8.25 # parallel sort
 module load STAR/2.4.2a
 module load perl/5.16.3
 module load RSEM/1.2.30
+
 
 source "$PYTHON3_ACTIVATE"
 

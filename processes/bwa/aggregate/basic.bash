@@ -50,10 +50,9 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   --aggregation_id "$AGGREGATION_ID" \
   --start_aggregation
 
-# Default peak caller for back-compat
+# Set peak_caller to macs2 for Chip-seq data
 if [[ -z "$PEAK_CALLER" ]] ; then
-  # TODO: Match on ASSAY_CATEGORY instead
-  if [[ "$ASSAY" =~ ChIP ]] || [[ "$ASSAY" == "Crosslinked" ]] ; then
+  if [[ "$ASSAY_CATEGORY" == chipseq || "$ASSAY_CATEGORY" == fiberseq ]] ; then
     PEAK_CALLER=macs2
   else
     PEAK_CALLER=hotspot2

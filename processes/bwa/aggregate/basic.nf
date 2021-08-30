@@ -436,6 +436,7 @@ process multimapping_density {
 
   publishDir params.outdir
   label 'modules'
+  label 'high_mem'
 
   input:
   file marked_bam from bam_for_multimapping_density
@@ -528,6 +529,7 @@ process normalize_density {
   bin_size = 20
   scale = 1_000_000
   '''
+  samtools index "!{filtered_bam}"
   # Normalized density
   unstarch density.starch \
     | awk -v allcounts=$(samtools view -c !{filtered_bam}) \

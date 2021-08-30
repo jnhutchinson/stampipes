@@ -1,14 +1,12 @@
-# Requires SAMPLE_NAME and GENOME to be in the environment
+# Requires SAMPLE_NAME, GENOME and OUT_DIR to be in the environment
 # Checks that important files exist and are not size 0
 
 EXIT=0
 
 files=( \
-    "${SAMPLE_NAME}.adapters.txt" \
-    "${SAMPLE_NAME}.versions.txt" \
-    "Aligned.sortedByCoord.out.bam" \
-    "Aligned.toTranscriptome.out.bam" \
-    "trimmed/${SAMPLE_NAME}.trimmed.R1.fastq.gz"
+    "$OUT_DIR/${SAMPLE_NAME}.versions.txt" \
+    "$OUT_DIR/Aligned.sortedByCoord.out.bam" \
+    "$OUT_DIR/Aligned.toTranscriptome.out.bam" \
 )
 
 for FILE in "${files[@]}"; do
