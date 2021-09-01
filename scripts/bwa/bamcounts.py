@@ -25,7 +25,7 @@ def parser_setup():
 
     parser.add_argument("bamfile", help="The BAM file to make counts on.")
     parser.add_argument("outfile",
-        help="The file to write the counts to.")
+        help="The file to append the counts to.")
 
     parser.add_argument("-q", "--quiet", dest="quiet", action="store_true",
         help="Don't print info messages to standard out.")
@@ -36,6 +36,12 @@ def parser_setup():
         help="Minimum mapping quality for filtering.")
     parser.add_argument("--max_mismatches", dest="max_mismatches", type=int, default=2,
         help="Maximum mismatches for filtering")
+    parser.add_argument("--nuclearchromfile", type=str, default=None,
+                        help="A file containing nuclear chromosomes, one per line. Default: chr1-22,X,Y")
+    parser.add_argument("--autosomalchromfile", type=str, default=None,
+                        help="A file containing autosomal chromosomes, one per line. Default: nuclear chromosomes, minus chr{W,X,Y,Z}")
+    parser.add_argument("--mitochondrialchromfile", type=str, default=None,
+                        help="A file containing mitochondrial chromosomes, one per line. Default: chrM, chrC")
 
     parser.set_defaults( **script_options )
     parser.set_defaults( quiet=False, debug=False )
@@ -44,13 +50,41 @@ def parser_setup():
 
 class BAMFilter(object):
 
-    def __init__(self, max_mismatches=2, min_mapping_quality=10):
+    def __init__(
+        self,
+        max_mismatches=2,
+        min_mapping_quality=10,
+        nuclear_chroms=None,
+        autosomal_chroms=None,
+        mitochondrial_chroms=None,
+    ):
 
         self.max_mismatches = max_mismatches
         self.previous_read = None
         self.min_mapping_quality = min_mapping_quality
         self.upfnmm = 'u-pf-n-mm%d' % self.max_mismatches
         self.upfnmmmito = 'u-pf-n-mm%d-mito' % self.max_mismatches
+
+        # Default sensible chromosome assignments
+        if nuclear_chroms is None:
+            # chr1-22, X, Y
+            nuclear_chroms = ["chr"+str(i) for i in [*range(1,23), "X", "Y"]]
+
+        if mitochondrial_chroms is None:
+            mitochondrial_chroms = ["chrC", "chrM"]
+
+        if autosomal_chroms is None:
+            autosomal_chroms = set(nuclear_chroms) - set(["chrX", "chrY", "chrZ", "chrW"])
+
+        self.nuclear_chroms = set(nuclear_chroms)
+        self.autosomal_chroms = set(autosomal_chroms)
+        self.mitochondrial_chroms = set(mitochondrial_chroms)
+        logging.debug("Nuclear chromosomes: %s",
+                      sorted(self.nuclear_chroms))
+        logging.debug("Autosomal chromosomes: %s",
+                      sorted(self.autosomal_chroms))
+        logging.debug("Mitochondrial chromosomes: %s",
+                      sorted(self.mitochondrial_chroms))
 
     def process_flags(self, read, inbam):
         """
@@ -122,13 +156,13 @@ class BAMFilter(object):
             self.counts['all-mapq-filter'] += 1
             return
 
-        chr = inbam.getrname(read.rname)
+        chrom = inbam.getrname(read.rname)
         # Do our paired alignment checks, return if we don't pass here
         if read.is_paired and not self.process_read_paired(read, inbam):
             return
 
-        nuclear = not chr in ("chrM", "chrC")
-        autosomal = nuclear and chr not in ("chrX", "chrY", "chrZ", "chrW")
+        nuclear = chrom in self.nuclear_chroms
+        autosomal = chrom in self.autosomal_chroms
 
         if nuclear:
             self.counts['nuclear-align'] += 1
@@ -165,9 +199,9 @@ class BAMFilter(object):
         else:
             self.counts['u-pf-n-mm%d' % self.max_mismatches] += 1
 
-        self.chrcounts[chr] += 1
+        self.chrcounts[chrom] += 1
 
-        if not "chrM" == chr:
+        if chrom not in self.mitochondrial_chroms:
             self.counts['u-pf-n-mm%d-mito' % self.max_mismatches] += 1
 
 
@@ -190,7 +224,7 @@ class BAMFilter(object):
                         'paired-autosomal-align', 'all-aligned',
                         'all-mapq-filter']
 
-        logging.debug(count_labels)
+        logging.debug("Count labels: %s", count_labels)
         self.counts = dict([(label, 0) for label in count_labels])
 
         self.chrcounts = defaultdict(int)
@@ -212,6 +246,12 @@ class BAMFilter(object):
         countout.close()
 
 
+def read_chrom_file(filename):
+    if filename is None or filename == "":
+        return None
+    with open(filename) as f:
+        return [l.strip() for l in f.readlines() if l.strip()]
+
 def main(args = sys.argv):
     """This is the main body of the program that by default uses the arguments
 from the command line."""
@@ -230,7 +270,12 @@ from the command line."""
     bamfile = args.bamfile
     countfile = args.outfile
 
-    filter = BAMFilter(max_mismatches=args.max_mismatches, min_mapping_quality=args.min_mapping_quality)
+    filter = BAMFilter(max_mismatches=args.max_mismatches,
+                       min_mapping_quality=args.min_mapping_quality,
+                       nuclear_chroms=read_chrom_file(args.nuclearchromfile),
+                       autosomal_chroms=read_chrom_file(args.autosomalchromfile),
+                       mitochondrial_chroms=read_chrom_file(args.mitochondrialchromfile),
+                       )
     filter.filter(bamfile, countfile)
 
 # This is the main body of the program that only runs when running this script
