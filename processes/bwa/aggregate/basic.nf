@@ -275,6 +275,7 @@ process bam_counts {
 
   input:
   file(bam) from bam_for_counts
+  file(nuclear_chroms) from nuclear_chroms 
 
   output:
   file('tagcounts.txt')
@@ -282,6 +283,7 @@ process bam_counts {
   script:
   """
   python3 \$STAMPIPES/scripts/bwa/bamcounts.py \
+    --nuclearchromfile "$nuclear_chroms" \
     "$bam" \
     tagcounts.txt
   """

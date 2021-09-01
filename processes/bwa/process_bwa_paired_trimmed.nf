@@ -417,9 +417,9 @@ uniquely_mapping_bam.into { bam_for_insert; bam_for_spot; bam_for_density }
  */
 process bam_counts {
 
-
   input:
   file(sorted_bam) from marked_bam_for_counts
+  file(nuclear_chroms) from nuclear_chroms 
 
   output:
   file('bam.counts.txt') into bam_counts
@@ -427,6 +427,7 @@ process bam_counts {
   script:
   """
   python3 \$STAMPIPES/scripts/bwa/bamcounts.py \
+    --nuclearchromfile "$nuclear_chroms" \
     "$sorted_bam" \
     bam.counts.txt
   """
