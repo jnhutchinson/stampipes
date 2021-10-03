@@ -39,7 +39,7 @@ workflow STAR_ALIGNMENT {
     adapter_trim( [params.r1, params.r2, params.adapter_p5, params.adapter_p7] )
 
     // Decide which UMI filtering to use, if any
-    switch (normalize_string_param(params.umimethod) {
+    switch (normalize_string_param(params.umimethod)) {
       case "takara-umt":
         takara_trim_umt(adapter_trim.out.fastq, params.readlength)
         star( takara_trim_umt.out.fastq, ref_files )
