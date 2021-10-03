@@ -5,12 +5,12 @@ process publish {
   publishDir params.outdir
 
   input:
-    tuple val(filename), path(infile)
+    tuple val(filename), path("__infile__")
   output:
     path(filename)
 
   script:
     """
-    ln -s "$infile" "$filename"
+    ln -s "__infile__" "$filename"
     """
 }
