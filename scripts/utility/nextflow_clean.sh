@@ -152,42 +152,45 @@ process_dir() {
     # Check 
     # https://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
     # shellcheck disable=SC2199
-    [[ -z ${symlinks[@]+"${symlinks[@]}"} ]] &&
-      DIE_F "No input symlinks found. dir=%s" "$dir"
+    if [[ -z ${symlinks[@]+"${symlinks[@]}"} ]] ; then
+      INFO_F "No input symlinks found. dir=%s" "$dir"
+      symlinks=()
+    else
 
-    # 3)
-    for symlink in "${symlinks[@]}" ; do
-      # 3A) Get symlink target
-      local target
-      target=$(readlink -f "$symlink")
-      # 3B) Die if not in work directory
-      [[ "$target" =~ /work/ ]] ||
-        DIE_F "Target not in workdir. dir='%s';symlink='%s';target='%s'" "$dir" "$symlink" "$target"
+      # 3)
+      for symlink in "${symlinks[@]}" ; do
+        # 3A) Get symlink target
+        local target
+        target=$(readlink -f "$symlink")
+        # 3B) Die if not in work directory
+        [[ "$target" =~ /work/ ]] ||
+          DIE_F "Target not in workdir. dir='%s';symlink='%s';target='%s'" "$dir" "$symlink" "$target"
 
-      # 3?) Make sure symlink isn't broken
-      [[ -e "$target" ]] ||
-        DIE_F "Target not found. dir='%s';symlink='%s';target='%s'" "$dir" "$symlink" "$target"
+        # 3?) Make sure symlink isn't broken
+        [[ -e "$target" ]] ||
+          DIE_F "Target not found. dir='%s';symlink='%s';target='%s'" "$dir" "$symlink" "$target"
 
-      is_same_inode "$target" "$symlink" ||
-        DIE_F "Somehow, target & symlink inodes differ. dir='%s';symlink='%s';target='%s'" "$dir" "$symlink" "$target"
+        is_same_inode "$target" "$symlink" ||
+          DIE_F "Somehow, target & symlink inodes differ. dir='%s';symlink='%s';target='%s'" "$dir" "$symlink" "$target"
 
-      # 3C) make a copy of the link for backup purposes in case we get interrupted (e.g: mysymlink.bak)
-      local symlink_bak=$symlink.bak
-      RUN_IF_FORCE cp --no-dereference "$symlink" "$symlink_bak"
+        # 3C) make a copy of the link for backup purposes in case we get interrupted (e.g: mysymlink.bak)
+        local symlink_bak=$symlink.bak
+        RUN_IF_FORCE cp --no-dereference "$symlink" "$symlink_bak"
 
-      # 3D) Create hard link to real target, replacing soft link
-      local hardlink=$symlink
-      RUN_IF_FORCE ln -f --logical "$target" "$hardlink"
+        # 3D) Create hard link to real target, replacing soft link
+        local hardlink=$symlink
+        RUN_IF_FORCE ln -f --logical "$target" "$hardlink"
 
-      # Triple-check, make sure the hard link and backup symlink point to the same place
-      if [[ "$FORCE" == TRUE ]] ; then
-        is_same_inode "$symlink_bak" "$hardlink" ||
-          DIE_F "Somehow, the symlink and hard link point to different files. hardlink='%s', target='%s'" "$hardlink" "$target"
-      fi
+        # Triple-check, make sure the hard link and backup symlink point to the same place
+        if [[ "$FORCE" == TRUE ]] ; then
+          is_same_inode "$symlink_bak" "$hardlink" ||
+            DIE_F "Somehow, the symlink and hard link point to different files. hardlink='%s', target='%s'" "$hardlink" "$target"
+        fi
 
-      # 3E) remove backup symlink
-      RUN_IF_FORCE rm "$symlink_bak"
-    done
+        # 3E) remove backup symlink
+        RUN_IF_FORCE rm "$symlink_bak"
+      done
+    fi
 
     # Only run check for symlinks if we deleted
     if [[ $FORCE == TRUE ]] ; then
