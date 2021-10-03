@@ -14,3 +14,13 @@ environments/
 **/*html*
 **/*trace.txt*
 
+
+*.fq
+*.fq.gz
+
+.*
+!.gitignore
+!.dockerignore
+!.gitattributes
+!.gitmodules
+!.pylintrc
