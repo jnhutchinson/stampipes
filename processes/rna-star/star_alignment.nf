@@ -19,6 +19,19 @@ include { adapter_trim } from "../../modules/adapter_trimming.nf"
 include { move_umt; takara_trim_umt } from "../../modules/umt.nf"
 include { publish } from "../../modules/utility.nf"
 
+/// normalize_string_param coerces non-string types to the intended string type
+/// and normalizes casing issues
+def normalize_string_param(p) {
+  switch (p) {
+    case true:  // Regrettably, '--param ""' sets `param` to `true`.
+    case false: // ?
+    case null:  //
+      return ""
+    default:
+        return p.toString().toLowerCase()
+  }
+}
+
 workflow STAR_ALIGNMENT {
   
   main:
@@ -26,7 +39,7 @@ workflow STAR_ALIGNMENT {
     adapter_trim( [params.r1, params.r2, params.adapter_p5, params.adapter_p7] )
 
     // Decide which UMI filtering to use, if any
-    switch (params.umimethod.toLowerCase()) {
+    switch (normalize_string_param(params.umimethod) {
       case "takara-umt":
         takara_trim_umt(adapter_trim.out.fastq, params.readlength)
         star( takara_trim_umt.out.fastq, ref_files )
@@ -34,7 +47,6 @@ workflow STAR_ALIGNMENT {
         publish(move_umt.out)
         break
 
-      case null:
       case "":
       case "none":
         star( adapter_trim.out.fastq, ref_files )
