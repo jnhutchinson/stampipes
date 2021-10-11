@@ -3,9 +3,9 @@
 /// A generic script to move the UMT from a read name to the RX tag in a BAM file
 process move_umt {
   input:
-    tuple val(id), path(input_bam)
+    path(input_bam)
   output:
-    tuple val(id), path("output.bam")
+    path("output.bam")
   shell:
     """
     python "$STAMPIPES/scripts/bam/move_umt_to_tag.py" \
