@@ -12,13 +12,18 @@ params.kallistoindex = null
 params.sequinsref = null
 params.neatmixa = null
 params.flatref = null
+params.fastaref = null
+params.id = null
 
+include { encode_cram; encode_cram_no_ref } from "../../../modules/cram.nf" addParams(cram_write_index: false )
 
 workflow {
   RNA_AGG()
 }
 
 workflow RNA_AGG {
+
+  def meta = [id: params.id]
 
   // Grab params
   transcriptome_bams = params.transcriptomebams.collect {file it}
@@ -64,12 +69,18 @@ workflow RNA_AGG {
   adapter_count(bam_to_use)
   ribosomal_count(fastq)
 
+  // Compress bam files for storage
+
+  encode_cram(bam_to_use.map {[meta, it, params.fastaref]})
+  encode_cram_no_ref(
+    merge_transcriptome_bam.out.map {[meta, it]}
+  )
+
 }
 
 
 process merge_transcriptome_bam {
 
-  publishDir params.outdir
   module "samtools/1.12"
   input:
     // Assume sorted by coord
@@ -90,7 +101,6 @@ process merge_transcriptome_bam {
 }
 
 process merge_genome_bam {
-  publishDir params.outdir
   module "samtools/1.12"
   input:
     // Assume sorted by coord
@@ -114,7 +124,6 @@ process merge_genome_bam {
 
 
 process remove_duplicate_reads {
-  publishDir params.outdir
   module "jdk/2.8.1", "picard/2.8.1", "samtools/1.12"
   label 'high_mem'
   input:
@@ -152,9 +161,8 @@ process remove_duplicate_reads {
 }
 
 process mark_duplicate_reads {
-  publishDir params.outdir
-
   module "jdk/2.8.1", "picard/2.8.1", "samtools/1.12"
+
   input:
     path genomebam
 
