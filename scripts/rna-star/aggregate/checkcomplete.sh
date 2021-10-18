@@ -1,15 +1,10 @@
-# Requires SAMPLE_NAME and GENOME to be in the environment
 # Checks that important files exist and are not size 0
 
 EXIT=0
 
-outdir=output
-
 # list of files
 files=( \
-    "merged.genome.bam" \
-    "merged.genome.bam.bai" \
-    "merged.transcriptome.bam" \
+    "merged.transcriptome.cram" \
     "feature_counts.txt" \
     "genes.fpkm_tracking" \
     "isoforms.fpkm_tracking" \
@@ -33,43 +28,36 @@ paired_files=( \
 
 # list of sequins files
 # turned off until we get a sequins flag
-#sequinsfiles=( \
+sequins_files=( \
 #    "anaquin_subsample/anaquin_kallisto/RnaExpression_genes.tsv" \
 #    "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv" \
 #    "anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv.info" \
 #    "anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats" \
 #    "anaquin_star/RnaAlign_summary.stats.info" \
-#)
+)
+
+function check_files() {
+    for FILE in "$@" ; do
+        if [ ! -s "$FILE" ]; then
+            echo "Missing $FILE"
+            EXIT=1
+        fi
+    done
+}
 
 # check files
-for FILE in "${files[@]}"; do
-    if [ ! -s $FILE ]; then
-        echo "Missing $FILE"
-        EXIT=1
-    fi
-done
+check_files "${files[@]}"
 
 if [[ -n "$PAIRED" ]] ; then
-    for FILE in "${paired_files[@]}"; do
-        if [ ! -s $FILE ]; then
-            echo "Missing $FILE"
-            EXIT=1
-        fi
-    done
+    check_files "${paired_files[@]}"
 fi
 
-# check sequins files
 if [[ -n "$SEQUINS_REF" ]]; then
-    for FILE in "${sequinsfiles[@]}"; do
-        if [ ! -s $FILE ]; then
-            echo "Missing $FILE"
-            EXIT=1
-        fi
-    done
+    check_files "${sequins_files[@]}"
 fi
 
-if [[ $EXIT -ne 1 ]]; then
-    python3 "$STAMPIPES/scripts/lims/upload_data.py" --aggregation_id ${AGGREGATION_ID} --complete_aggregation
+if [[ $EXIT -eq 0 ]]; then
+    python3 "$STAMPIPES/scripts/lims/upload_data.py" --aggregation_id "$AGGREGATION_ID" --complete_aggregation
 fi
 
 exit $EXIT

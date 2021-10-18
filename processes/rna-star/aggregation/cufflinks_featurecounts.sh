@@ -8,9 +8,9 @@ module load jdk nextflow openssl-dev
 
 export REFDIR="$(dirname $GENOME_INDEX)"
 export STARrefDir="$REFDIR/${STAR_DIR}"
-export TARGET_BAM=Aligned.toTranscriptome.out.bam
-export GENOME_BAM=Aligned.toGenome.out.bam
-export NODUPS_BAM=Aligned.toGenome.noDups.bam
+export TARGET_BAM=Aligned.toTranscriptome.out.cram
+export GENOME_BAM=Aligned.toGenome.out.cram
+export NODUPS_BAM=Aligned.toGenome.noDups.cram
 export TRIMS_R1=trims.R1.fastq.gz
 export TRIMS_R2=trims.R2.fastq.gz
 
@@ -66,8 +66,8 @@ NXF_VER=21.04.1 nextflow run \
 # Upload results
 (
   cd "$OUT_DIR"
-  bash $STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh
-  bash $STAMPIPES/scripts/rna-star/aggregate/concat_metrics.sh
-  bash $STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash
-  bash $STAMPIPES/scripts/rna-star/aggregate/attachfiles.sh
+  bash "$STAMPIPES/scripts/rna-star/aggregate/checkcomplete.sh"
+  bash "$STAMPIPES/scripts/rna-star/aggregate/concat_metrics.sh"
+  bash "$STAMPIPES/scripts/rna-star/aggregate/upload_counts.bash"
+  bash "$STAMPIPES/scripts/rna-star/aggregate/attachfiles.sh"
 )
