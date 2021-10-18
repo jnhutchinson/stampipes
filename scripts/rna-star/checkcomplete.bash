@@ -5,8 +5,8 @@ EXIT=0
 
 files=( \
     "$OUT_DIR/${SAMPLE_NAME}.versions.txt" \
-    "$OUT_DIR/Aligned.sortedByCoord.out.bam" \
-    "$OUT_DIR/Aligned.toTranscriptome.out.bam" \
+    "$OUT_DIR/Aligned.sortedByCoord.out.cram" \
+    "$OUT_DIR/Aligned.toTranscriptome.out.cram" \
 )
 
 for FILE in "${files[@]}"; do
