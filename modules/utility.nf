@@ -5,6 +5,7 @@ params.publishmode = "link"
 process publish_and_rename {
 
   publishDir params.outdir, mode: params.publishmode
+  executor "local"
 
   input:
     tuple val(filename), path("__infile__")
@@ -24,6 +25,21 @@ process publish {
 
   input:
     path filename
+
+  output:
+    path filename, includeInputs: true
+    
+  script:
+  """
+  """
+}
+
+process publish_with_meta {
+  publishDir params.outdir, mode: params.publishmode
+  executor "local"
+
+  input:
+    tuple val(meta), path(filename)
 
   output:
     path filename, includeInputs: true
