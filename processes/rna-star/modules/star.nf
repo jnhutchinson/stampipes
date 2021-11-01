@@ -1,7 +1,6 @@
 nextflow.enable.dsl=2
 
 params.star_threads = 8
-params.starIndexDir = ""
 params.publish = true
 
 process star {

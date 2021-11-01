@@ -9,8 +9,7 @@ params.adapter_p7 = null
 params.readlength = null
 params.umimethod = null
 
-params.refdir = "/net/seq/data/genomes/human/GRCh38/noalts-sequins/"
-starIndexDir = "${params.refdir}/STARgenome-gencode-v25"
+params.starIndexDir = "/net/seq/data/genomes/human/GRCh38/noalts-sequins/STARgenome-gencode-v25"
 params.star_threads = 8
 
 
