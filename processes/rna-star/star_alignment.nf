@@ -34,7 +34,7 @@ def normalize_string_param(p) {
 workflow STAR_ALIGNMENT {
   
   main:
-    ref_files = file("${starIndexDir}/*")
+    ref_files = file("${params.starIndexDir}/*")
     adapter_trim( [params.r1, params.r2, params.adapter_p5, params.adapter_p7] )
 
     // Decide which UMI filtering to use, if any
