@@ -37,6 +37,13 @@ function cmp_starch() {
     || (echo "$name does not match" ; false)
 }
 
+# There are a number of ambiguities that make comparing BAM files naively difficult
+function norm_bam() {
+  "$samtools" view "$1" |
+    awk 'and($2, 4) {$5=0;$6="*"} $2 >= 4096 { $2 -= 4096 } 1' |
+    perl -e '$,="\t";' -ane 'print @F[0..10], sort(@F[11..$#F]), "\n"'
+}
+
 function cmp_bam() {
   name=$1
   if ! command -v samtools ; then
@@ -44,7 +51,7 @@ function cmp_bam() {
     return 0
   fi
   echo "Comparing $name..."
-  cmp <(samtools view "expected/$name") <(samtools view "output/$name") \
+  cmp <(norm_bam "expected/$name") <(norm_bam "output/$name") \
     || (echo "$name does not match" ; false)
 
 }

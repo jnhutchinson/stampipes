@@ -15,8 +15,10 @@ params.r2 = ""
 params.outdir = "output"
 params.readlength = 36
 
-nuclear_chroms = "$params.genome" + ".nuclear.txt"
-dataDir = "$baseDir/../../data"
+params.cramthreads = 10
+
+nuclear_chroms = "${params.genome}.nuclear.txt"
+dataDir = "${baseDir}/../../data"
 
 def helpMessage() {
   log.info"""
@@ -33,6 +35,10 @@ def helpMessage() {
     --outdir [dir]        Where to write results to                                       (output)
     """.stripIndent();
 }
+
+// Used for publishDir to avoid publishing bam files
+def exclude_bam =  { name -> name ==~ /.*ba[mi]$/ ? null : name }
+
 
 if (params.help || !params.r1 || !params.r2 || !params.genome){
   helpMessage();
@@ -308,13 +314,14 @@ process mark_duplicates {
 
   label "high_mem"
 
-  publishDir params.outdir
+  publishDir params.outdir, saveAs: exclude_bam
 
   input:
   file(merged_bam) from merged_bam
 
   output:
   file 'marked.bam' into marked_bam
+  file 'marked.bam' into bams_to_cram
   file 'marked.bam' into marked_bam_for_counts
   file 'MarkDuplicates.picard'
 
@@ -351,8 +358,6 @@ if (params.UMI)
   filter_flag = 1536
 
 process filter_bam_to_unique {
-
-  publishDir params.outdir
 
   input:
   file marked_bam
@@ -549,5 +554,33 @@ process total_counts {
   ' \
   | sort -k 1,1 \
   > tagcounts.txt
+  """
+}
+
+process cram {
+  publishDir params.outdir
+  cpus params.cramthreads / 2
+
+  // TODO: put in config
+  module "samtools/1.12"
+
+  input:
+  file bam from bams_to_cram
+  file ref from file(genome)
+  file fai from file("${genome}.fai")
+
+  output:
+  file cramfile
+  file "${cramfile}.crai"
+
+  script:
+  cramfile = bam.name.replace("bam", "cram")
+  """
+  samtools view "${bam}" \
+    -C -O cram,version=3.0,level=7,lossy_names=0 \
+    -T "${ref}" \
+    --threads "${params.cramthreads}" \
+    --write-index \
+    -o "${cramfile}"
   """
 }
