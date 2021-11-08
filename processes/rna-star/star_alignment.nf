@@ -11,9 +11,8 @@ params.adapter_p7 = null
 params.readlength = null
 params.umimethod = null
 
-params.refdir = "/net/seq/data/genomes/human/GRCh38/noalts-sequins/"
-starIndexDir = "${params.refdir}/STARgenome-gencode-v25"
-ref_fasta = "${starIndexDir}/all.genome.fa.gz"
+params.starIndexDir = "/net/seq/data/genomes/human/GRCh38/noalts-sequins/STARgenome-gencode-v25"
+ref_fasta = "${params.starIndexDir}/all.genome.fa.gz"
 params.star_threads = 8
 
 
@@ -41,8 +40,8 @@ workflow STAR_ALIGNMENT {
   main:
     def meta = [ id: params.id ]
 
-    ref_files = file("${starIndexDir}/*")
-    adapter_trim( [file(params.r1), file(params.r2), params.adapter_p5, params.adapter_p7] )
+    ref_files = file("${params.starIndexDir}/*")
+    adapter_trim( [params.r1, params.r2, params.adapter_p5, params.adapter_p7] )
 
     // Decide which UMI filtering to use, if any
     switch (normalize_string_param(params.umimethod)) {
