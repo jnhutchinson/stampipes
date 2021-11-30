@@ -166,6 +166,8 @@ process remove_duplicate_reads {
 }
 
 process mark_duplicate_reads {
+  label 'high_mem'
+
   module "jdk/2.8.1", "picard/2.8.1", "samtools/1.12"
 
   input:
@@ -486,6 +488,7 @@ process insert_sizes {
 
 process rna_metrics {
 
+  label "high_mem"
   module "jdk", "picard/2.9.0"
   publishDir params.outdir, mode: params.publishmode
 
