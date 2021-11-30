@@ -238,7 +238,7 @@ class ProcessSetUp(object):
             outfile = open(self.outfile, 'a')
 
         contents = textwrap.dedent("""\
-                   cd /net/seq/data/flowcells/FC{label}_*
+                   cd "$FLOWCELLS"/FC{label}_*
                    sentinel_dependencies=$(echo $PROCESSING | sed -e 's/,/,afterany:/g' | sed -e 's/^,afterany/--dependency=afterany/g')
                    sbatch --export=ALL -J {job_name} -o {job_name}.o%A -e {job_name}.e%A --partition={queue} --cpus-per-task=1 --ntasks=1 $sentinel_dependencies --mem-per-cpu=1000 --parsable --oversubscribe <<__AUTOAGG1__
                    #!/bin/bash
