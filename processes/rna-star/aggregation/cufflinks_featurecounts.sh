@@ -26,8 +26,15 @@ cp "$STAMPIPES/version.json" "$OUT_DIR"
 
 GENOME_BAM_FILES=$(sed 's/toTranscriptome/sortedByCoord/g' <<< "$BAM_FILES")
 
+if [[ -e "$STARrefDir/all.genome.fa.gz" ]] ; then
+  FASTAREF=$STARrefDir/all.genome.fa.gz
+else
+  FASTAREF=${GENOME_INDEX}.fa
+fi
+
 # Create params file
 cat > agg_params.yaml <<PARAMS
+id: "AG$AGGREGATION_ID"
 umi: $UMI
 annotation: "$ANNOTATION"
 sequinsisomix: "$SEQUINS_ISO_MIX"
@@ -36,6 +43,7 @@ sequinsref: "$SEQUINS_REF"
 kallistoindex: "$KALLISTO_INDEX"
 neatmixa: "$NEAT_MIX_A"
 flatref: "$FLAT_REF"
+fastaref: "$FASTAREF"
 outdir: "$OUT_DIR"
 
 PARAMS
@@ -61,7 +69,6 @@ NXF_VER=21.04.1 nextflow run \
   -profile cluster \
   -resume \
   -with-trace
-
 
 # Upload results
 (
