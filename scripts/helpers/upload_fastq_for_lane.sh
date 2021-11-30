@@ -18,7 +18,7 @@ lane_id="$1"
 r1_file="${2:-}"
 r2_file="${3:-}"
 
-root="/net/seq/data/flowcells"
+root=${FLOWCELLS:-/net/seq/data/flowcells}
 #root=/net/monarch/vol2/tag/stamlab/flowcells
 
 authoritative_dir="/net/seq/data/data-release/encode/DNase/ /net/seq/data/data-release/encode/DGF/"

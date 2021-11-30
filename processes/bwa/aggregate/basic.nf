@@ -167,6 +167,8 @@ process hotspot2 {
   publishDir "${params.outdir}"
   container "fwip/hotspot2:latest"
 
+  label 'high_mem'
+
   when:
   params.peakcaller == "hotspot2"
 
@@ -322,6 +324,8 @@ process cutcounts {
   label "modules"
 
   publishDir params.outdir
+
+  label 'high_mem'
 
   input:
   file(fai) from file("${params.genome}.fai")

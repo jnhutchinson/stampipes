@@ -3,7 +3,7 @@ export OUT_DIR=output_$VERSION
 mkdir -p "$OUT_DIR"
 
 # Check for special UMTs
-if [[ "$LIBRARY_KIT" == "SMARTer Stranded Total RNA-Seq Kit v3-Pico" ]] ; then
+if [[ "$LIBRARY_KIT" == "Smarter Stranded Total v3 Pico RNASeq with RNA Isolation" ]] ; then
   UMI=True
   UMI_METHOD=takara-umt
 fi

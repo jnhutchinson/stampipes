@@ -19,6 +19,8 @@ params.publishmode = 'link'
 include { encode_cram; encode_cram_no_ref } from "../../../modules/cram.nf" addParams(cram_write_index: false )
 include { publish_with_meta } from "../../../modules/utility.nf"
 
+def exclude_bam = { name -> name ==~ /.*ba[mi]$/ ? null : name }
+
 workflow {
   RNA_AGG()
 }
@@ -100,7 +102,7 @@ process merge_transcriptome_bam {
     if [ \$numbam -eq 1 ] ; then
       cp in*.bam "merged.transcriptome.bam"
     else
-      samtools merge -n -f "merged.transcriptome.bam" in*.bam
+      samtools merge --threads 3 -n -f "merged.transcriptome.bam" in*.bam
     fi
     """
 }
@@ -116,14 +118,9 @@ process merge_genome_bam {
     path("*bai"), emit: bai
 
   script:
+    // TODO: restore optimized path if we can get MarkDuplicates working with CRAM
     """
-    numbam=\$(ls in*.bam | wc -l)
-    if [ \$numbam -eq 1 ] ; then
-      cp in*.bam "merged.genome.bam"
-      samtools index merged.genome.bam
-    else
-      samtools merge --write-index -f "merged.genome.bam##idx##merged.genome.bam.bai" in*.bam
-    fi
+    samtools merge --threads 3 --write-index -f "merged.genome.bam##idx##merged.genome.bam.bai" in*.bam
     """
 }
 
@@ -166,6 +163,9 @@ process remove_duplicate_reads {
 }
 
 process mark_duplicate_reads {
+  publishDir params.outdir, mode: params.publishmode, saveAs: exclude_bam
+  label 'high_mem'
+
   module "jdk/2.8.1", "picard/2.8.1", "samtools/1.12"
 
   input:
@@ -486,6 +486,7 @@ process insert_sizes {
 
 process rna_metrics {
 
+  label "high_mem"
   module "jdk", "picard/2.9.0"
   publishDir params.outdir, mode: params.publishmode
 

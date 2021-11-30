@@ -166,7 +166,7 @@ class ProcessSetUp(object):
         if self.aggregation_base_directory:
             return os.path.join(self.aggregation_base_directory, dir_name)
 
-        url = "directory/?purpose__slug=all-alignments-bam&filetype__slug=bam&content_type=%d&object_id=%d" % (aggregation_info["object_content_type"], aggregation_info["id"])
+        url = "directory/?purpose__slug=all-alignments-bam&content_type=%d&object_id=%d" % (aggregation_info["object_content_type"], aggregation_info["id"])
         results = self.api_list_result(url)
 
         if len(results) > 1:
@@ -220,7 +220,7 @@ class ProcessSetUp(object):
 
     def get_lane_alignments_file(self, aggregation_id, alignment_id):
 
-        results = self.api_list_result("file/?purpose__slug=all-alignments-bam&filetype__slug=bam&content_type=47&object_id=%d" % alignment_id)
+        results = self.api_list_result("file/?purpose__slug=all-alignments-bam&content_type=47&object_id=%d" % alignment_id)
 
         if len(results) != 1:
             logging.error("Found %d files for alignment %d, require 1 (Aggregation %d)" % (len(results), alignment_id, aggregation_id))

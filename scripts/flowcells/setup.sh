@@ -224,7 +224,7 @@ case $run_type in
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--novaseq"
-    queue="queue0"
+    queue="hpcz-2"
     make_novaseq_samplesheet 2 > SampleSheet.csv
     bcl_tasks=1
 
@@ -250,7 +250,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--novaseq"
-    queue="queue0"
+    queue="hpcz-2"
     make_novaseq_samplesheet 2 > SampleSheet.csv
     bcl_tasks=1
 
@@ -289,7 +289,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--novaseq"
-    queue="queue0"
+    queue="hpcz-2"
     make_novaseq_samplesheet 4 > SampleSheet.csv
     bcl_tasks=1
 
@@ -328,7 +328,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--novaseq"
-    queue="queue0"
+    queue="hpcz-2"
     make_novaseq_samplesheet 4 > SampleSheet.csv
     bcl_tasks=1
 

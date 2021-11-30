@@ -489,6 +489,7 @@ win = 75
 bini = 20
 process density_files {
 
+  label "high_mem"
   publishDir params.outdir
 
   input:

@@ -24,3 +24,7 @@ environments/
 !.gitattributes
 !.gitmodules
 !.pylintrc
+
+work
+genome_build
+tmp
