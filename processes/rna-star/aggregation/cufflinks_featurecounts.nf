@@ -19,6 +19,8 @@ params.publishmode = 'link'
 include { encode_cram; encode_cram_no_ref } from "../../../modules/cram.nf" addParams(cram_write_index: false )
 include { publish_with_meta } from "../../../modules/utility.nf"
 
+def exclude_bam = { name -> name ==~ /.*ba[mi]$/ ? null : name }
+
 workflow {
   RNA_AGG()
 }
@@ -166,6 +168,7 @@ process remove_duplicate_reads {
 }
 
 process mark_duplicate_reads {
+  publishDir params.outdir, mode: params.publishmode, saveAs: exclude_bam
   label 'high_mem'
 
   module "jdk/2.8.1", "picard/2.8.1", "samtools/1.12"
