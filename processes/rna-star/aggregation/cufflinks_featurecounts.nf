@@ -102,7 +102,7 @@ process merge_transcriptome_bam {
     if [ \$numbam -eq 1 ] ; then
       cp in*.bam "merged.transcriptome.bam"
     else
-      samtools merge -n -f "merged.transcriptome.bam" in*.bam
+      samtools merge --threads 3 -n -f "merged.transcriptome.bam" in*.bam
     fi
     """
 }
@@ -118,14 +118,9 @@ process merge_genome_bam {
     path("*bai"), emit: bai
 
   script:
+    // TODO: restore optimized path if we can get MarkDuplicates working with CRAM
     """
-    numbam=\$(ls in*.bam | wc -l)
-    if [ \$numbam -eq 1 ] ; then
-      cp in*.bam "merged.genome.bam"
-      samtools index merged.genome.bam
-    else
-      samtools merge --write-index -f "merged.genome.bam##idx##merged.genome.bam.bai" in*.bam
-    fi
+    samtools merge --threads 3 --write-index -f "merged.genome.bam##idx##merged.genome.bam.bai" in*.bam
     """
 }
 
