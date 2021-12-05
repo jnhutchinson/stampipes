@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "umt_tagger",
+  "demux_fastq",
 ]
 
 [profile.release]
