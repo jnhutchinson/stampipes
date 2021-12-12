@@ -6,8 +6,6 @@ use seq_io::fastq::{Record, RefRecord};
 
 use crate::fastq::{with_thread_reader_from_file, IoPool};
 
-use seq_io;
-
 pub struct Demultiplexer {
     pub assignments: Vec<BarcodeAssignment>,
     pub threads: usize,
@@ -15,21 +13,26 @@ pub struct Demultiplexer {
 impl Demultiplexer {
     pub fn run(&self, input: &Option<PathBuf>) {
         let mut iopool = IoPool::new(self.threads);
+        // Open a writer for each file and create our barcode->writer mapping
         let (demux_map, mut writers) = generate_demux_map(&self.assignments, &mut iopool, 0);
+
+        // Open the input for reading
         let result = with_thread_reader_from_file(input.as_ref().unwrap(), |rdr| {
             let mut reader = seq_io::fastq::Reader::new(rdr);
+
+            // Read each record from input
             while let Some(r) = reader.next() {
                 let record = r.expect("Invalid record");
+                // Find the barcode
                 let bc = get_record_bc(&record);
-                match demux_map.get(bc) {
-                    Some(index) => {
-                        let w = &mut writers[*index];
-                        record
-                            .write_unchanged(w)
-                            .expect("could not write record to output");
-                    }
-                    None => (),
-                };
+                // If the barcode matches our records, write it to the correct writer
+                if let Some(index) = demux_map.get(bc) {
+                    let w = &mut writers[*index];
+                    record
+                        .write_unchanged(w)
+                        .expect("could not write record to output");
+                }
+                // else do nothing
             }
             for mut w in writers {
                 w.close().expect("Couldn't write");
@@ -41,15 +44,15 @@ impl Demultiplexer {
 }
 
 fn get_record_bc<'a>(record: &'a RefRecord) -> &'a [u8] {
+    // The barcode is everything in the name/description line after the last colon
+    let sep = b':';
     let id = record.head();
-    let sep = ':' as u8;
     let slicestart = id.len()
         - id.iter()
             .rev()
             .position(|x| *x == sep)
             .expect("no bc in record");
-    let bc = &id[slicestart..];
-    bc
+    &id[slicestart..]
 }
 
 #[derive(Debug, Clone)]

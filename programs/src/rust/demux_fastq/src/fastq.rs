@@ -6,7 +6,6 @@ use autocompress::{open_or_stdin, CompressionLevel};
 use std::io::Read;
 use std::path::PathBuf;
 
-use seq_io;
 use thread_io;
 
 const BUF_SIZE: usize = 256 * 1024;
