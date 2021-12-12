@@ -11,6 +11,6 @@ edition = "2018"
 structopt = "*"
 simple-error = "*"
 autocompress = { version = "0.2.2", features = ["gzip"] }
-needletail = "*"
 flate2 = "*"
 seq_io = "*"
+thread_io = "*"

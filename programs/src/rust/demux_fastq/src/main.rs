@@ -1,31 +1,11 @@
-//use rust_htslib::{bam, bam::Read, tpool};
-//use fastq::{parse_path, thread_reader, Parser};
-//use simple_error::{simple_error, SimpleError};
-//use std::collections::HashMap;
-//use std::rc::Rc;
+use std::io::BufRead;
 
-
-
-//use std::cell::{RefCell};
-
-//use std::error::Error;
-//use std::io::Read;
-use std::path::{PathBuf};
-//use std::str::from_utf8;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
-//use autocompress::{create, iothread::IoThread, open, CompressionLevel};
-
-//use needletail::parser::parse_fastx_reader;
-//use needletail::parser::{parse_fastx_file, parse_fastx_stdin, SequenceRecord};
-
-use demux::{Demultiplexer,BarcodeAssignment};
+use demux::{BarcodeAssignment, Demultiplexer};
 mod demux;
 mod fastq;
-
-
-
-
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -49,12 +29,27 @@ struct Opt {
     /// Barcodes and corresponding files to write to
     #[structopt(short = "b", long = "barcode")]
     barcodes: Vec<BarcodeAssignment>,
+
+    #[structopt(short = "B", long = "barcode-config")]
+    barcode_config_file: Option<PathBuf>,
 }
 
+fn parse_barcode_config(reader: impl std::io::Read) -> Vec<BarcodeAssignment> {
+    std::io::BufReader::new(reader)
+        .lines()
+        .map(|l| l.unwrap().parse().unwrap())
+        .collect()
+}
 
 fn run(options: &Opt) {
+    let mut assignments = Vec::new();
+    if let Some(f) = options.barcode_config_file.clone() {
+        assignments = parse_barcode_config(std::fs::File::open(f).expect("Couldn't open"))
+    }
+    assignments.append(&mut options.barcodes.clone());
     let demuxer = Demultiplexer {
-        assignments: options.barcodes.clone(),
+        assignments: assignments,
+        threads: options.threads,
     };
 
     demuxer.run(&(options.input))
