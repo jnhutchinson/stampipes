@@ -43,11 +43,10 @@ impl IoPool {
             .iter()
             .map(|filename| {
                 let gzip_block_compress = BlockCompress::gzip(CompressionLevel::Default);
-                p.add_block_writer(
-                    autocompress::create(filename, self.compression_level)
-                        .expect("Could not open file for writing"),
-                    gzip_block_compress,
-                )
+                let file_writer =
+                    std::fs::File::create(filename).expect("Could not open file for writing");
+
+                p.add_block_writer(file_writer, gzip_block_compress)
             })
             .collect()
     }
