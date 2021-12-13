@@ -70,7 +70,7 @@ process dups {
 
   output:
   file 'marked.bam' into marked_bam
-  file 'marked.bam' into bams_to_cram
+  file 'marked.bam' into bams_to_cram_marked
   file 'marked.bam.bai'
   file 'MarkDuplicates.picard'
 
@@ -891,8 +891,8 @@ process cram {
   module "samtools/1.12"
 
   input:
-  file bam from bams_to_cram
-  file ref from file(params.genome)
+  file bam from bams_to_cram.mix(bams_to_cram_marked)
+  file ref from file("${params.genome}.fa")
   file fai from file("${params.genome}.fai")
 
   output:

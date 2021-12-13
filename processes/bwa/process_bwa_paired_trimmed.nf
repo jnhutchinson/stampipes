@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 /*
- * This is a proof-of-concept workflow for running our DNase alignment pipeline
+ * This is our main DNase alignment pipeline
  */
 
 params.help = false
@@ -567,7 +567,7 @@ process cram {
 
   input:
   file bam from bams_to_cram
-  file ref from file(genome)
+  file ref from file("${genome}.fa")
   file fai from file("${genome}.fai")
 
   output:

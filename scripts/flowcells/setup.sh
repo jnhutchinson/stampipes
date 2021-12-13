@@ -610,7 +610,7 @@ lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flo
 lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
 
 # bcl2fastq
-bcl_jobid=\$(sbatch --export=ALL -J "u-$flowcell" -o "u-$flowcell.o%A" -e "u-$flowcell.e%A" \$dependencies_barcodes --partition=$queue --ntasks=1 --cpus-per-task=4 --mem-per-cpu=8000 --parsable --oversubscribe <<'__FASTQ__'
+bcl_jobid=\$(sbatch --export=ALL -J "u-$flowcell" -o "u-$flowcell.o%A" -e "u-$flowcell.e%A" \$dependencies_barcodes --partition=$queue --ntasks=1 --cpus-per-task=20 --mem-per-cpu=8000 --parsable --oversubscribe <<'__FASTQ__'
 #!/bin/bash
 
 set -x -e -o pipefail
@@ -659,7 +659,7 @@ lims_patch "flowcell_run/$flowcell_id/" "folder_name=${PWD##*/}"
 # Submit a barcode job for each mask
 for bcmask in $(python $STAMPIPES/scripts/flowcells/barcode_masks.py | xargs) ; do
     export bcmask
-    bcjobid=\$(sbatch --export=ALL -J "bc-$flowcell" -o "bc-$flowcell.o%A" -e "bc-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=8000 --parsable --oversubscribe --mail-type=FAIL --mail-user=sequencing@altius.org <<'__BARCODES__'
+    bcjobid=\$(sbatch --export=ALL -J "bc-$flowcell" -o "bc-$flowcell.o%A" -e "bc-$flowcell.e%A" --partition=$queue --cpus-per-task=1 --ntasks=1 --mem-per-cpu=64000 --parsable --oversubscribe --mail-type=FAIL --mail-user=sequencing@altius.org <<'__BARCODES__'
 #!/bin/bash
 bcl_barcode_count --mask=\$bcmask $bc_flag > barcodes.\$bcmask.json
 python3 $STAMPIPES/scripts/lims/upload_data.py --barcode_report barcodes.\$bcmask.json
