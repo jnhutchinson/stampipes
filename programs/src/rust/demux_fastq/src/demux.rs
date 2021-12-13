@@ -1,5 +1,5 @@
 use simple_error::{simple_error, SimpleError};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use seq_io::fastq::{Record, RefRecord};
@@ -9,12 +9,14 @@ use crate::fastq::{with_thread_reader_from_file, IoPool};
 pub struct Demultiplexer {
     pub assignments: Vec<BarcodeAssignment>,
     pub threads: usize,
+    pub mismatches: u8,
 }
 impl Demultiplexer {
     pub fn run(&self, input: &Option<PathBuf>) {
         let mut iopool = IoPool::new(self.threads);
         // Open a writer for each file and create our barcode->writer mapping
-        let (demux_map, mut writers) = generate_demux_map(&self.assignments, &mut iopool, 0);
+        let (demux_map, mut writers) =
+            generate_demux_map(&self.assignments, &mut iopool, self.mismatches);
 
         // Open the input for reading
         let result = with_thread_reader_from_file(input.as_ref().unwrap(), |rdr| {
@@ -82,7 +84,7 @@ impl std::str::FromStr for BarcodeAssignment {
 fn generate_demux_map<'a>(
     barcodes: &Vec<BarcodeAssignment>,
     pool: &'a mut IoPool,
-    _mismatches: u8,
+    mismatches: u8,
 ) -> (
     HashMap<Vec<u8>, usize>,
     Vec<autocompress::iothread::BlockWriter<'a, impl std::io::Write>>,
@@ -106,8 +108,48 @@ fn generate_demux_map<'a>(
     let mut barcode_map = HashMap::new();
     for ba in barcodes.iter() {
         let w = path_map[&ba.filepath];
-        let b = ba.barcode.as_bytes().to_vec();
-        barcode_map.insert(b, w);
+        for barcode in generate_mismatches(ba.barcode.clone(), mismatches) {
+            let b = barcode.as_bytes().to_vec();
+            barcode_map.insert(b, w);
+        }
     }
     (barcode_map, v)
+}
+
+const VALID_BASES: &[char] = &['A', 'C', 'G', 'T', 'N'];
+fn generate_mismatches(input: String, mismatches: u8) -> Vec<String> {
+    if mismatches == 0 {
+        return Vec::from([input]);
+    }
+
+    // Create with just the original version.
+    let mut v = Vec::new();
+    v.push(input.clone());
+    let chars: Vec<char> = input.chars().collect();
+    // Create all mutations
+    for (idx, base) in chars.iter().enumerate() {
+        // Only modify bases that are ACTGN (not + or other separators)
+        if VALID_BASES.contains(&base) {
+            for new_base in VALID_BASES.iter() {
+                // Don't bother emitting
+                if base != new_base {
+                    let mut new_bc: Vec<char> = chars.clone();
+                    new_bc[idx] = *new_base;
+                    v.push(new_bc.iter().collect());
+                }
+            }
+        }
+    }
+    // If necessary, feed these to another level of mismatch generation
+    // HashSet is for de-duplication
+    let bc_set: HashSet<String> = v
+        .iter()
+        .map(|bc| generate_mismatches(bc.clone(), mismatches - 1))
+        .fold(Vec::new(), |mut acc, mut v| {
+            acc.append(&mut v);
+            acc
+        })
+        .into_iter()
+        .collect();
+    bc_set.into_iter().collect()
 }

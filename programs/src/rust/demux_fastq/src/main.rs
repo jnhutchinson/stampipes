@@ -17,11 +17,15 @@ struct Opt {
     #[structopt(short = "@", long = "threads", default_value = "2")]
     threads: usize,
 
-    /// Set the compression level of the resulting Fastq files.
+    /// Set the compression level of the resulting Fastq files
     #[structopt(short = "z", long = "compression", default_value = "6")]
     compression_level: u32,
 
-    /// Path to the input fastq file.
+    /// Set the number of allowable mismatches (for the whole barcode)
+    #[structopt(short = "m", long = "mismatches", default_value = "0")]
+    mismatches: u8,
+
+    /// Path to the input fastq file
     /// If omitted or `-`, will read from standard input.
     #[structopt(parse(from_os_str))]
     input: Option<PathBuf>,
@@ -30,6 +34,7 @@ struct Opt {
     #[structopt(short = "b", long = "barcode")]
     barcodes: Vec<BarcodeAssignment>,
 
+    /// A file containing barcodes and files, one per line. like 'ACTG=out.fq.gz'
     #[structopt(short = "B", long = "barcode-config")]
     barcode_config_file: Option<PathBuf>,
 }
@@ -48,6 +53,7 @@ fn run(options: &Opt) {
     }
     assignments.append(&mut options.barcodes.clone());
     let demuxer = Demultiplexer {
+        mismatches: options.mismatches,
         assignments: assignments,
         threads: options.threads,
     };
