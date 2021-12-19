@@ -17,10 +17,6 @@ struct Opt {
     #[structopt(short = "@", long = "threads", default_value = "2")]
     threads: usize,
 
-    /// Set the compression level of the resulting Fastq files
-    #[structopt(short = "z", long = "compression", default_value = "6")]
-    compression_level: u32,
-
     /// Set the number of allowable mismatches (for the whole barcode)
     #[structopt(short = "m", long = "mismatches", default_value = "0")]
     mismatches: u8,
@@ -63,9 +59,6 @@ fn run(options: &Opt) {
 
 fn main() {
     let mut opt = Opt::from_args();
-    if opt.compression_level > 9 {
-        opt.compression_level = 9;
-    }
     if let Some(ref x) = opt.input {
         if x.display().to_string() == "-" {
             opt.input = None
