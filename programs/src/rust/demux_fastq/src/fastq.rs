@@ -1,8 +1,8 @@
-use flate2::read::GzDecoder;
+use flate2::read::MultiGzDecoder;
 use std::fs::File;
 
 use autocompress::iothread::{BlockCompress, BlockWriter, IoThread, ThreadReader, ThreadWriter};
-use autocompress::{open_or_stdin, CompressionLevel};
+use autocompress::open_or_stdin;
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -11,14 +11,29 @@ use thread_io;
 const BUF_SIZE: usize = 256 * 1024;
 const QUEUE_LEN: usize = 5;
 
+// NYI: Threadpool showing strange issues, infinite looping?
+//pub fn bgzip_reader(filename: Option<PathBuf>, pool: Option<tpool::ThreadPool>) -> bgzf::Reader {
+//
+//
+//    let mut reader = match filename {
+//        None => bgzf::Reader::from_stdin().expect("Invalid input from stdin"),
+//        Some(path) => bgzf::Reader::from_path(path).expect("Couldn't read from input file"),
+//    };
+//
+//    if let Some(t) = pool {
+//        reader.set_thread_pool(&t).expect("Couldn't set threadpool for reading input");
+//    }
+//    reader
+//
+//}
+
 pub fn with_thread_reader_from_file<F, O, E>(filename: &PathBuf, func: F) -> Result<O, E>
 where
     F: FnOnce(&mut thread_io::read::Reader) -> Result<O, E>,
     E: Send,
 {
     let f = File::open(filename).unwrap();
-    let gz = GzDecoder::new(f);
-    //let r = File::open(filename).expect("Could not open input file");
+    let gz = MultiGzDecoder::new(f);
     thread_io::read::reader(BUF_SIZE, QUEUE_LEN, gz, func)
 }
 
@@ -42,7 +57,7 @@ impl IoPool {
         filenames
             .iter()
             .map(|filename| {
-                let gzip_block_compress = BlockCompress::gzip(CompressionLevel::Default);
+                let gzip_block_compress = BlockCompress::gzip(self.compression_level);
                 let file_writer =
                     std::fs::File::create(filename).expect("Could not open file for writing");
 
