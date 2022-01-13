@@ -1,4 +1,4 @@
-export VERSION=1.1
+export VERSION=1.2-alpha
 export OUT_DIR=output_$VERSION
 mkdir -p "$OUT_DIR"
 
@@ -26,7 +26,8 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
   -t "$LIMS_API_TOKEN"           \
   --alignment_id "$ALIGNMENT_ID" \
   --start_alignment_progress     \
-  --adapter_file "$ADAPTER_FILE" \
+  --adapter_p5 "$ADAPTER_P5" \
+  --adapter_p7 "$ADAPTER_P7" \
   --version_file "$VERSION_FILE"
 
 # Run the code

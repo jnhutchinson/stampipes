@@ -5,14 +5,15 @@ process fastp_adapter_trim {
   // TODO: Get a newer version!
   // 0.23.0 enables deterministic results, which is crucial
   module 'fastp/0.21.0'
-  cpus 4
+  cpus 3
 
   input:
     tuple path(r1), path(r2), val(adapterP5), val(adapterP7)
 
   output:
     path 'out.r?.fastq.gz', emit: fastq
-    // path 'adapter_trimming.txt', emit: metrics
+    path 'fastp.json',      emit: metrics_json
+    path 'fastp.html',      emit: metrics_html
 
   script:
     // TODO: Double-check adapter ordering
@@ -26,7 +27,7 @@ process fastp_adapter_trim {
       --out2 "out.r2.fastq.gz" \
       --disable_quality_filtering \
       --disable_length_filtering \
-      --thread 4
+      --thread 3
     """
 }
 
