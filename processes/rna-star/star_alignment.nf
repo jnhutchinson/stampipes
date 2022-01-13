@@ -18,7 +18,7 @@ params.star_threads = 8
 
 
 include { star } from "./modules/star.nf" addParams(publish: false)
-include { adapter_trim, fastp_adapter_trim } from "../../modules/adapter_trimming.nf"
+include { adapter_trim; fastp_adapter_trim } from "../../modules/adapter_trimming.nf"
 include { move_umt; takara_trim_umt } from "../../modules/umt.nf"
 include { publish } from "../../modules/utility.nf"
 include { encode_cram; encode_cram_no_ref } from "../../modules/cram.nf" addParams(cram_write_index: false )
@@ -44,9 +44,9 @@ workflow STAR_ALIGNMENT {
     ref_files = file("${params.starIndexDir}/*")
     if (params.use_fastp) {
       println "DEBUG: Using fastp"
-      fastp_adapter_trim( [params.r1, params.r2, params.adapter_p5, params.adapter_p7] ).out.fastq.set { trimmed_fastq }
+      fastp_adapter_trim( [params.r1, params.r2, params.adapter_p5, params.adapter_p7] ).fastq.set { trimmed_fastq }
     } else {
-      adapter_trim( [params.r1, params.r2, params.adapter_p5, params.adapter_p7] ).out.fastq.set { trimmed_fastq }
+      adapter_trim( [params.r1, params.r2, params.adapter_p5, params.adapter_p7] ).fastq.set { trimmed_fastq }
     }
 
     // Decide which UMI filtering to use, if any
