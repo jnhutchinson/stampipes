@@ -5,12 +5,13 @@ process move_umt {
   input:
     path(input_bam)
   output:
-    path("output.bam")
+    path(out_name)
   shell:
+    out_name = "${input_bam.baseName}.with_umt.bam"
     """
     python "$STAMPIPES/scripts/bam/move_umt_to_tag.py" \
       "$input_bam" \
-      "output.bam"
+      "${out_name}"
     """
 }
 
