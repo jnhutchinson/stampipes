@@ -19,7 +19,7 @@ params.star_threads = 8
 include { star } from "./modules/star.nf" addParams(publish: false)
 include { adapter_trim } from "../../modules/adapter_trimming.nf"
 include { move_umt; takara_trim_umt } from "../../modules/umt.nf"
-include { publish } from "../../modules/utility.nf"
+include { publish; publish_and_rename } from "../../modules/utility.nf"
 include { encode_cram; encode_cram_no_ref } from "../../modules/cram.nf" addParams(cram_write_index: false )
 
 /// normalize_string_param coerces non-string types to the intended string type
@@ -75,9 +75,11 @@ workflow STAR_ALIGNMENT {
 
     // Publish output files
     encode_cram.out.cram
-      .mix(encode_cram_no_ref.out.cram)
-      .map { m, cram -> cram }
-    | publish
+      .map { m, cram -> [ "Aligned.sortedByCoord.out.cram", cram ] }
+      .mix(encode_cram_no_ref.out.cram
+          .map { m, cram -> [ "Aligned.toTranscriptome.out.cram", cram ] }
+       )
+    | publish_and_rename
 
 }
 
