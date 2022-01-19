@@ -21,6 +21,9 @@ process star {
   script:
     mode = "str_PE"
     threads = params.star_threads
+    // Ten gigabyte fastq files will need more RAM to sort
+    is_giant = r1_fq.size() > 10_000_000_000
+    sort_ram = is_giant ? 60_000_000_000 : 30_000_000_000 
     """
     # TODO: Update this??
     echo -e '@CO\tANNID:gencode.basic.tRNA.annotation.gtf.gz' > commentslong.txt
@@ -41,7 +44,7 @@ process star {
       --sjdbScore 1 \
       --readFilesCommand zcat \
       --runThreadN ${threads} \
-      --limitBAMsortRAM 30000000000 \
+      --limitBAMsortRAM ${sort_ram} \
       --outSAMtype BAM SortedByCoordinate \
       --quantMode TranscriptomeSAM \
       --outSAMheaderCommentFile commentslong.txt \
