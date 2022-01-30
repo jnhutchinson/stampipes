@@ -16,6 +16,8 @@ params.fastaref = null
 params.id = null
 params.publishmode = 'link'
 
+params.do_stringtie = true
+
 include { encode_cram; encode_cram_no_ref } from "../../../modules/cram.nf" addParams(cram_write_index: false )
 include { publish_with_meta } from "../../../modules/utility.nf"
 
@@ -60,7 +62,7 @@ workflow RNA_AGG {
   // Generate some useful files
   density(bam_to_use, star_ref_files)
   cufflinks(bam_to_use, annotation, sequins_iso_mix)
-  stringtie(bam_to_use, annotation)
+  if (params.do_stringtie) { stringtie(bam_to_use, annotation) }
   feature_counts(bam_to_use, annotation)
 
   kallisto(fastq, kallisto_index, sequins_iso_mix)
