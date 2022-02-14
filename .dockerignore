@@ -6,3 +6,24 @@ master*
 work/
 **/work/
 .git
+
+data/densities/*.starch
+data/adapters/*.adapters
+*.pyc
+config/ucsc_browser/*.config
+
+data/
+test_data/**/work/
+test_data/**/output/
+
+genome_build/
+
+environments/
+**/environments/
+
+**/.nextflow*
+
+**/*html*
+**/*trace.txt*
+
+>>>>>>> origin/feat/add_fastp

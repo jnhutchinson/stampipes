@@ -35,8 +35,8 @@ function maybe_attach_file() {
 
 $ATTACH_AGGREGATION --attach_directory "$(readlink -f ..)" --attach_file_purpose aggregation-directory
 
-attach_file  marked.bam      all-alignments-bam  bam
-attach_file  marked.bam.bai  bam-index           bam-index
+attach_file  marked.cram       all-alignments-bam  cram
+attach_file  marked.cram.crai  bam-index           cram-index
 
 # Densities
 attach_file  density.starch                density-bed-starch-windowed            starch

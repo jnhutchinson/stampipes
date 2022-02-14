@@ -4,8 +4,8 @@ data/adapters/*.adapters
 config/ucsc_browser/*.config
 
 data/
-test_data/*/work/
-test_data/*/output/
+test_data/**/work/
+test_data/**/output/
 
 environments/
 
@@ -14,3 +14,17 @@ environments/
 **/*html*
 **/*trace.txt*
 
+
+*.fq
+*.fq.gz
+
+.*
+!.gitignore
+!.dockerignore
+!.gitattributes
+!.gitmodules
+!.pylintrc
+
+work
+genome_build
+tmp

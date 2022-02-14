@@ -1,361 +1,550 @@
-#!/usr/bin/env nextflow
+nextflow.enable.dsl=2
 
-params.transcriptbams = ""
-params.genomebams = ""
 params.outdir = "output"
+params.genomebams = []
+params.transcriptomebams = []
+params.umi = false
 
-params.seed = 12345
-params.rsem_threads = 8
-params.refdir = "/net/seq/data/genomes/human/GRCh38/noalts-sequins/"
-starIndexDir = "${params.refdir}/STARgenome-gencode-v25"
-rsemIndexDir = "${params.refdir}/RSEMgenome-gencode-v25"
-kallistoIndex = "${params.refdir}/ref/kallisto_gencode25_sequins"
-annotation = "${params.refdir}/ref/combined.annotation.gtf"
-sequinsMix = "/net/seq/data/genomes/sequins_v1/Sequin_isoform_mix.csv"
+params.annotation = null
+params.sequinsisomix = null
+params.starrefdir = null
+params.kallistoindex = null
+params.sequinsref = null
+params.neatmixa = null
+params.flatref = null
+params.fastaref = null
+params.id = null
+params.publishmode = 'link'
 
+params.do_stringtie = true
 
-bams = Channel.create()
+include { encode_cram; encode_cram_no_ref } from "../../../modules/cram.nf" addParams(cram_write_index: false )
+include { publish_with_meta } from "../../../modules/utility.nf"
 
-num_bams = 0
-params.genomebams.tokenize(',').forEach {
-  bams << file(it)
-  num_bams ++
-}
-bams.close()
+def exclude_bam = { name -> name ==~ /.*ba[mi]$/ ? null : name }
 
-process sort {
-
-  module 'samtools/1.7'
-  cpus 8
-
-  input:
-  file bam from bams
-
-  output:
-  file 'out.bam' into sorted
-
-  script:
-  """
-  samtools sort \
-    "$bam" \
-    -o out.bam \
-    --threads 8
-  """
+workflow {
+  RNA_AGG()
 }
 
+workflow RNA_AGG {
 
-process merge_bams {
-  module 'samtools/1.7'
+  def meta = [id: params.id]
 
-  publishDir params.outdir
+  // Grab params
+  transcriptome_bams = params.transcriptomebams.collect {file it}
+  genome_bams = params.genomebams.collect {file it}
+  annotation = file(params.annotation)
+  sequins_iso_mix = file(params.sequinsisomix)
+  star_ref_files = file("${params.starrefdir}/*")
 
-  input:
-  file 'in*.bam' from sorted.collect()
+  sequins_ref = file(params.sequinsref)
+  kallisto_index = file(params.kallistoindex)
+  neat_mix_A = file(params.neatmixa)
+  flat_ref = file(params.flatref)
 
-  output:
-  file 'out.bam' into merged
 
-  script:
-  if (num_bams == 1) {
-    "ln -s in.bam out.bam"
+  // Prep work
+  merge_transcriptome_bam(transcriptome_bams)
+  merge_genome_bam(genome_bams)
+
+  // Remove UMI if present
+  if (params.umi) {
+    remove_duplicate_reads(merge_genome_bam.out.bam)
+    bam_to_use = remove_duplicate_reads.out.bam
   } else {
-    "samtools merge out.bam in*.bam"
+    mark_duplicate_reads(merge_genome_bam.out.bam)
+    bam_to_use = mark_duplicate_reads.out.bam
   }
+  bam_to_fastq(bam_to_use)
+  fastq = bam_to_fastq.out
+
+  // Generate some useful files
+  density(bam_to_use, star_ref_files)
+  cufflinks(bam_to_use, annotation, sequins_iso_mix)
+  if (params.do_stringtie) { stringtie(bam_to_use, annotation) }
+  feature_counts(bam_to_use, annotation)
+
+  kallisto(fastq, kallisto_index, sequins_iso_mix)
+  kallisto_advanced(fastq, kallisto_index, sequins_iso_mix)
+  anaquin(bam_to_use, sequins_ref, kallisto_index, neat_mix_A, sequins_iso_mix)
+
+  // QC Metrics
+  insert_sizes(bam_to_use)
+  rna_metrics(bam_to_use, flat_ref)
+  adapter_count(bam_to_use)
+  ribosomal_count(fastq)
+
+  // Compress bam files for storage
+
+  encode_cram(bam_to_use.map {[meta, it, params.fastaref]})
+  encode_cram_no_ref(
+    merge_transcriptome_bam.out.map {[meta, it]}
+  )
+
+  (encode_cram_no_ref.out.cram
+    .mix encode_cram.out.cram) | publish_with_meta
+
 }
 
-bam_to_rsem = Channel.create()
 
-to_coverage = Channel.create()
-to_kallisto = Channel.create()
-to_cufflinks = Channel.create()
-to_feature_counts = Channel.create()
-to_mark_duplicates = Channel.create()
-to_insert_size = Channel.create()
-to_adapter_counts = Channel.create()
-merged.into(to_coverage, to_kallisto, to_cufflinks, to_feature_counts, to_mark_duplicates, to_insert_size, to_adapter_counts)
+process merge_transcriptome_bam {
 
-process coverage {
-  module 'STAR', 'samtools/1.7'
-
-  publishDir params.outdir
-
+  module "samtools/1.12"
   input:
-  file bam from to_coverage
+    // Assume sorted by coord
+    file("in*.bam")
 
   output:
-  file 'Signal*bg' into bedgraph
+    path("merged.transcriptome.bam")
 
   script:
     """
-    samtools index "$bam"
-    STAR \
-      --runMode inputAlignmentsFromBAM \
-      --inputBAMfile "$bam" \
-      --outWigType bedGraph --outWigStrand Stranded \
-      --outFileNamePrefix ./ \
-      --outWigReferencesPrefix chr
-
-#--outTmpDir STAR
+    numbam=\$(ls in*.bam | wc -l)
+    if [ \$numbam -eq 1 ] ; then
+      cp in*.bam "merged.transcriptome.bam"
+    else
+      samtools merge --threads 3 -n -f "merged.transcriptome.bam" in*.bam
+    fi
     """
 }
 
-to_starch = Channel.create()
-to_bigwig = Channel.create()
-
-bedgraph.flatten().into(to_starch, to_bigwig)
-
-process coverage_starch {
-
-  module 'bedops/2.4.19'
-  publishDir params.outdir
-
+process merge_genome_bam {
+  module "samtools/1.12"
   input:
-  file bg from to_starch
+    // Assume sorted by coord
+    file("in*.bam")
 
   output:
-  file '*starch'
+    path("merged.genome.bam"), emit: bam
+    path("*bai"), emit: bai
 
   script:
-  """
-  sort-bed - < "$bg" \
-  | starch - > "${bg}.starch"
-  """
+    // TODO: restore optimized path if we can get MarkDuplicates working with CRAM
+    """
+    samtools merge --threads 3 --write-index -f "merged.genome.bam##idx##merged.genome.bam.bai" in*.bam
+    """
 }
 
-process coverage_density {
 
-  module 'kentutil/302'
-  publishDir params.outdir
-
+process remove_duplicate_reads {
+  module "jdk/2.8.1", "picard/2.8.1", "samtools/1.12"
+  label 'high_mem'
   input:
-  file bg from to_bigwig
-  file cnl from file("${starIndexDir}/chrNameLength.txt")
+    path genomebam
+
   output:
-  file '*bw'
+    path "nodups.bam",                emit: bam
+    path "picard.MarkDuplicates.txt", emit: metrics
 
   script:
+    """
+    # Add Mate Cigar information; required by UMI-aware MarkDuplicates
+    # TODO: Actually required?
+    picard RevertOriginalBaseQualitiesAndAddMateCigar \
+      "INPUT=$genomebam" OUTPUT=cigar.bam \
+      VALIDATION_STRINGENCY=SILENT RESTORE_ORIGINAL_QUALITIES=false SORT_ORDER=coordinate MAX_RECORDS_TO_EXAMINE=0
+
+    # Remove non-primary reads (also required)
+    samtools view -F256 cigar.bam -o cigar_no_supp.bam
+
+    picard UmiAwareMarkDuplicatesWithMateCigar \
+      INPUT=cigar_no_supp.bam \
+      OUTPUT=nodups.bam \
+      METRICS_FILE=picard.MarkDuplicates.txt \
+      ASSUME_SORTED=true \
+      VALIDATION_STRINGENCY=SILENT \
+      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*' \
+      UMI_TAG_NAME=RX \
+      REMOVE_DUPLICATES=true
+
+    # Remove intermediate files
+    rm cigar.bam cigar_no_supp.bam
   """
-  grep '^chr' "$bg" | sort -k1,1 -k2,2n > chrom.bg
-  grep '^chr' "$cnl" > chrNL.txt
-  bedGraphToBigWig "chrom.bg" chrNL.txt "${bg}.bw"
-  """
+
 }
 
-process trimmed_fastq {
+process mark_duplicate_reads {
+  publishDir params.outdir, mode: params.publishmode, saveAs: exclude_bam
+  label 'high_mem'
 
-  module 'samtools/1.7'
+  module "jdk/2.8.1", "picard/2.8.1", "samtools/1.12"
 
   input:
-  file bam from to_kallisto
+    path genomebam
 
   output:
-  set file('r1.fastq'), file('r2.fastq') into trimmed_fastq
+    path "dupsmarked.bam",            emit: bam
+    path "picard.MarkDuplicates.txt", emit: metrics
 
   script:
-  """
-  samtools sort -n "$bam" --threads 8 \
-  | tee >(
-    samtools view -u -f  64 "$bam" | samtools fastq - > r1.fastq
-      ) \
-  | samtools view -u -f 128 "$bam" | samtools fastq - > r2.fastq
-  """
+    """
+    picard MarkDuplicates \
+      "INPUT=${genomebam}" \
+      OUTPUT=dupsmarked.bam \
+      METRICS_FILE=picard.MarkDuplicates.txt \
+      ASSUME_SORTED=true \
+      VALIDATION_STRINGENCY=SILENT \
+      READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
+    """
+
 }
 
-for_kallisto = Channel.create()
-for_ribosomal = Channel.create()
-trimmed_fastq.into(for_kallisto, for_ribosomal)
 
-process kallisto {
-
-  module 'kallisto/0.43.1'
-  publishDir params.outdir
-
+process bam_to_fastq {
+  publishDir params.outdir, mode: params.publishmode
+  module "samtools/1.12"
+  
   input:
-  set file(r1), file(r2) from for_kallisto
-  file index from file(kallistoIndex)
-
+    path input_bam
   output:
-  file 'kallisto_output/*'
+    tuple path("r1.fq.gz"), path("r2.fq.gz")
 
   script:
-  """
-  kallisto quant -i \
-    "$index" \
-    -o kallisto_output \
-    "$r1" "$r2"
-  """
+    """
+    samtools sort -n -o namesorted.bam "$input_bam"
+    samtools view -uf64 namesorted.bam \
+      | samtools fastq - \
+      | gzip -c \
+      > r1.fq.gz
+    samtools view -uf128 namesorted.bam \
+      | samtools fastq - \
+      | gzip -c \
+      > r2.fq.gz
+    """
 }
 
-process insert_size {
+process density {
 
-  module 'jdk/1.8.0_92', 'picard/2.8.1', 'R/3.2.5'
-  publishDir params.outdir
-
+  module "STAR/2.4.2a", "bedops/2.4.19", "htslib/1.6.0"
+  publishDir params.outdir, mode: params.publishmode
   input:
-  file bam from to_insert_size
+    path(input_bam)
+    path("ref/*")
 
   output:
-  file 'picard.CollectInsertSizes.txt'
+    path("Signal.*")
 
   script:
-  """
-  picard CollectInsertSizeMetrics \
-  INPUT="$bam" \
-  OUTPUT=picard.CollectInsertSizes.txt \
-  HISTOGRAM_FILE=/dev/null
-  """
-}
+    """
+    # Write starch and bigwig to .tmp files
+    function convertBedGraph(){
+      in="\$1"
+      base="\$2"
+      chrom="\$in.onlyChr.bg"
+      grep '^chr' "\$in" | sort -k1,1 -k2,2n > \$chrom
+      bedGraphToBigWig "\$chrom" chrNL.txt "\$base.bw"
+      starch "\$chrom" > "\$base.starch"
+    }
 
-process adapter_counts {
+    mkdir -p Signal
 
-  publishDir params.outdir
-  input:
-  file bam from to_adapter_counts
+    STAR --runMode inputAlignmentsFromBAM \
+      --inputBAMfile "$input_bam" \
+      --outWigType bedGraph \
+      --outWigStrand Unstranded \
+      --outFileNamePrefix Signal/ \
+      --outWigReferencesPrefix chr \
+      --outTmpDir STAR
 
-  output:
-  file 'adapter_counts.info'
+    mv Signal/Signal.UniqueMultiple.str1.out.bg Signal/Signal.UniqueMultiple.unstranded.out.bg
+    mv Signal/Signal.Unique.str1.out.bg         Signal/Signal.Unique.unstranded.out.bg
 
-  script:
-  """
-  export STAMPIPES=$baseDir/../../..
-  echo -ne "adapter\t" > adapter_counts.info
-  bash "$baseDir/../../../scripts/bam/count_adapters.sh" "$bam" >> adapter_counts.info
-  """
+    STAR --runMode inputAlignmentsFromBAM \
+      --inputBAMfile "$input_bam" \
+      --outWigType bedGraph \
+      --outWigStrand Stranded \
+      --outFileNamePrefix Signal/ \
+      --outWigReferencesPrefix chr \
+      --outTmpDir STAR
+
+    grep '^chr' ref/chrNameLength.txt > chrNL.txt
+
+    convertBedGraph Signal/Signal.Unique.str1.out.bg               Signal.Unique.str-
+    convertBedGraph Signal/Signal.Unique.str2.out.bg               Signal.Unique.str+
+    convertBedGraph Signal/Signal.Unique.unstranded.out.bg         Signal.Unique.both
+    convertBedGraph Signal/Signal.UniqueMultiple.str1.out.bg       Signal.UniqueMultiple.str-
+    convertBedGraph Signal/Signal.UniqueMultiple.str2.out.bg       Signal.UniqueMultiple.str+
+    convertBedGraph Signal/Signal.UniqueMultiple.unstranded.out.bg Signal.UniqueMultiple.both
+
+    unstarch Signal.Unique.both.starch | bgzip > Signal.Unique.both.starch.bgz
+    tabix -p bed Signal.Unique.both.starch.bgz
+    """
 
 }
 
 process cufflinks {
 
-  module 'cufflinks/2.2.1'
-  publishDir params.outdir
+  publishDir params.outdir, mode: params.publishmode
+  module "cufflinks/2.2.1", "R/3.2.5", "anaquin/2.0.1"
 
   input:
-  file input from to_cufflinks
-  file annotation from file(annotation)
+    path input_bam
+    path annotation
+    path sequins_iso_mix
+
 
   output:
-  file 'transcripts.gtf' into transcripts
-  file 'skipped.gtf'
-  file 'genes.fpkm_tracking'
-  file 'isoforms.fpkm_tracking'
+    tuple path("genes.fpkm_tracking"), path("isoforms.fpkm_tracking"), path("anaquin_cufflinks/*")
+    path "skipped.gtf"
+    path "transcripts.gtf"
 
 
   script:
-  """
-  cufflinks \
-    --no-update-check \
-    --library-type fr-firststrand \
-    --GTF "${annotation}" \
-    --num-threads 8 \
-    "${input}"
-  """
-}
+    """
 
-process anaquin {
+    CUFF=cufflinks
+    CUFF_COMMON="--no-update-check --library-type fr-firststrand"
 
-  module 'anaquin/2.0.1'
-  publishDir params.outdir
+    \$CUFF \$CUFF_COMMON --GTF "$annotation" "$input_bam"
 
-  input:
-  file transcripts
-  file sequins_mix from file(sequinsMix)
+    # delete duplicate rows and sort into identical orders across all samples
+    Rscript \$STAMPIPES/scripts/rna-star/aggregate/dedupe_sort_cuffout.Rscript genes.fpkm_tracking
+    Rscript \$STAMPIPES/scripts/rna-star/aggregate/dedupe_sort_cuffout.Rscript isoforms.fpkm_tracking
+    mv genes.fpkm_tracking.sort genes.fpkm_tracking
+    mv isoforms.fpkm_tracking.sort isoforms.fpkm_tracking
 
-  output:
-  file 'anaquin_cufflinks/RnaExpression*'
-
-  script:
-  """
-  anaquin RnaExpression \
-    -o anaquin_cufflinks \
-    -rmix "${sequins_mix}" \
-    -usequin "${transcripts}" \
-    -mix A
-  """
-}
-
-process ribosomal {
-  module 'bowtie/1.0.0'
-  publishDir params.outdir
-
-  input:
-  file 'index.1.ebwt' from file('/net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA.1.ebwt')
-  file 'index.2.ebwt' from file('/net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA.2.ebwt')
-  file 'index.3.ebwt' from file('/net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA.3.ebwt')
-  file 'index.4.ebwt' from file('/net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA.4.ebwt')
-  file 'index.rev.1.ebwt' from file('/net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA.rev.1.ebwt')
-  file 'index.rev.2.ebwt' from file('/net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA.rev.2.ebwt')
-  set file(r1), file(r2) from for_ribosomal
-  val seed from 1234567
-
-  output:
-  file 'ribosomal_counts.info'
-
-  script:
-  """
-  sleep 20;
-  echo -ne "ribosomal-RNA\t" > ribosomal_counts.info
-  bowtie \
-    -n 3 -e 140 \
-    --threads 1 \
-    --seed "$seed" \
-    index \
-    -1 "$r1" \
-    -2 "$r2" \
-    | wc -l \
-    >> ribosomal_counts.info
-  """
+    # quantification with anaquin Rna Expression
+    anaquin RnaExpression -o anaquin_cufflinks -rmix "$sequins_iso_mix" -usequin transcripts.gtf -mix A \
+    || (echo "NA" > anaquin_cufflinks/RnaExpression_genes.tsv \
+     && echo "NA" > anaquin_cufflinks/RnaExpression_isoforms.tsv \
+     && echo "NA" > anaquin_cufflinks/RnaExpression_summary.stats)
+    """
 
 }
 
-process mark_duplicates {
-  module 'jdk/1.8.0_92', 'picard/2.8.1'
-  publishDir params.outdir
+process stringtie {
 
+  publishDir params.outdir, mode: params.publishmode
+  module "stringtie/1.3.4d"
   input:
-  file bam from to_mark_duplicates
+    path(input_bam)
+    path(annotation)
 
   output:
-  file 'picard.MarkDuplicates.txt'
+    path("stringtie_rf/*")
+    
 
   script:
-  """
-  picard MarkDuplicates \
-    INPUT="$bam" \
-    OUTPUT=/dev/null \
-    METRICS_FILE=picard.MarkDuplicates.txt \
-    ASSUME_SORTED=true \
-    VALIDATION_STRINGENCY=SILENT \
-    READ_NAME_REGEX='[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]+:([0-9]+):([0-9]+):([0-9]+).*'
-  """
+    """
+    stringtie "$input_bam" --rf -p 4 -G "$annotation" \
+      -o stringtie_rf/transcripts.gtf \
+      -A stringtie_rf/abundances.txt
+    """
 
 }
 
 process feature_counts {
 
-  module 'subread/1.5.1'
-  publishDir params.outdir
+    publishDir params.outdir, mode: params.publishmode
+    module "subread/1.5.1"
+
+    input:
+      path(input_bam)
+      path(annotation)
+
+    output:
+      path "feature_counts.txt"
+      path "feature_counts.txt.summary"
+
+    script:
+      """
+      featureCounts --primary -B -C -p -P --fracOverlap .5 -s 2 -D 10000 \
+        -t 'exon' -g 'gene_id' \
+        -a "$annotation" -o feature_counts.txt "$input_bam"
+      """
+}
+
+
+process kallisto {
+
+  publishDir params.outdir, mode: params.publishmode
+  module "kallisto/0.43.1", "anaquin/2.0.1"
 
   input:
-  file input from to_feature_counts
-  file annotation from file(annotation)
+    tuple path(r1_fq), path(r2_fq)
+    path kallisto_index
+    path sequins_iso_mix
 
   output:
-  file 'feature_counts.txt'
+    path "anaquin_kallisto/*"
+    path "kallisto_output/*"
+    path "kallisto.log"
 
   script:
+    """
+    kallisto quant -i "${kallisto_index}" -o kallisto_output "${r1_fq}" "${r2_fq}" 2> kallisto.log
+
+    anaquin RnaExpression -o anaquin_kallisto -rmix "${sequins_iso_mix}" -usequin kallisto_output/abundance.tsv -mix A \
+    || (echo "NA" > anaquin_kallisto/RnaExpression_genes.tsv \
+     && echo "NA" > anaquin_kallisto/RnaExpression_isoforms.tsv \
+     && echo "NA" > anaquin_kallisto/RnaExpression_summary.stats)
+    """
+}
+
+process kallisto_advanced {
+  
+  publishDir params.outdir, mode: params.publishmode
+  module "kallisto/0.43.1", "anaquin/2.0.1"
+
+  input:
+    tuple path(r1_fq), path(r2_fq)
+    path kallisto_index
+    path sequins_iso_mix
+
+  output:
+    path "anaquin_kallisto_adv/*"
+    path "kallisto_output_adv/*"
+    path "kallisto_adv.log"
+
+  script:
+    """
+    kallisto quant --bias -b 100 --rf-stranded -i "${kallisto_index}" -o kallisto_output_adv "${r1_fq}" "${r2_fq}" 2> kallisto_adv.log
+
+    anaquin RnaExpression -o anaquin_kallisto_adv -rmix "${sequins_iso_mix}" -usequin kallisto_output_adv/abundance.tsv -mix A \
+    || (echo "NA" > anaquin_kallisto_adv/RnaExpression_genes.tsv \
+     && echo "NA" > anaquin_kallisto_adv/RnaExpression_isoforms.tsv \
+     && echo "NA" > anaquin_kallisto_adv/RnaExpression_summary.stats)
+    """
+}
+
+
+process anaquin {
+
+  module "samtools/1.12", "anaquin/2.0.1", "kallisto/0.43.1", "R/3.2.5"
+  publishDir params.outdir, mode: params.publishmode
+
+  input:
+    path input_bam
+    path sequins_ref
+    path kallisto_index
+    path neat_mix_A
+    path sequins_iso_mix
+
+  output:
+    path "anaquin_star/*"
+    path "anaquin_subsample/anaquin.log"
+    path "anaquin_subsample/RnaSubsample_summary.stats"
+    path "anaquin_subsample/anaquin_kallisto/*"
+    path "anaquin_subsample/anaquin_star/*"
+    path "anaquin_subsample/kallisto_output/*"
+
+  script:
+  dilution = 0.0001
   """
-  featureCounts \
-    --primary \
-    -B \
-    -C \
-    -p \
-    -P \
-    --fracOverlap .5 \
-    -s 2 \
-    -t exon \
-    -g gene_id \
-    -a "${annotation}" \
-    -o feature_counts.txt \
-    "${input}"
-  """
+  anaquin RnaAlign -rgtf "${sequins_ref}" -usequin "${input_bam}" -o anaquin_star
+  bash \$STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
+
+  # create subsample
+  anaquin RnaSubsample -method "${dilution}" -usequin "${input_bam}" -o anaquin_subsample | samtools view -bS - > temp_subsample.bam
+
+  # calculate anaquin align stats on subset alignment
+  anaquin RnaAlign -rgtf "${sequins_ref}" -usequin temp_subsample.bam -o anaquin_subsample/anaquin_star
+  bash \$STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash \
+    anaquin_subsample/anaquin_star/RnaAlign_summary.stats \
+    anaquin_subsample/anaquin_star/RnaAlign_summary.stats.info
+
+  # turn subset alignment to fastq
+  samtools sort -n -o temp_subsample.sorted.bam temp_subsample.bam
+  samtools view -uf64 temp_subsample.sorted.bam | samtools fastq - > subsample.fq1
+  samtools view -uf128 temp_subsample.sorted.bam | samtools fastq - > subsample.fq2
+
+  # call kallisto on subsampled fastqs
+  kallisto quant -i "${kallisto_index}" -o anaquin_subsample/kallisto_output subsample.fq1 subsample.fq2
+
+  # calculate kallisto stats on subsampled alignment
+  anaquin RnaExpression -o anaquin_subsample/anaquin_kallisto -rmix "${sequins_iso_mix}" -usequin anaquin_subsample/kallisto_output/abundance.tsv -mix A \
+    || (echo "NA" > anaquin_subsample/anaquin_kallisto/RnaExpression_genes.tsv \
+     && echo "NA" > anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv \
+     && echo "NA" > anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats)
+
+  bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaexp_stats.bash \
+    anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats \
+    anaquin_subsample/anaquin_kallisto/RnaExpression_summary.stats.info
+  bash $STAMPIPES/scripts/rna-star/aggregate/anaquin_neat_comparison.bash \
+    anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.tsv \
+    anaquin_subsample/anaquin_kallisto/RnaExpression_isoforms.neatmix.tsv \
+    "${neat_mix_A}"
+"""
+
+}
+
+process insert_sizes {
+
+  module "jdk", "picard/2.9.0", "R/3.2.5"
+  publishDir params.outdir, mode: params.publishmode
+
+  input:
+    path input_bam
+
+  output:
+    path "picard.CollectInsertSizes.txt"
+
+  script:
+    """
+    picard CollectInsertSizeMetrics INPUT="${input_bam}" OUTPUT=picard.CollectInsertSizes.txt HISTOGRAM_FILE=/dev/null
+    """
+}
+
+process rna_metrics {
+
+  label "high_mem"
+  module "jdk", "picard/2.9.0"
+  publishDir params.outdir, mode: params.publishmode
+
+  input:
+    path input_bam
+    path flat_ref
+
+  output:
+    path "picard.RnaSeqMetrics.txt"
+    path "rna_stats_summary.info"
+
+  script:
+    """
+    picard CollectRnaSeqMetrics INPUT="${input_bam}" OUTPUT=picard.RnaSeqMetrics.txt REF_FLAT="${flat_ref}" STRAND_SPECIFICITY="SECOND_READ_TRANSCRIPTION_STRAND"
+    cat picard.RnaSeqMetrics.txt | grep -A 1 "METRICS CLASS" | sed 1d | tr '\t' '\n' > rna_stats_summary.info
+    cat picard.RnaSeqMetrics.txt | grep -A 2 "METRICS CLASS" | sed 1d | sed 1d | tr '\t' '\n' | paste rna_stats_summary.info - > tmp.txt && mv tmp.txt rna_stats_summary.info
+    """
+}
+
+process adapter_count {
+
+  module "bwa", "samtools", "jdk", "picard/2.9.0"
+  publishDir params.outdir, mode: params.publishmode
+  input:
+    path input_bam
+
+  output:
+    path "adapter_counts.info"
+
+  script:
+    """
+    adapter_count=\$(bash "\$STAMPIPES/scripts/bam/count_adapters.sh" "${input_bam}")
+    if [ -n \$adapter_count ] ; then
+            echo -e "adapter\t\$adapter_count" > "adapter_counts.info"
+    fi
+    """
+}
+process ribosomal_count {
+
+  module "bowtie/1.0.0"
+  publishDir params.outdir, mode: params.publishmode
+
+  input:
+    tuple path(r1_fq), path(r2_fq)
+
+  output:
+    path("ribosomal_counts.info")
+
+  script:
+    """
+    zcat -f "${r1_fq}" > trims.R1.fastq
+    zcat -f "${r2_fq}" > trims.R2.fastq
+    # TODO: Why is this hard-coded?
+    num_reads=\$(bowtie -n 3 -e 140 /net/seq/data/genomes/human/GRCh38/noalts/contamination/hg_rRNA -1 trims.R1.fastq -2 trims.R2.fastq | wc -l )
+    if [ -n \$num_reads ]; then
+        echo -e "ribosomal-RNA\t\$num_reads" > "ribosomal_counts.info"
+    fi
+    """
 }

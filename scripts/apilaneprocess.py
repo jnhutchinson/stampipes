@@ -113,7 +113,7 @@ class ProcessSetUp(object):
 
     def setup_flowcell(self, flowcell_label):
 
-        lanes = self.api.get_list_result(url_addition="flowcell_lane", query_arguments={"flowcell__label": flowcell_label}, page_size=500)
+        lanes = self.api.get_list_result(url_addition="flowcell_lane", query_arguments={"flowcell__label": flowcell_label}, page_size=1000, item_limit=10000)
 
         if not lanes:
             logging.error("Flowcell %s has no lanes" % flowcell_label)
@@ -178,6 +178,9 @@ class ProcessSetUp(object):
             return False
 
         fastq_directory = lane["directory"]
+        alt_dir = lane.get("project_share_directory", "")
+        if alt_dir:
+            fastq_directory = os.path.join(alt_dir, "fastq", "Project_%s" % lane["project"], "Sample_%s" % lane["samplesheet_name"])
 
         barcode = "NoIndex" if lane['barcode_index'] is None else lane['barcode_index']
         spreadsheet_name = "%s_%s_L00%d" % (lane['samplesheet_name'], barcode, lane['lane'])

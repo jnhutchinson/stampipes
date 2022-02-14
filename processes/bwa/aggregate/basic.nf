@@ -19,6 +19,7 @@ params.hotspot_index = "."
 
 params.paired = true
 
+params.cramthreads = 10
 
 def helpMessage() {
   log.info"""
@@ -30,6 +31,9 @@ def helpMessage() {
 
   """.stripIndent();
 }
+
+// Used for publishDir to avoid publishing bam files
+def exclude_bam = { name -> name ==~ /.*ba[mi]$/ ? null : name }
 
 dataDir = "$baseDir/../../../data"
 genome_name = file(params.genome).baseName
@@ -45,12 +49,11 @@ process merge {
   label "modules"
 
   input:
+  // Inputs may be cram file but that's fine
   file 'in*.bam' from bams
 
   output:
   file 'merged.bam' into merged
-
-  publishDir params.outdir
 
   script:
   """
@@ -61,14 +64,15 @@ process merge {
 // TODO: single end
 process dups {
   label "modules"
-  publishDir params.outdir
   label 'high_mem'
+  publishDir params.outdir, saveAs: exclude_bam
 
   input:
   file(merged)
 
   output:
   file 'marked.bam' into marked_bam
+  file 'marked.bam' into bams_to_cram_marked
   file 'marked.bam.bai'
   file 'MarkDuplicates.picard'
 
@@ -99,8 +103,6 @@ marked_bam.into { bam_for_counts; bam_for_adapter_counts; bam_for_filter; bam_fo
 process filter {
   label "modules"
 
-  publishDir params.outdir
-
   input:
   file bam from bam_for_filter
 
@@ -113,7 +115,8 @@ process filter {
   samtools view -b -F "${flag}" marked.bam > filtered.bam
   """
 }
-filtered_bam.into { bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints}
+// TODO: Do we need to CRAM/publish this?
+filtered_bam.into { bam_for_spot_score; bam_for_cutcounts; bam_for_density; bam_for_inserts; bam_for_nuclear; bam_for_footprints; bams_to_cram }
 
 process filter_nuclear {
   label "modules"
@@ -165,6 +168,8 @@ process hotspot2 {
 
   publishDir "${params.outdir}"
   container "fwip/hotspot2:latest"
+
+  label 'high_mem'
 
   when:
   params.peakcaller == "hotspot2"
@@ -335,6 +340,8 @@ process cutcounts {
 
   publishDir params.outdir
 
+  label 'high_mem'
+
   input:
   file(fai) from file("${params.genome}.fai")
   file(filtered_bam) from bam_for_cutcounts
@@ -436,6 +443,7 @@ process multimapping_density {
 
   publishDir params.outdir
   label 'modules'
+  label 'high_mem'
 
   input:
   file marked_bam from bam_for_multimapping_density
@@ -528,6 +536,7 @@ process normalize_density {
   bin_size = 20
   scale = 1_000_000
   '''
+  samtools index "!{filtered_bam}"
   # Normalized density
   unstarch density.starch \
     | awk -v allcounts=$(samtools view -c !{filtered_bam}) \
@@ -887,5 +896,33 @@ process plot_footprints {
   script:
   """
   "./$plot" "$model"
+  """
+}
+
+process cram {
+  publishDir params.outdir
+  cpus params.cramthreads / 2
+
+  // TODO: put in config
+  module "samtools/1.12"
+
+  input:
+  file bam from bams_to_cram.mix(bams_to_cram_marked)
+  file ref from file("${params.genome}.fa")
+  file fai from file("${params.genome}.fai")
+
+  output:
+  file cramfile
+  file "${cramfile}.crai"
+
+  script:
+  cramfile = bam.name.replace("bam", "cram")
+  """
+  samtools view "${bam}" \
+    -C -O cram,version=3.0,level=7,lossy_names=0 \
+    -T "${ref}" \
+    --threads "${params.cramthreads}" \
+    --write-index \
+    -o "${cramfile}"
   """
 }
