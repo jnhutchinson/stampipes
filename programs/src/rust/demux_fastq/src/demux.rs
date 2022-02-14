@@ -103,7 +103,7 @@ fn generate_demux_map<'a>(
             }
         }
     }
-    let v = pool.get_writers(paths);
+    let v = pool.create_writers(paths);
 
     let mut barcode_map = HashMap::new();
     for ba in barcodes.iter() {

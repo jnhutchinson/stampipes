@@ -11,20 +11,21 @@ use thread_io;
 const BUF_SIZE: usize = 256 * 1024;
 const QUEUE_LEN: usize = 5;
 
-// NYI: Threadpool showing strange issues, infinite looping?
+//// NYI: Threadpool showing strange issues, infinite looping?
+//// This may only be an issue on regular gzip files...
+//use rust_htslib::{bgzf, tpool};
 //pub fn bgzip_reader(filename: Option<PathBuf>, pool: Option<tpool::ThreadPool>) -> bgzf::Reader {
-//
-//
 //    let mut reader = match filename {
 //        None => bgzf::Reader::from_stdin().expect("Invalid input from stdin"),
 //        Some(path) => bgzf::Reader::from_path(path).expect("Couldn't read from input file"),
 //    };
 //
 //    if let Some(t) = pool {
-//        reader.set_thread_pool(&t).expect("Couldn't set threadpool for reading input");
+//        reader
+//            .set_thread_pool(&t)
+//            .expect("Couldn't set threadpool for reading input");
 //    }
 //    reader
-//
 //}
 
 pub fn with_thread_reader_from_file<F, O, E>(filename: &PathBuf, func: F) -> Result<O, E>
@@ -49,7 +50,7 @@ impl IoPool {
         }
     }
 
-    pub fn get_writers(
+    pub fn create_writers(
         &mut self,
         filenames: Vec<PathBuf>,
     ) -> Vec<BlockWriter<impl std::io::Write>> {
