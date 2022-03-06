@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 
-import os
 import sys
-import re
 import json
 import argparse
 import logging
 
-MAX_BARCODE_LENGTH = 8
-
 script_options = {
-    "processing": "processing.json"
+    "processing": "processing.json",
 }
 
 
@@ -28,21 +24,22 @@ def parser_setup():
 def get_barcode_masks(json_data):
     masks = []
     read_length = json_data["flowcell"]["read_length"]
+    index_length = json_data["flowcell"]["index_length"]
     barcode_lengths = get_barcode_lengths(json_data)
 
     # determines the n's in the mask
     def format_difference(x):
-        if MAX_BARCODE_LENGTH - int(x) == 0:
+        if index_length - int(x) <= 0:
             return ""
         else:
-            return "n" + str(MAX_BARCODE_LENGTH - int(x))
+            return "n" + str(index_length - int(x))
 
     for length in barcode_lengths:
         parts = length.split("-")
 
         for i, x in enumerate(parts):
             if x == "0":
-                parts[i] = "n" + str(MAX_BARCODE_LENGTH - int(x))
+                parts[i] = "n" + str(index_length - int(x))
             else:
                 parts[i] = "i{}{}".format(x, format_difference(x))
 
@@ -55,11 +52,12 @@ def get_barcode_masks(json_data):
 # Determines how many different sizes of barcodes there are and returns a set of them
 def get_barcode_lengths(json_data):
     # in case barcode sequence is null
+    max_len = json_data["flowcell"]["index_length"]
     def format_length(x):
         if (x):
-            return len(x["sequence"])
+            return min(max_len, len(x["sequence"]))
         else:
-            return '0'
+            return 0
 
     # set of each unique length in the data
     lengths = set(["{}-{}".format(
