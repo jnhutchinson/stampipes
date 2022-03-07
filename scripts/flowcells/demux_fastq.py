@@ -109,6 +109,7 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_
         data = json.load(data_file)
 
     run_type = data['flowcell']['run_type']
+    index_len = data['flowcell']['index_length']
     # Only some flowcell types need to treat different lanes differently
     if run_type == "NextSeq 500":
         lane_libraries = data['libraries']
@@ -151,6 +152,13 @@ def parse_processing_file(file, mismatches, suffix, lane, outdir, ignore_failed_
         barcode_indices = library['barcode_index'].split("-")
         barcode1 = barcode_indices[0]
         barcode2 = barcode_indices[1] if len(barcode_indices) > 1 else ""
+
+        # If any barcodes are longer than the index length
+        # Trim those barcodes down to match.
+        if len(barcode1) > index_len:
+            barcode1 = barcode1[:index_len]
+        if len(barcode2) > index_len:
+            barcode2 = barcode2[:index_len]
 
         lengths.add((len(barcode1), len(barcode2)))
 
