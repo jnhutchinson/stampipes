@@ -36,6 +36,7 @@ class Event():
     It must have a name and a start_time - duration and realtime may be 0 if
     there is no logical duration/end-time for the event.
     """
+    source: Optional[str]
     name: str
     start_time: datetime
     duration: timedelta
@@ -52,6 +53,7 @@ class Event():
         Duration and realtime will be 0.
         """
         return Event(
+            source=filename,
             name=event_name,
             start_time=datetime.fromtimestamp(os.path.getmtime(filename)),
             duration=timedelta(0),
@@ -80,6 +82,7 @@ class Event():
             memory=None,
             bytes_read=None,
             bytes_written=None,
+            source=end_filename,
         )
 
     @property
@@ -119,17 +122,19 @@ class Events():
         new_list = self.events + other.events
         return Events(events=new_list)
 
-    def to_tsv(self) -> str:
+    def to_tsv(self, print_header=True) -> str:
         """ Render the event list as a TSV """
         def format_duration(dur):
             return round(dur / timedelta(hours=1), 2)
 
         def format_cpus(cpus):
-            return round(cpus, 2)
+            return round(cpus, 2) if cpus else None
+
         output = io.StringIO()
         writer = csv.DictWriter(
             output,
             fieldnames=[
+                "source",
                 "name",
                 "start_time",
                 "end_time",
@@ -142,9 +147,11 @@ class Events():
             ],
             delimiter="\t",
         )
-        writer.writeheader()
+        if print_header:
+            writer.writeheader()
         for event in self.events:
             writer.writerow({
+                "source": event.source,
                 "name": event.name,
                 "duration_hours": format_duration(event.duration),
                 "start_time": event.start_time,
@@ -193,6 +200,13 @@ def parse_trace_duration(time: str) -> timedelta:
                      )
 
 
+def try_parse_bytes(size: str) -> Optional[int]:
+    try:
+        return parse_bytes(size)
+    except ValueError:
+        return None
+
+
 def parse_bytes(size: str) -> int:
     """
     Returns the number of bytes
@@ -220,28 +234,37 @@ def parse_bytes(size: str) -> int:
     return math.floor(num * (1024 ** power_table[base]))
 
 
+def try_parse_percent(val: str) -> Optional[int]:
+    try:
+        return parse_percent(val)
+    except ValueError:
+        return None
+
 def parse_percent(val: str) -> float:
     return float(val.replace("%","").strip()) / 100
 
 
-def parse_trace_file(filename: str) -> List[Event]:
+def parse_trace_file(filename: str, source=None) -> List[Event]:
+    if source is None:
+        source = filename
     with open(filename, 'r') as f:
-        return parse_trace(f.read())
+        return parse_trace(f.read(), source=source)
 
 
-def parse_trace(trace: str) -> List[Event]:
+def parse_trace(trace: str, source=None) -> List[Event]:
     """
     Parses the contents of a trace file into a list of Events
     """
     return [
-        Event(start_time=parse_trace_datetime(row['submit']),
+        Event(source=source,
+              start_time=parse_trace_datetime(row['submit']),
               name=row['name'],
               duration=parse_trace_duration(row['duration']),
               realtime=parse_trace_duration(row['realtime']),
-              memory=parse_bytes(row['peak_rss']),
-              cpus=parse_percent(row[r'%cpu']),
-              bytes_read=parse_bytes(row['rchar']),
-              bytes_written=parse_bytes(row['wchar']),
+              memory=try_parse_bytes(row.get('rss') or row['peak_rss']),
+              cpus=try_parse_percent(row[r'%cpu']),
+              bytes_read=try_parse_bytes(row['rchar']),
+              bytes_written=try_parse_bytes(row['wchar']),
               )
         for row in csv.DictReader(trace.splitlines(), delimiter="\t")
     ]
@@ -432,10 +455,35 @@ def aggregation(agg_id: int):
         log.error("Could not find agg directory")
         return
     trace = get_trace_contents(aggdir)
-    events = parse_trace(trace)
-    print("\n".join(str(e) for e in events))
+    events = Events(parse_trace(trace))
+    print(events.to_tsv())
+    #print("\n".join(str(e) for e in events))
 
-    print("Total real time", get_elapsed_time(aggdir))
+    #print("Total real time", get_elapsed_time(aggdir))
+
+
+def find_traces(rootpath: str):
+    """ A generator that yields all traces in a directory """
+    exclude_dirs = set("work")
+    for root, dirs, files in os.walk(rootpath, topdown=True):
+        dirs[:] = [d for d in dirs if d not in exclude_dirs]
+        for x in files:
+            if x == "trace.txt":
+                yield os.path.join(root, x)
+                # Stop descending in this directory
+                dirs[:] = []
+                break
+
+
+@app.command()
+def directory(root_dir: str):
+    """ Crawls a directory reporting all traces found """
+
+    first_trace = True
+    for trace in find_traces(root_dir):
+        events = parse_trace_file(trace)
+        print(Events(events).to_tsv(print_header=first_trace).strip())
+        first_trace = False
 
 
 @app.command()
