@@ -201,16 +201,16 @@ process bam_to_fastq {
     tuple path("r1.fq.gz"), path("r2.fq.gz")
 
   script:
+    collate_threads = 2
+    fastq_threads = 2
     """
-    samtools sort -n -o namesorted.bam "$input_bam"
-    samtools view -uf64 namesorted.bam \
-      | samtools fastq - \
-      | gzip -c \
-      > r1.fq.gz
-    samtools view -uf128 namesorted.bam \
-      | samtools fastq - \
-      | gzip -c \
-      > r2.fq.gz
+    samtools collate \
+      -f -r 100000 -u -O \
+      --threads "${collate_threads}" \
+      "${input_bam}" \
+      tmp.collate \
+    | samtools fastq -1 r1.fq.gz -2 r2.fq.gz -0 /dev/null -s /dev/null \
+        -n --threads "${fastq_threads}"
     """
 }
 
@@ -431,6 +431,8 @@ process anaquin {
 
   script:
   dilution = 0.0001
+  collate_threads = 2
+  fastq_threds = 2
   """
   anaquin RnaAlign -rgtf "${sequins_ref}" -usequin "${input_bam}" -o anaquin_star
   bash \$STAMPIPES/scripts/rna-star/aggregate/anaquin_rnaalign_stats.bash anaquin_star/RnaAlign_summary.stats anaquin_star/RnaAlign_summary.stats.info
@@ -445,9 +447,13 @@ process anaquin {
     anaquin_subsample/anaquin_star/RnaAlign_summary.stats.info
 
   # turn subset alignment to fastq
-  samtools sort -n -o temp_subsample.sorted.bam temp_subsample.bam
-  samtools view -uf64 temp_subsample.sorted.bam | samtools fastq - > subsample.fq1
-  samtools view -uf128 temp_subsample.sorted.bam | samtools fastq - > subsample.fq2
+  samtools collate \
+    -f -r 100000 -u -O \
+    --threads "${collate_threads}" \
+    temp_subsample.bam \
+    tmp.collate \
+  | samtools fastq -1 subsample.fq1 -2 subsample.fq1 -0 /dev/null -s /dev/null \
+      -n --threads "${fastq_threads}"
 
   # call kallisto on subsampled fastqs
   kallisto quant -i "${kallisto_index}" -o anaquin_subsample/kallisto_output subsample.fq1 subsample.fq2
