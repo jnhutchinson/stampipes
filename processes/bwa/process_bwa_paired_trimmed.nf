@@ -17,9 +17,6 @@ params.readlength = 36
 
 params.cramthreads = 10
 
-nuclear_chroms = "${params.genome}.nuclear.txt"
-dataDir = "${baseDir}/../../data"
-
 def helpMessage() {
   log.info"""
     Usage: nextflow run process_bwa_paired_trimmed.nf \\
@@ -49,6 +46,10 @@ if (params.help || !params.r1 || !params.r2 || !params.genome){
 genome = params.genome
 genome_name = file(params.genome).baseName
 threads = params.threads
+
+nuclear_chroms = "${params.genome}.nuclear.txt"
+dataDir = "${baseDir}/../../data"
+
 
 /*
  * Step 0: Split Fastq into chunks
@@ -208,13 +209,13 @@ process align {
   input:
   set file(trimmed_r1), file(trimmed_r2) from with_umi
 
-  file genome from file(params.genome)
-  file '*' from file("${params.genome}.amb")
-  file '*' from file("${params.genome}.ann")
-  file '*' from file("${params.genome}.bwt")
-  file '*' from file("${params.genome}.fai")
-  file '*' from file("${params.genome}.pac")
-  file '*' from file("${params.genome}.sa")
+  file genome from file("${genome}")
+  file '*' from file("${genome}.amb")
+  file '*' from file("${genome}.ann")
+  file '*' from file("${genome}.bwt")
+  file '*' from file("${genome}.fai")
+  file '*' from file("${genome}.pac")
+  file '*' from file("${genome}.sa")
 
 
   output:
@@ -494,7 +495,7 @@ process density_files {
 
   input:
   set file(bam), file(bai) from bam_for_density
-  file fai from file("${params.genome}.fai")
+  file fai from file("${genome}.fai")
   file density_buckets from file(
     "$baseDir/../../data/densities/chrom-buckets.${genome_name}.${win}_${bini}.bed.starch"
   )
@@ -567,7 +568,7 @@ process cram {
 
   input:
   file bam from bams_to_cram
-  file ref from file("${genome}.fa")
+  file ref from file("${genome}")
   file fai from file("${genome}.fai")
 
   output:

@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+export NXF_VER=20.10.0
+
 load test_helper
 
 if command -v docker >/dev/null ; then
@@ -22,7 +24,7 @@ export HOTSPOT_DIR=/home/solexa/hotspot-hpc/hotspot-distr
 
 @test 'DNase alignment pipeline' {
   cd "$BATS_TEST_DIRNAME/dnase/alignment"
-  run nextflow run "$root/processes/bwa/process_bwa_paired_trimmed.nf" -profile "$profile" -resume
+  run nextflow run "$root/processes/bwa/process_bwa_paired_trimmed.nf" -profile "$profile" -resume -ansi-log false
   [ "$status" -eq 0 ] || (echo "Output:"; echo "$output" ; false)
 
   cmp_picard "MarkDuplicates.picard"
@@ -39,7 +41,7 @@ export HOTSPOT_DIR=/home/solexa/hotspot-hpc/hotspot-distr
 @test 'DNase pipeline, single-end' {
   skip "single-end not tested yet"
   cd "$BATS_TEST_DIRNAME/dnase/alignment"
-  run nextflow run "$root/processes/bwa/process_bwa_paired_trimmed.nf" -profile "$profile" --r2 "" -resume
+  run nextflow run "$root/processes/bwa/process_bwa_paired_trimmed.nf" -profile "$profile" --r2 "" -resume -ansi-log false
   [ "$status" -eq 0 ] || (echo "Output:"; echo "$output" ; false)
 
 #  cmp_picard "MarkDuplicates.picard"
@@ -54,7 +56,7 @@ export HOTSPOT_DIR=/home/solexa/hotspot-hpc/hotspot-distr
 
 @test 'DNase aggregation' {
   cd "$BATS_TEST_DIRNAME/dnase/aggregation"
-  run nextflow run "$root/processes/bwa/aggregate/basic.nf" -profile "$profile" -resume
+  run nextflow run "$root/processes/bwa/aggregate/basic.nf" -profile "$profile" -resume -ansi-log false
   [ "$status" -eq 0 ] || (echo "Output:"; echo "$output" ; false)
 
   cmp_picard CollectInsertSizeMetrics.picard
