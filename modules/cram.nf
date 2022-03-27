@@ -54,7 +54,7 @@ process encode_cram {
 }
 
 process encode_cram_no_ref {
-  tag "${meta.id}"
+  tag "${meta?.id}"
 
   module "samtools/1.12"
   container "quay.io/biocontainers/samtools:1.12--h9aed4be_1"

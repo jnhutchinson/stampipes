@@ -1,5 +1,10 @@
 #!/bin/bash
 
+function error() {
+  echo "$1"
+  return 1
+}
+
 function require_exe() {
   exitstatus=0
   for exe in "$@" ; do
@@ -14,6 +19,7 @@ function require_exe() {
 function cmp_text() {
   name=$1
   echo "Comparing $name..."
+  [[ -e "output/$name" ]] || error "output/$name does not exist"
   diff "expected/$name" "output/$name"
 }
 
@@ -51,6 +57,7 @@ function cmp_bam() {
     return 0
   fi
   echo "Comparing $name..."
+  [[ -e "output/$name" ]] || error "output/$name does not exist"
   cmp <(norm_bam "expected/$name") <(norm_bam "output/$name") \
     || (echo "$name does not match" ; false)
 

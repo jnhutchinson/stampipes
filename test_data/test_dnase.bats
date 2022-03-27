@@ -34,7 +34,8 @@ export HOTSPOT_DIR=/home/solexa/hotspot-hpc/hotspot-distr
   cmp_starch "density.bed.starch"
   #cmp_bam "filtered.bam"
   #cmp_bam "marked.bam"
-  cmp_bam marked.cram
+  #cmp_bam marked.cram
+  cmp_bam filtered.cram
 
 }
 

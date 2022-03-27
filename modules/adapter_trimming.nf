@@ -34,12 +34,13 @@ process fastp_adapter_trim {
 /// Our custom in-house adapter-trimming script
 process adapter_trim {
   input:
-    tuple path(r1), path(r2), val(adapterP5), val(adapterP7)
+    tuple val(meta), path(r1), path(r2), val(adapterP5), val(adapterP7)
 
   output:
-    path 'out.r?.fastq.gz', emit: fastq
+    tuple val(meta), path('out.r?.fastq.gz'), emit: fastq
     //path 'out.r2.fastq.gz', emit: trimmed_r2
-    path 'adapter_trimming.txt', emit: metrics
+    tuple val(meta), path('adapter_trimming.txt'), emit: metrics
+    tuple val(meta), path('trim.counts.txt'), emit: counts
 
   script:
   """
@@ -54,5 +55,18 @@ process adapter_trim {
     out.r1.fastq.gz \
     out.r2.fastq.gz \
     &> adapter_trimming.txt
+  awk '{print "adapter-trimmed\t" \$NF * 2}' \
+    < adapter_trimming.txt \
+    > trim.counts.txt
   """
+}
+
+def parse_legacy_adapter_file(adapter_file) {
+  // returns two values, p7 and p5
+  def adapters = [:]
+  adapter_file.readLines().each {
+    columns = it.split()
+    adapters[columns[0]] = columns[1]
+  }
+  return [adapters.P7, adapters.P5]
 }
