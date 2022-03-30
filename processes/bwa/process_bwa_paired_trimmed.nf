@@ -69,6 +69,7 @@ workflow {
     adapter_file: file(params.adapter_file, checkIfExists: true),
     read_length: params.readlength,
     umi: params.UMI,
+    outdir: params.outdir,
   ]
   BWA_ALIGNMENT(channel.of(meta))
 }
@@ -415,7 +416,6 @@ process spot_score {
 process density_files {
 
   label "high_mem"
-  publishDir params.outdir
 
   input:
     tuple val(meta), path(bam), path(bai), path(fai), path(density_buckets)

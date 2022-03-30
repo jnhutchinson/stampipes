@@ -48,3 +48,27 @@ process publish_with_meta {
   """
   """
 }
+
+def get_dir(meta, dir) {
+  if (dir) {
+    return dir
+  }
+  if (meta.outdir) {
+    return meta.outdir
+  }
+  return params.outdir
+}
+
+process publish_many {
+  publishDir { dir }, mode: params.publishmode
+  executor "local"
+
+  input:
+    tuple val(meta), val(dir), path('*')
+
+  output:
+    path('*'), includeInputs: true
+  script:
+  """
+  """
+}
