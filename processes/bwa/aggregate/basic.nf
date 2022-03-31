@@ -43,7 +43,7 @@ include { encode_cram } from "../../../modules/cram.nf"
 include { publish; publish_with_meta; publish_many } from "../../../modules/utility.nf"
 
 workflow {
-  def bams = params.bams.tokenize(",").collect { file(it, checkExists: true) }
+  def bams = params.bams.tokenize(",").collect { file(it, checkExists: true) }.flatten()
   def meta = [
     genome: file(params.genome, checkExists: true),
     bams: bams,
@@ -51,7 +51,7 @@ workflow {
     read_length: params.readlength,
 
     id: params.id,
-    hotspot_id: params.hotspot_id || params.id,
+    hotspot_id: params.hotspot_id ?: params.id,
     hotspot_index: params.hotspot_index,
 
     reference_mappable: file(params.mappable, checkExists: true),
@@ -103,9 +103,9 @@ workflow DNASE_AGGREGATION {
   take: orig_metadata
 
   main:
-    meta = orig_metadata.map { meta_defaults(it) }
+    def metadata = orig_metadata.map { meta_defaults(it) }
 
-    meta.map { meta -> [meta, meta.bams] }
+    metadata.map { meta -> [meta, meta.bams] }
     | merge_bam
 
     merge_bam.out.map { meta, bam -> [meta, meta.UMI, bam] }
@@ -169,6 +169,7 @@ workflow DNASE_AGGREGATION {
       insert_sizes.out,
       multimapping_density.out,
       normalize_density.out,
+      motif_matrix.out,
     ).map { [it[0], params.outdir, it[1..-1].flatten()] } // Massage it into the right shape
     // Hotspots go in their own directory
     .mix(hotspot2.out.all.map { [it[0], "${params.outdir}/peaks", it[1..-1].flatten()] })

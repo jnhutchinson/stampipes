@@ -45,7 +45,7 @@ function cmp_starch() {
 
 # There are a number of ambiguities that make comparing BAM files naively difficult
 function norm_bam() {
-  "$samtools" view "$1" |
+  samtools view "$1" |
     awk 'and($2, 4) {$5=0;$6="*"} $2 >= 4096 { $2 -= 4096 } 1' |
     perl -e '$,="\t";' -ane 'print @F[0..10], sort(@F[11..$#F]), "\n"'
 }
