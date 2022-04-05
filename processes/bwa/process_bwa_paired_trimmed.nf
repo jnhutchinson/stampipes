@@ -54,7 +54,8 @@ if (params.help || !params.r1 || !params.r2 || !params.genome){
 dataDir = "${baseDir}/../../data"
 
 include { split_paired } from "../../modules/fastq.nf" addParams(fastq_split_count: params.chunk_size)
-include { get_bwa_index_files; bwa_sampe } from "../../modules/bwa.nf"
+//include { get_bwa_index_files; bwa_sampe } from "../../modules/bwa.nf"
+include { BWA_ALIGN } from "../../modules/bwa.nf"
 include { adapter_trim; parse_legacy_adapter_file } from "../../modules/adapter_trimming.nf"
 include { encode_cram } from "../../modules/cram.nf"
 include { publish; publish_with_meta } from "../../modules/utility.nf"
@@ -122,8 +123,8 @@ workflow BWA_ALIGNMENT {
     | trim_to_length
     | map { meta, r1, r2 -> [meta, meta.umi, r1, r2] }
     | add_umi_info
-    | map { meta, r1, r2 -> [ meta, r1, r2, meta.genome.name, get_bwa_index_files(meta.genome) ]  }
-    | bwa_sampe
+    | map { meta, r1, r2 -> [ meta, r1, r2, meta.genome ]  }
+    | BWA_ALIGN
     | map { meta, bam -> [ meta, bam, meta.reference_nuclear_chroms ] }
     | filter_bam
     | sort_bam
