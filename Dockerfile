@@ -22,7 +22,7 @@ RUN apt-get install -y \
       perl \
       python \
       zlib1g-dev
-# Install BWA - do some magicks so it compiles with musl.c
+# Install BWA
 RUN   git clone https://github.com/lh3/bwa.git \
       && cd bwa \
       && git checkout 0.7.12 \
@@ -154,22 +154,36 @@ RUN apt-get install -y \
 RUN git clone --recurse-submodules https://github.com/smithlabcode/preseq.git \
    && cd preseq \
    && git checkout v2.0.1 \
+   && git submodule update \
    && make
+
+##########
+# Hotspot2
+from build-base as build-hotspot2
+RUN git clone https://github.com/Altius/hotspot2.git \
+  && cd hotspot2 \
+  && make \
+  && cd / \
+  && git clone https://github.com/StamLab/modwt.git \
+  && cd modwt \
+  && git checkout 28e9f479c737836ffc870199f2468e30659ab38d \
+  && make
 
 
 #############
 # Final image
 from ubuntu:18.04 as stampipes
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
 RUN apt-get install -y \
       bash \
       bc \
       bowtie \
       build-essential \
-      libboost-dev \
       coreutils \
+      gawk \
+      libboost-dev \
       libgsl-dev \
       littler \
       openjdk-8-jre \
@@ -198,6 +212,9 @@ COPY --from=build-samtools /usr/local/bin/samtools /usr/local/bin
 COPY --from=build-bedops /bedops/bin /usr/local/bin
 ENV HOTSPOT_DIR /hotspot
 COPY --from=build-hotspot1 /hotspot/hotspot-distr/ $HOTSPOT_DIR
+COPY --from=build-hotspot2 /hotspot2/bin /usr/local/bin/
+COPY --from=build-hotspot2 /hotspot2/scripts /usr/local/bin/
+COPY --from=build-hotspot2 /modwt/bin /usr/local/bin/
 COPY --from=build-kentutils /kentUtils-302.0.0/bin/ /usr/local/bin/
 COPY --from=build-bedtools /bedtools2/bin/ /usr/local/bin/
 COPY --from=build-preseq /preseq/preseq /usr/local/bin/

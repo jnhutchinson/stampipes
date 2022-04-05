@@ -81,7 +81,7 @@ def meta_defaults(m) {
   meta.putIfAbsent("genome_name", meta.genome.simpleName)
   meta.putIfAbsent("density_window_width", 75)
   meta.putIfAbsent("density_step_size", 20)
-    
+
   meta.putIfAbsent("reference_nuclear_chroms", file("${meta.genome}.nuclear.txt", checkIfExists: true))
   meta.putIfAbsent("reference_fai", file("${meta.genome}.fai", checkIfExists: true))
   meta.putIfAbsent("reference_chrom_info", file(
@@ -124,7 +124,7 @@ workflow BWA_ALIGNMENT {
     | add_umi_info
     | map { meta, r1, r2 -> [ meta, r1, r2, meta.genome.name, get_bwa_index_files(meta.genome) ]  }
     | bwa_sampe
-    | map { meta, bam -> [ meta, bam, "/home/nelsonjs/code/stampipes/test_data/ref/chr22.fa.nuclear.txt" ] }
+    | map { meta, bam -> [ meta, bam, meta.reference_nuclear_chroms ] }
     | filter_bam
     | sort_bam
     | groupTuple()  // TODO: This blocks until all sort_bams are done... seems bad.
@@ -170,7 +170,7 @@ workflow BWA_ALIGNMENT {
     | gather_counts
 
 
-    
+
     // Publish all files
     Channel.empty().mix(
       mark_duplicates.out.metrics,

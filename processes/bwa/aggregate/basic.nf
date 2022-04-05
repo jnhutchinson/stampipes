@@ -37,7 +37,7 @@ def helpMessage() {
   """.stripIndent();
 }
 
-dataDir = "$baseDir/../../../data"
+dataDir = "${baseDir}/../../../data"
 
 include { encode_cram } from "../../../modules/cram.nf"
 include { publish; publish_with_meta; publish_many } from "../../../modules/utility.nf"
@@ -132,14 +132,14 @@ workflow DNASE_AGGREGATION {
        .join( filter_bam.out )
        .map { meta, density, bam -> [meta, meta.reference_fai, density, bam] }
      | normalize_density
- 
+
      filter_nuclear.out | macs2
      filter_nuclear.out | preseq
      filter_nuclear.out.map { meta, bam -> [
        meta, meta.genome_name, meta.reference_mappable, meta.reference_chrom_info, bam] }
      | spot_score
      filter_nuclear.out.map { meta, bam -> [
-       meta, meta.hotspot_id, meta.reference_mappable, meta.reference_chrom_sizes, meta.reference_hotspot_centers, bam]} 
+       meta, meta.hotspot_id, meta.reference_mappable, meta.reference_chrom_sizes, meta.reference_hotspot_centers, bam]}
      | hotspot2
 
     hotspot2.out.hotspots \
@@ -279,7 +279,7 @@ process macs2 {
   script:
     """
     macs2 callpeak \
-      -t "$bam" \
+      -t "${bam}" \
       -f BAMPE \
       -g hs \
       -B \
@@ -319,10 +319,11 @@ process hotspot2 {
     cd peaks
 
     # Rename peaks files to include FDR
-    mv nuclear.peaks.narrowpeaks.starch nuclear.peaks.narrowpeaks.fdr0.05.starch
-    mv nuclear.peaks.starch nuclear.peaks.fdr0.05.starch
+    # Different versions of hotspot2 handle this differently
+    [[ -e nuclear.peaks.fdr0.05.narrowpeaks.starch ]] && mv nuclear.peaks.fdr0.05.narrowpeaks.starch nuclear.peaks.narrowpeaks.fdr0.05.starch
+    [[ -e nuclear.peaks.fdr0.05.starch ]] && mv nuclear.peaks.fdr0.05.starch nuclear.peaks.fdr0.05.starch
 
-    bash \$STAMPIPES/scripts/SPOT/info.sh \
+    bash "\$STAMPIPES/scripts/SPOT/info.sh" \
       nuclear.hotspots.fdr0.05.starch hotspot2 nuclear.SPOT.txt \
       > nuclear.hotspot2.info
 
@@ -330,8 +331,8 @@ process hotspot2 {
     hsmerge.sh -f 0.01 nuclear.allcalls.starch nuclear.hotspots.fdr0.01.starch
     hsmerge.sh -f 0.001 nuclear.allcalls.starch nuclear.hotspots.fdr0.001.starch
 
-    density-peaks.bash \$TMPDIR "varWidth_20_${hotspotid}" nuclear.cutcounts.starch nuclear.hotspots.fdr0.01.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.01.starch \$(cat nuclear.cleavage.total)
-    density-peaks.bash \$TMPDIR "varWidth_20_${hotspotid}" nuclear.cutcounts.starch nuclear.hotspots.fdr0.001.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.001.starch \$(cat nuclear.cleavage.total)
+    density-peaks.bash "\$TMPDIR" "varWidth_20_${hotspotid}" nuclear.cutcounts.starch nuclear.hotspots.fdr0.01.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.01.starch \$(cat nuclear.cleavage.total)
+    density-peaks.bash "\$TMPDIR" "varWidth_20_${hotspotid}" nuclear.cutcounts.starch nuclear.hotspots.fdr0.001.starch ../"${chrom_sizes}" nuclear.density.starch nuclear.peaks.fdr0.001.starch \$(cat nuclear.cleavage.total)
 
     rm -rf "\$TMPDIR"
     """
@@ -350,17 +351,17 @@ process spot_score {
   script:
     """
     # random sample
-    samtools view -h -F 12 -f 3 "$bam" \
+    samtools view -h -F 12 -f 3 "${bam}" \
       | awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
       | samtools view -uS -o __nuclear.bam
-    bash \$STAMPIPES/scripts/bam/random_sample.sh __nuclear.bam subsample.bam 5000000
+    bash "\$STAMPIPES/scripts/bam/random_sample.sh" __nuclear.bam subsample.bam 5000000
     samtools view -b -f 0x0040 subsample.bam > r1.bam
 
     # hotspot
-    bash \$STAMPIPES/scripts/SPOT/runhotspot.bash \
-      \$HOTSPOT_DIR \
-      \$PWD \
-      \$PWD/r1.bam \
+    bash "\$STAMPIPES/scripts/SPOT/runhotspot.bash" \
+      "\$HOTSPOT_DIR" \
+      "\$PWD" \
+      "\$PWD/r1.bam" \
       "${genome_name}" \
       "${params.readlength}" \
       DNaseI
@@ -368,7 +369,7 @@ process spot_score {
     starch --header r1-both-passes/r1.hotspot.twopass.zscore.wig \
       > r1.spots.starch
 
-    bash \$STAMPIPES/scripts/SPOT/info.sh \
+    bash "\$STAMPIPES/scripts/SPOT/info.sh" \
       r1.spots.starch hotspot1 r1.spot.out \
       > r1.hotspot.info
     """
@@ -385,8 +386,8 @@ process bam_counts {
 
   script:
     """
-    python3 \$STAMPIPES/scripts/bwa/bamcounts.py \
-      "$bam" \
+    python3 "\$STAMPIPES/scripts/bwa/bamcounts.py" \
+      "${bam}" \
       tagcounts.txt
     """
 }
@@ -421,7 +422,7 @@ process preseq {
 
   script:
     """
-    python3 \$STAMPIPES/scripts/bam/mark_dups.py -i "${nuclear_bam}" -o /dev/null --hist dups.hist
+    python3 "\$STAMPIPES/scripts/bam/mark_dups.py" -i "${nuclear_bam}" -o /dev/null --hist dups.hist
     preseq lc_extrap -hist dups.hist -extrap 1.001e9 -s 1e6 -v > preseq.txt \
     || preseq lc_extrap -defects -hist dups.hist -extrap 1.001e9 -s 1e6 -v > preseq.txt
 
@@ -444,8 +445,8 @@ process cutcounts {
   script:
     """
     bam2bed --do-not-sort \
-    < "$filtered_bam" \
-    | awk -v cutfile=cuts.bed -v fragmentfile=fragments.bed -f \$STAMPIPES/scripts/bwa/aggregate/basic/cutfragments.awk
+    < "${filtered_bam}" \
+    | awk -v cutfile=cuts.bed -v fragmentfile=fragments.bed -f "\$STAMPIPES/scripts/bwa/aggregate/basic/cutfragments.awk"
 
     sort-bed fragments.bed | starch - > fragments.starch
     sort-bed cuts.bed | starch - > cuts.starch
@@ -462,7 +463,7 @@ process cutcounts {
     | starch - > cutcounts.starch
 
     # Bigwig
-    "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
+    "\$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
       cutcounts.starch \
       cutcounts.bw \
       "${fai}"
@@ -537,7 +538,7 @@ process multimapping_density {
     '''
     # Mark multi-mapping reads as QC-pass!
     samtools view -h "!{marked_bam}" |
-    awk 'BEGIN{OFS="\t"} /XA:Z/ {$2 = and(or($2, 2), compl(512))} 1' |
+    gawk 'BEGIN{OFS="\t"} /XA:Z/ {$2 = and(or($2, 2), compl(512))} 1' |
     samtools view --threads 3 -F 512 -o filtered.bam
     samtools index filtered.bam
 
@@ -561,7 +562,7 @@ process multimapping_density {
     > mm_density.starch
 
     # Bigwig
-    "/home/solexa/stampipes/scripts/bwa/starch_to_bigwig.bash" \
+    "$STAMPIPES/scripts/bwa/starch_to_bigwig.bash" \
       mm_density.starch \
       mm_density.bw \
       "!{fai}" \
@@ -673,7 +674,7 @@ process motif_matrix {
     """
     # create sparse motifs
     bedmap --echo --echo-map-id --fraction-map 1 --delim '\t' "${hotspot_calls}" "${fimo_transfac}" > temp.bedmap.txt
-    python \$STAMPIPES/scripts/bwa/aggregate/basic/sparse_motifs.py "${fimo_names}" temp.bedmap.txt
+    python "\$STAMPIPES/scripts/bwa/aggregate/basic/sparse_motifs.py" "${fimo_names}" temp.bedmap.txt
     """
 }
 
@@ -759,34 +760,34 @@ process differential_hotspots {
  * Footprint calling
  */
 // process learn_dispersion {
-// 
+//
 //   label "footprints"
 //   publishDir params.outdir
-// 
+//
 //   memory = '8 GB'
 //   cpus = 8
-// 
+//
 //   when:
 //     params.bias != ""
-// 
+//
 //   input:
 //     tuple val(meta), path(ref), path(bias), path(bam), path(spots)
-// 
+//
 //   output:
 //   set file('dm.json'), file(bam), file ("${bam}.bai") into dispersion
 //   file 'dm.json' into to_plot
-// 
+//
 //   script:
 //   """
 //   samtools index "$bam"
-// 
+//
 //   # TODO: Use nuclear file
 //   unstarch $spots \
 //   | grep -v "_random" \
 //   | grep -v "chrUn" \
 //   | grep -v "chrM" \
 //   > intervals.bed
-// 
+//
 //   ftd-learn-dispersion-model \
 //     --bm $bias \
 //     --half-win-width 5 \
@@ -796,18 +797,18 @@ process differential_hotspots {
 //     intervals.bed \
 //   > dm.json
 //   """.stripIndent()
-// 
+//
 // }
-// 
+//
 // process make_intervals {
-// 
+//
 //   label "footprints"
 //   input:
 //   file starch from hotspot_calls
-// 
+//
 //   output:
 //   file 'chunk_*' into intervals mode flatten
-// 
+//
 //   script:
 //   """
 //   unstarch "$starch" \
@@ -816,23 +817,23 @@ process differential_hotspots {
 //   | grep -v "chrM" \
 //   | split -l "$params.chunksize" -a 4 -d - chunk_
 //   """.stripIndent()
-// 
+//
 // }
-// 
+//
 // process compute_deviation {
-// 
+//
 //   label "footprints"
 //   memory = '8 GB'
 //   cpus = 4
-// 
+//
 //   input:
 //   set file(interval), file(dispersion), file(bam), file(bai) from intervals.combine(dispersion)
 //   file(bias) from file(params.bias)
 //   file(ref) from file("${params.genome}.fa")
-// 
+//
 //   output:
 //   file 'deviation.out' into deviations
-// 
+//
 //   script:
 //   """
 //   ftd-compute-deviation \
@@ -850,72 +851,72 @@ process differential_hotspots {
 //   > deviation.out
 //   """.stripIndent()
 // }
-// 
+//
 // process merge_deviation {
-// 
+//
 //   label "footprints"
 //   memory = "32 GB"
 //   cpus = 1
-// 
+//
 //   when:
 //   params.bias != ""
-// 
+//
 //   input:
 //   file 'chunk_*' from deviations.collect()
-// 
+//
 //   output:
 //   file 'interval.all.bedgraph' into merged_interval
-// 
+//
 //   script:
 //   """
 //   echo chunk_*
 //   sort -k1,1 -k2,2n -S 32G -m chunk_* > interval.all.bedgraph
 //   """.stripIndent()
 // }
-// 
+//
 // process working_tracks {
-// 
+//
 //   label "footprints"
 //   memory = '32 GB'
 //   cpus = 1
-// 
+//
 //   publishDir params.outdir
-// 
+//
 //   input:
 //   file merged_interval
-// 
+//
 //   output:
 //   file 'interval.all.bedgraph' into bedgraph
 //   file 'interval.all.bedgraph.starch'
 //   file 'interval.all.bedgraph.gz'
 //   file 'interval.all.bedgraph.gz.tbi'
-// 
+//
 //   script:
 //   """
 //   sort-bed "$merged_interval" | starch - > interval.all.bedgraph.starch
 //   bgzip -c "$merged_interval" > interval.all.bedgraph.gz
 //   tabix -0 -p bed interval.all.bedgraph.gz
 //   """.stripIndent()
-// 
+//
 // }
-// 
+//
 // thresholds = Channel.from(0.2, 0.1, 0.05, 0.01, 0.001, 0.0001)
-// 
+//
 // process compute_footprints {
-// 
+//
 //   label "footprints"
 //   memory = '8 GB'
 //   cpus = 1
-// 
+//
 //   publishDir params.outdir
-// 
+//
 //   input:
 //   set file(merged_interval), val(threshold) from merged_interval.combine(thresholds)
-// 
+//
 //   output:
 //   file "interval.all.fps.${threshold}.bed.gz"
 //   file "interval.all.fps.${threshold}.bed.gz.tbi"
-// 
+//
 //   script:
 //   """
 //   output=interval.all.fps.${threshold}.bed
@@ -925,25 +926,25 @@ process differential_hotspots {
 // 	| bedops -m - \
 // 	| awk -v OFS="\t" -v thresh="${threshold}" '{ \$4="."; \$5=thresh; print; }' \
 //   > \$output
-// 
+//
 //   bgzip -c "\$output" > "\$output.gz"
 //   tabix -0 -p bed "\$output.gz"
 //   """.stripIndent()
-// 
+//
 // }
-// 
+//
 // process plot_footprints {
-// 
+//
 //   label "footprints"
 //   publishDir params.outdir
-// 
+//
 //   input:
 //   file model from to_plot
 //   file plot from file("$baseDir/plot_footprints.py")
-// 
+//
 //   output:
 //   file "dispersion.*pdf"
-// 
+//
 //   script:
 //   """
 //   "./$plot" "$model"
