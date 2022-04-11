@@ -93,6 +93,27 @@ RUN git clone https://bitbucket.org/jvierstra/bio-tools.git \
 from build-base as get-picard
 RUN wget --quiet https://github.com/broadinstitute/picard/releases/download/2.8.1/picard.jar
 
+#######
+# fastp
+from build-base as get-fastp
+RUN wget --quiet http://opengene.org/fastp/fastp.0.23.2 \
+    && mv fastp.0.23.2 fastp \
+    && chmod ugo+x fastp
+
+#from build-base as build-fastp
+#RUN apt install -y yasm nasm
+#RUN git clone https://github.com/intel/isa-l.git \
+#      && cd isa-l \
+#      && ./autogen.sh \
+#      && ./configure --prefix=/usr --libdir=/usr/lib \
+#      && make install
+#RUN git clone https://github.com/ebiggers/libdeflate.git \
+#      && cd libdeflate \
+#      && make install
+#RUN git clone https://github.com/OpenGene/fastp.git \
+#      && cd fastp \
+#      && make
+
 ########
 # Bedops
 from build-base as build-bedops
@@ -219,6 +240,7 @@ COPY --from=build-kentutils /kentUtils-302.0.0/bin/ /usr/local/bin/
 COPY --from=build-bedtools /bedtools2/bin/ /usr/local/bin/
 COPY --from=build-preseq /preseq/preseq /usr/local/bin/
 COPY --from=get-picard /picard.jar /usr/local/lib/picard.jar
+COPY --from=get-fastp /fastp /usr/local/bin/
 
 # Make alias for picard
 RUN echo -e '#!/bin/bash\njava -jar /usr/local/lib/picard.jar $@' \

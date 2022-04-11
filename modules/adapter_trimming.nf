@@ -2,9 +2,9 @@
 /// https://github.com/OpenGene/fastp
 process fastp_adapter_trim {
 
-  // TODO: Get a newer version!
-  // 0.23.0 enables deterministic results, which is crucial
-  module 'fastp/0.21.0'
+  // TODO: Get a newer version in module system!
+  // TODO: Set this module in the RNA pipeline
+  //module 'fastp/0.21.0'
   cpus 3
 
   input:

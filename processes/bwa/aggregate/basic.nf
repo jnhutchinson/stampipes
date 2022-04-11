@@ -320,8 +320,8 @@ process hotspot2 {
 
     # Rename peaks files to include FDR
     # Different versions of hotspot2 handle this differently
-    [[ -e nuclear.peaks.fdr0.05.narrowpeaks.starch ]] && mv nuclear.peaks.fdr0.05.narrowpeaks.starch nuclear.peaks.narrowpeaks.fdr0.05.starch
-    [[ -e nuclear.peaks.fdr0.05.starch ]] && mv nuclear.peaks.fdr0.05.starch nuclear.peaks.fdr0.05.starch
+    [[ -e nuclear.peaks.narrowpeaks.starch ]] && mv nuclear.peaks.narrowpeaks.starch nuclear.peaks.narrowpeaks.fdr0.05.starch
+    [[ -e nuclear.peaks.starch ]] && mv nuclear.peaks.starch nuclear.peaks.fdr0.05.starch
 
     bash "\$STAMPIPES/scripts/SPOT/info.sh" \
       nuclear.hotspots.fdr0.05.starch hotspot2 nuclear.SPOT.txt \

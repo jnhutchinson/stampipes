@@ -56,7 +56,7 @@ dataDir = "${baseDir}/../../data"
 include { split_paired } from "../../modules/fastq.nf" addParams(fastq_split_count: params.chunk_size)
 //include { get_bwa_index_files; bwa_sampe } from "../../modules/bwa.nf"
 include { BWA_ALIGN } from "../../modules/bwa.nf"
-include { adapter_trim; parse_legacy_adapter_file } from "../../modules/adapter_trimming.nf"
+include { fastp_adapter_trim; parse_legacy_adapter_file } from "../../modules/adapter_trimming.nf"
 include { encode_cram } from "../../modules/cram.nf"
 include { publish; publish_with_meta } from "../../modules/utility.nf"
 
@@ -116,9 +116,9 @@ workflow BWA_ALIGNMENT {
          def (p7, p5) = parse_legacy_adapter_file(m.adapter_file);
          return [m, reads[0], reads[1], p7, p5]
        }}
-    | adapter_trim
+    | fastp_adapter_trim
 
-    adapter_trim.out.fastq
+    fastp_adapter_trim.out.fastq
       .map { meta, reads -> [ meta, meta.trim_to_length, reads[0], reads[1] ] }
     | trim_to_length
     | map { meta, r1, r2 -> [meta, meta.umi, r1, r2] }
