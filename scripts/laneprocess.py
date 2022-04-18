@@ -211,11 +211,17 @@ class ProcessSetUp(object):
         fastq_directory = lane["directory"]
 
         barcode = "NoIndex" if lane['barcode_index'] is None else lane['barcode_index']
-        spreadsheet_name = "%s_%s_L00%d" % (lane['samplesheet_name'], barcode, lane['lane'])
+        try:
+            # Preferred name
+            spreadsheet_name = lane['alignments'][0]['sample_name']
+        except (KeyError, IndexError):
+            # Fallback method, doesn't always have the same barcode string
+            spreadsheet_name = "%s_%s_L00%d" % (lane['samplesheet_name'], barcode, lane['lane'])
+            logging.warning("No alignment sample_name for lane, using %s instead" % spreadsheet_name)
 
         if not os.path.exists(fastq_directory):
             logging.critical("fastq directory %s does not exist, cannot continue" % fastq_directory)
-            return False 
+            return False
 
         script_file = os.path.join( fastq_directory, "%s-%s" % (spreadsheet_name, self.qsub_scriptname) )
 
