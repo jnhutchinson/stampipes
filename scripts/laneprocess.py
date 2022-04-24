@@ -1,3 +1,5 @@
+""" This script is deprecated! """
+
 import json
 import os
 import sys
@@ -10,6 +12,8 @@ except ImportError:
     from futures import ThreadPoolExecutor
 
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+logging.warn("This script is deprecated - consider using apilaneprocess.py instead!")
 
 STAMPIPES = os.getenv('STAMPIPES', '~/stampipes')
 
@@ -214,6 +218,7 @@ class ProcessSetUp(object):
         try:
             # Preferred name
             spreadsheet_name = lane['alignments'][0]['sample_name']
+            logging.warning("Spreadsheet name: %s", spreadsheet_name)
         except (KeyError, IndexError):
             # Fallback method, doesn't always have the same barcode string
             spreadsheet_name = "%s_%s_L00%d" % (lane['samplesheet_name'], barcode, lane['lane'])
