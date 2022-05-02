@@ -7,48 +7,54 @@ workflow test {
  main:
    // TODO: How to make this work?
    // params.fastq_split_count = 16_000
-   meta = [id: "test"]
-   r1 = file("test_data/dnase/alignment/r1.fastq.gz")
-   r2 = file("test_data/dnase/alignment/r2.fastq.gz")
-   input = channel.of([meta, r1, r2])
+   def meta = [id: "test"]
+   def r1 = file("test_data/dnase/alignment/r1.fastq.gz")
+   def r2 = file("test_data/dnase/alignment/r2.fastq.gz")
+   def input = channel.of([meta, r1, r2])
    split_paired(input).view()
 }
 
-def meta_with_read_idx(meta, idx) {
-  meta.clone() + [read_idx: idx]
+def meta_with_read_idx(m, idx) {
+  def meta_tmp = m.clone()
+  meta_tmp.put("read_idx", idx)
+  meta_tmp
 }
 
 workflow split_paired {
   take: // [meta, r1, r2]
     data
   main:
-    r1 = data
-      .map{ meta, r1, r2 -> [meta_with_read_idx(meta, 1), r1] }
-    r2 = data
-      .map{ meta, r1, r2 -> [meta_with_read_idx(meta, 2), r2] }
-    input = r1.mix(r2)
-    input.view { "input_${it}" }
+    def r1 = data
+      .map{ meta1, r1fq, r2fq -> [meta_with_read_idx(meta1, 1), r1fq] }
+    def r2 = data
+      .map{ meta2, r1fq, r2fq -> [meta_with_read_idx(meta2, 2), r2fq] }
+    def input = r1.mix(r2)
 
+    //input.view { "Input: $it" }
     split_fastq(input)
 
     output = split_fastq.out
       // Key the output by meta & index, for grouping
-      .flatMap { m, files -> {
-        i = 1
-        r = m.remove("read_idx")
+      .flatMap { meta, files ->
+        read_idx = meta.read_idx
+        m = meta.clone().findAll { it.key != "read_idx" }
         if (!(files instanceof ArrayList)) {
           files = [files]
         }
-        files.collect {[
-          [i++, m], // key
-            r, // read_idx for sorting
+        files.sort().collect {[
+          [it.name.tokenize("_").last(), m], // key
+            //read_idx, // read_idx for sorting
             it, // the file
         ]}
-      }}
+      }
+      //.view {"Before grouping: ${it[1..-1]}"}
       // Group together
       .groupTuple(size: 2)
+      //.view {"After grouping: ${it[1..-1]}"}
       // Remove extraneous info and emit [meta, r1, r2]
-      .map { key, _idx, files -> [ key[1], files.sort { it.name } ] }
+      .map { key, files -> [ key[1], files.sort { it.name } ] }
+
+    //output.view { "final output: $it" }
 
   emit: // [meta, r1, r2]
     output
@@ -56,24 +62,27 @@ workflow split_paired {
 
 process split_fastq {
 
-  tag "${meta?.id}"
+  tag "${m?.id}"
 
   input:
     tuple val(meta), path(fastq)
 
   output:
-    tuple val(meta), file("${name_prefix}*gz")
+    tuple val(m), file("out/*gz")
     
   script:
-    fastq_line_count = 4 * params.fastq_split_count
-    name_prefix = "${meta?.id}_"
-    if (meta.read_idx) {
-      name_prefix += "r${meta.read_idx}_"
+    // TODO: Why does putting a 'def m' here break this?
+    m = meta.clone()
+    def fastq_line_count = 4 * params.fastq_split_count
+    def name_prefix = "${m?.id}_"
+    if (m.read_idx) {
+      name_prefix += "r${m.read_idx}_"
     }
     """
+    mkdir out
     zcat "${fastq}" \
     | split -l "${fastq_line_count}" \
-      --filter='gzip -1 > \$FILE.gz' \
+      --filter='gzip -1 > out/\$FILE.gz' \
       - "${name_prefix}"
     """
 }

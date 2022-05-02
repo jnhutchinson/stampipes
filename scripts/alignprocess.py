@@ -330,6 +330,10 @@ class ProcessSetUp(object):
                 logging.error("Missing r2-fastq for lane %d (alignment %d)" % (lane["id"], alignment["id"]))
                 return False
 
+        # Temporary hack to force all data to /net/seq/data2/
+        if "/net/seq/data/" in script_directory:
+            script_directory = script_directory.replace("/data/", "/data2/", 1)
+
         script_file = os.path.join( script_directory, "%s-%s" % (alignment['sample_name'], self.qsub_scriptname) )
         logging.info(script_file)
 

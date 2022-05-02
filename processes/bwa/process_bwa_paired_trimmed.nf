@@ -14,6 +14,7 @@ params.help = false
 params.threads = 1
 params.chunk_size = 16000000
 
+params.id = ""
 params.UMI = false
 params.trim_to = 0
 params.genome = ""
@@ -62,7 +63,7 @@ include { publish; publish_with_meta } from "../../modules/utility.nf"
 
 // When this file is called directly, run our default BWA_ALIGNMENT pipeline for a single sample.
 workflow {
-  def meta = [
+  def metadata = [
     id: params.id,
     r1: file(params.r1, checkIfExists: true),
     r2: file(params.r2),
@@ -72,12 +73,12 @@ workflow {
     umi: params.UMI,
     outdir: params.outdir,
   ]
-  BWA_ALIGNMENT(channel.of(meta))
+  BWA_ALIGNMENT(channel.of(metadata))
 }
 
 // Fill out default values if not provided to us
 def meta_defaults(m) {
-  meta = m.clone()
+  def meta = m.clone()
   meta.putIfAbsent("trim_to_length", 0)
   meta.putIfAbsent("genome_name", meta.genome.simpleName)
   meta.putIfAbsent("density_window_width", 75)
@@ -111,11 +112,14 @@ workflow BWA_ALIGNMENT {
     | fastq_counts
 
     metadata.map { meta -> [meta, file(meta.r1), file(meta.r2)] }
+    //| view {it, r1, r2 -> "input to split_paired: ${it}, ${r1}, ${r2}"}
     | split_paired
-    | map { m, reads -> {
-         def (p7, p5) = parse_legacy_adapter_file(m.adapter_file);
+    //| view { "to map $it" }
+    | map { m, reads ->
+         (p7, p5) = parse_legacy_adapter_file(m.adapter_file);
          return [m, reads[0], reads[1], p7, p5]
-       }}
+       }
+    //| view { "from map $it" }
     | fastp_adapter_trim
 
     fastp_adapter_trim.out.fastq
@@ -157,17 +161,20 @@ workflow BWA_ALIGNMENT {
       ]}
     | density_files
 
-    filter_bam_to_unique
-      .out.map { meta, bam, bai -> [meta, bam, meta.genome] }
+    //filter_bam_to_unique
+    //  .out.map { meta, bam, bai -> [meta, bam, meta.genome] }
+    //| encode_cram
+
+    mark_duplicates.out.marked_bam
+    //filter_bam_to_unique
+      .map { meta, bam -> [meta, bam, meta.genome] }
     | encode_cram
 
-
     Channel.empty().mix(
-      adapter_trim.out.counts,
+      // fastp_adapter_trim.out.counts,
       bam_counts.out,
       fastq_counts.out,
     ).groupTuple()
-    | view { "to counts $it" }
     | gather_counts
 
 

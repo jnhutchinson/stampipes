@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e -o pipefail
 
-version=2.1.2
+version=2.2
+export NXF_VER=20.10.0
 
 cd "$(dirname "$0")"
 
@@ -53,15 +54,16 @@ nextflow run \
   "$STAMPIPES/processes/bwa/process_bwa_paired_trimmed.nf" \
   -c "$STAMPIPES/nextflow.config" \
   -w "$workdir" \
+  --id "ALN${ALIGNMENT_ID}" \
   --r1="$R1_FASTQ" \
   --r2="$R2_FASTQ" \
   --adapter_file="$adapterfile"  \
   --UMI="$UMI_METHOD" \
-  --genome="$BWAINDEX" \
+  --genome="$BWAINDEX.fa" \
   --outdir="$outdir" \
   --threads=3 \
   --readlength="$READLENGTH" \
-  -profile cluster,modules \
+  -profile cluster,docker \
   -resume
 
 # Upload results

@@ -8,12 +8,12 @@ process fastp_adapter_trim {
   cpus 3
 
   input:
-    tuple path(r1), path(r2), val(adapterP5), val(adapterP7)
+    tuple val(meta), path(r1), path(r2), val(adapterP5), val(adapterP7)
 
   output:
-    path 'out.r?.fastq.gz', emit: fastq
-    path 'fastp.json',      emit: metrics_json
-    path 'fastp.html',      emit: metrics_html
+    tuple val(meta), path('out.r?.fastq.gz'), emit: fastq
+    tuple val(meta), path('fastp.json'),      emit: metrics_json
+    tuple val(meta), path('fastp.html'),      emit: metrics_html
 
   script:
     // TODO: Double-check adapter ordering
