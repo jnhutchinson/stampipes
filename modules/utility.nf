@@ -69,6 +69,7 @@ process publish_many {
   output:
     path('*'), includeInputs: true
   script:
-  """
-  """
+    // Intentionally left blank
+    """
+    """
 }
