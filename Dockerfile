@@ -151,7 +151,7 @@ RUN git clone https://github.com/Altius/hotspot2.git \
 
 #######################
 # Final image for DNase
-from ubuntu:18.04 as stampipes-dnase
+from ubuntu:18.04 as altiusinstitute/stampipes-dnase
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
@@ -276,7 +276,7 @@ RUN wget --quiet https://github.com/pachterlab/kallisto/archive/v${kallisto_vers
 
 #####################
 # Final RNA-seq image
-from ubuntu:18.04 as stampipes-rna
+from ubuntu:18.04 as altiusinstitute/stampipes-rna
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
 RUN apt-get install -y \
@@ -328,3 +328,5 @@ COPY --from=build-stringtie /usr/local/bin/stringtie /usr/local/bin/
 RUN echo -e '#!/bin/bash\njava -jar /usr/local/lib/picard.jar $@' \
       > /usr/local/bin/picard \
       && chmod +x /usr/local/bin/picard
+
+FROM genomicpariscentre/bcl2fastq2:2.20.0.422 as altiusinstitute/stampipes-bcl2fastq

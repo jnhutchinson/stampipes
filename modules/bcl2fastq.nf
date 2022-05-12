@@ -14,7 +14,7 @@ workflow test {
     bcl2fastq.out | view { it }
 }
 
-def group_bcl2fastq_output = { meta, fastq_files -> 
+def group_bcl2fastq_output = { meta, fastq_files ->
   def out = []
   for (lib_data in meta.json.libraries) {
     def samplesheet_name = lib_data.samplesheet_name
@@ -107,8 +107,8 @@ process run_bcl2fastq {
   memory "32 GB"
   //module "bcl2fastq2"
   scratch false
-  container "genomicpariscentre/bcl2fastq2"
-  //container "altius/stampipes-bcl2fastq2"
+  //container "genomicpariscentre/bcl2fastq2"
+  container "altiusninstitute/stampipes-bcl2fastq2"
 
   input:
     tuple val(meta), val(lane), path("Samplesheet.csv"), path("flowcell_dir")
