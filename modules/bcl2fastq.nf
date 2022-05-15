@@ -56,7 +56,7 @@ workflow bcl2fastq {
 }
 
 process create_samplesheet {
-  container "stedolan/jq"
+  container "dwdraju/alpine-curl-jq:latest"
 
   input:
     tuple val(meta), val(json)
@@ -110,7 +110,7 @@ process run_bcl2fastq {
   //module "bcl2fastq2"
   scratch false
   //container "genomicpariscentre/bcl2fastq2"
-  container "altiusninstitute/stampipes-bcl2fastq2"
+  container "altiusinstitute/stampipes-bcl2fastq2"
 
   input:
     tuple val(meta), val(lane), path("Samplesheet.csv"), path("flowcell_dir")
