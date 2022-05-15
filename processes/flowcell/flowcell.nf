@@ -33,6 +33,8 @@ workflow {
     ]
 
     Channel.of(metadata) | bcl2fastq
-    bcl2fastq.out | publish_many
+    bcl2fastq.out
+    | map { meta, files -> [meta, params.out_dir, files ]}
+    | publish_many
 
 }

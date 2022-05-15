@@ -36,7 +36,7 @@ process publish {
 
 process publish_with_meta {
   publishDir params.outdir, mode: params.publishmode
-  executor "local"
+  //executor "local"
 
   input:
     tuple val(meta), path(filename)
