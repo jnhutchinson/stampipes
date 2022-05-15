@@ -56,6 +56,8 @@ workflow bcl2fastq {
 }
 
 process create_samplesheet {
+  container "stedolan/jq"
+
   input:
     tuple val(meta), val(json)
 
