@@ -1,3 +1,11 @@
+def remove_ambiguous_bases(adapter) {
+    def x = adapter.takeWhile { it in ['A', 'C', 'T', 'G'] }
+    if (x != adapter) {
+        println("WARN: Adapter '${adapter}' contains ambiguous bases, using '${x}' instead")
+    }
+    return x
+}
+
 /// Using the open-source adapter trimmer
 /// https://github.com/OpenGene/fastp
 process fastp_adapter_trim {
@@ -17,12 +25,15 @@ process fastp_adapter_trim {
 
   script:
     // TODO: Double-check adapter ordering
+    def a7 = remove_ambiguous_bases(adapterP7)
+    def a5 = remove_ambiguous_bases(adapterP5)
+
     """
     fastp \
       --in1 "${r1}" \
       --in2 "${r2}" \
-      --adapter_sequence    "${adapterP7}" \
-      --adapter_sequence_r2 "${adapterP5}" \
+      --adapter_sequence    "${a7}" \
+      --adapter_sequence_r2 "${a5}" \
       --out1 "out.r1.fastq.gz" \
       --out2 "out.r2.fastq.gz" \
       --disable_quality_filtering \
