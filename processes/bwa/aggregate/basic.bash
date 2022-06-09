@@ -1,7 +1,7 @@
 #!/bin/bash
 
 version=2.5.1
-export NXF_VER=18.10.1  # The version of nextflow to run. 18.10.1 includes conda
+export NXF_VER=20.10.0  # The version of nextflow to run. 20.10.0 includes DSL2
 
 cd "$(dirname "$0")"
 
@@ -67,8 +67,9 @@ fi
     "$STAMPIPES/processes/bwa/aggregate/basic.nf" \
     -c "$STAMPIPES/nextflow.config" \
     -w "$workdir" \
+    --id "AG${AGGREGATION_ID}" \
     --bams "$bamfiles" \
-    --genome "$GENOME_INDEX" \
+    --genome "$GENOME_INDEX.fa" \
     --mappable "$MAPPABLE_REGIONS" \
     --chrom_sizes "$CHROM_SIZES" \
     --peakcaller "$PEAK_CALLER" \
