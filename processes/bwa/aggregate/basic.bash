@@ -69,7 +69,7 @@ fi
     -w "$workdir" \
     --id "AG${AGGREGATION_ID}" \
     --bams "$bamfiles" \
-    --genome "$GENOME_INDEX" \
+    --genome "$GENOME_INDEX.fa" \
     --mappable "$MAPPABLE_REGIONS" \
     --chrom_sizes "$CHROM_SIZES" \
     --peakcaller "$PEAK_CALLER" \
