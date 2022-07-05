@@ -99,7 +99,7 @@ def check_copy(sequencer_folder):
 
     if flowcell_reads[sequencer_folder]:
         #copy_filename = copy_complete_filename % flowcell_reads[sequencer_folder]
-        return os.path.exists("%s/%s" % (sequencer_folder, "RTAComplete.txt"))
+        return os.path.exists("%s/%s" % (sequencer_folder, "CopyComplete.txt"))
     else:
         return False
 

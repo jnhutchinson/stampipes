@@ -602,8 +602,8 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
 # Register as "Sequencing" in LIMS
 lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/2/"
 
-# Wait for RTAComplete
-while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
+# Wait for CopyComplete
+while [ ! -e "$illumina_dir/CopyComplete.txt" ] ; do sleep 60 ; done
 
 # Register as "Processing" in LIMS
 lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/3/"
@@ -649,8 +649,8 @@ python3 "$STAMPIPES/scripts/lims/upload_data.py" \
 # Register as "Sequencing" in LIMS
 lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/2/"
 
-# Wait for RTAComplete
-while [ ! -e "$illumina_dir/RTAComplete.txt" ] ; do sleep 60 ; done
+# Wait for CopyComplete
+while [ ! -e "$illumina_dir/CopyComplete.txt" ] ; do sleep 60 ; done
 
 # Register as "Processing" in LIMS
 lims_patch "flowcell_run/$flowcell_id/" "status=https://lims.stamlab.org/api/flowcell_run_status/3/"
@@ -865,7 +865,7 @@ __BCL2FASTQ__
 
 fi
 
-if [ -e "RTAComplete.txt" ] ; then
+if [ -e "CopyComplete.txt" ] ; then
     echo -e "Setup complete. To kick everything off, type:\n\nbash run_bcl2fastq.sh"
 else
     echo -e "Setup complete, sequencing still in progress. To queue everything up, type:\n\nnohup bash run_bcl2fastq.sh &"
