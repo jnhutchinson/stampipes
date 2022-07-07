@@ -24,7 +24,7 @@ script_options = {
     "overwrite": False,
     "script_name": "run.bash",
     "qsub_prefix": ".agg",
-    "qsub_queue": "queue2",
+    "qsub_queue": "queue0",
     "dry_run": False,
     "aggregation_base_directory": None,
     "aggregation_directory": None,

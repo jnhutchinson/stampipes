@@ -36,7 +36,7 @@ processing=
 LANE=
 dryrun=
 mismatches=0
-queue='queue2'
+queue='queue0'
 while getopts ":hi:o:p:m:q:l:n" opt ; do
   case $opt in
     h)

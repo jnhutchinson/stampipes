@@ -20,7 +20,7 @@ module load python/3.5.1
 module load pysam/0.9.0
 module load python/2.7.11
 
-export QUEUE=queue2
+export QUEUE=queue0
 
 MAX_MISMATCHES=2
 MIN_MAPPING_QUALITY=10

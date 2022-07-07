@@ -224,7 +224,7 @@ case $run_type in
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--novaseq"
-    queue="hpcz-1"
+    queue="hpcz-2"
     make_novaseq_samplesheet 2 > SampleSheet.csv
     bcl_tasks=1
 
@@ -250,7 +250,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--novaseq"
-    queue="hpcz-1"
+    queue="hpcz-2"
     make_novaseq_samplesheet 2 > SampleSheet.csv
     bcl_tasks=1
 
@@ -289,7 +289,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--novaseq"
-    queue="hpcz-1"
+    queue="hpcz-2"
     make_novaseq_samplesheet 4 > SampleSheet.csv
     bcl_tasks=1
 
@@ -328,7 +328,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--novaseq"
-    queue="hpcz-1"
+    queue="hpcz-2"
     make_novaseq_samplesheet 4 > SampleSheet.csv
     bcl_tasks=1
 
@@ -368,7 +368,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--nextseq"
-    queue="queue2"
+    queue="queue0"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1
 
@@ -406,7 +406,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--hiseq4k"
-    queue="queue2"
+    queue="queue0"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1-8
 
@@ -444,7 +444,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--miniseq"
-    queue="queue2"
+    queue="queue0"
     make_nextseq_samplesheet > SampleSheet.csv
     bcl_tasks=1
     set +e
@@ -469,7 +469,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--miniseq"
-    queue="queue2"
+    queue="queue0"
     minidemux="True"
     # placeholder
     cp /home/dchee7/projects/guide-seq/data/samplesheets/SampleSheet.csv SampleSheet.csv
@@ -491,7 +491,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--miniseq"
-    queue="queue2"
+    queue="queue0"
     minidemux="True"
     # placeholder
     cp /net/fileserv0/projects/vol2/dchee7/datastore/talens/sample_sheets/SampleSheet.csv SampleSheet.csv
@@ -513,7 +513,7 @@ _U_
     samplesheet="SampleSheet.csv"
     fastq_dir="$illumina_dir/fastq"  # Lack of trailing slash is important for rsync!
     bc_flag="--miniseq"
-    queue="queue2"
+    queue="queue0"
     minidemux="True"
     # placeholder
     cat /net/fileserv0/projects/vol2/dchee7/datastore/talens/sample_sheets/SampleSheet.csv > SampleSheet.csv
@@ -850,7 +850,7 @@ bash fastqc.bash
 python3 "$STAMPIPES/scripts/alignprocess.py" \
   --flowcell "$flowcell"                     \
   --auto_aggregate                           \
-  --qsub-queue queue2                        \
+  --qsub-queue queue0                        \
   --outfile run_alignments.bash
 
 # Set up of flowcell aggregations

@@ -23,7 +23,7 @@ script_options = {
     "outfile": os.path.join(os.getcwd(), "run.bash"),
     "sample_script_basename": "run.bash",
     "qsub_prefix": ".proc",
-    "queue": "queue2",
+    "queue": "queue0",
     "dry_run": False,
     "no_mask": False,
     "bases_mask": None,

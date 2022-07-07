@@ -15,7 +15,7 @@ module load pysam/0.9.0
 FINAL_BAM=${SAMPLE_NAME}.sorted.bam
 UNIQUES_BAM=${SAMPLE_NAME}.uniques.sorted.bam
 
-export QUEUE=queue2
+export QUEUE=queue0
 
 export FASTQ_TMP=$ALIGN_DIR/fastq
 
