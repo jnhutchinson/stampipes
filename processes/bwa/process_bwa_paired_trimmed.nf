@@ -23,6 +23,7 @@ params.r2 = ""
 params.outdir = "output"
 params.readlength = 36
 params.adapter_file = ""
+params.paired = false
 
 params.cramthreads = 10
 
@@ -46,7 +47,7 @@ def helpMessage() {
 def exclude_bam =  { name -> name ==~ /.*ba[mi]$/ ? null : name }
 
 
-if (params.help || !params.r1 || !params.r2 || !params.genome){
+if (params.help || !params.r1 ||  !params.genome){
   helpMessage();
   exit 0;
 }
@@ -71,6 +72,7 @@ workflow {
     adapter_file: file(params.adapter_file, checkIfExists: true),
     read_length: params.readlength,
     umi: params.UMI,
+    paired: params.paired,
     outdir: params.outdir,
   ]
   BWA_ALIGNMENT(channel.of(metadata))
@@ -119,9 +121,10 @@ workflow BWA_ALIGNMENT {
          (p7, p5) = parse_legacy_adapter_file(m.adapter_file);
          return [m, reads[0], reads[1], p7, p5]
        }
-    //| view { "from map $it" }
+    // | view { "from map $it" }
     | fastp_adapter_trim
 
+    if (params.paired){   
     fastp_adapter_trim.out.fastq
       .map { meta, reads -> [ meta, meta.trim_to_length, reads[0], reads[1] ] }
     | trim_to_length
@@ -136,6 +139,22 @@ workflow BWA_ALIGNMENT {
     | merge_bam
     | map { meta, bam -> [ meta, !!meta.umi, bam ] }
     | mark_duplicates
+    } else {
+     fastp_adapter_trim.out.fastq
+      .map { meta, reads -> [ meta, meta.trim_to_length, reads[0], reads[1] ] }
+     | trim_to_length
+     | map { meta, r1, r2 -> [meta, meta.umi, r1, r2] }
+     | add_umi_info
+     | map { meta, r1, r2 -> [ meta, r1, "", meta.genome ]  }
+     | BWA_ALIGN
+     | map { meta, bam -> [ meta, bam, meta.reference_nuclear_chroms ] }
+     | filter_bam
+     | sort_bam
+     | groupTuple()  // TODO: This blocks until all sort_bams are done... seems bad.
+     | merge_bam
+     | map { meta, bam -> [ meta, !!meta.umi, bam ] }
+     | mark_duplicates
+    }
 
     mark_duplicates.out.marked_bam
       .map { meta, bam -> [ meta, !!meta.umi, bam ] }
@@ -144,14 +163,17 @@ workflow BWA_ALIGNMENT {
     mark_duplicates.out.marked_bam
     | bam_counts
 
+   if (params.paired){   
     filter_bam_to_unique.out
     | insert_size
+   }
 
     filter_bam_to_unique.out
       .map { meta, bam, bai -> [ meta, bam, bai,
         meta.reference_mappable,
         meta.reference_chrom_info,
       ]}
+    | view { "b4 spot $it" }
     | spot_score
 
     filter_bam_to_unique
@@ -178,7 +200,7 @@ workflow BWA_ALIGNMENT {
     | gather_counts
 
 
-
+   if (params.paired){   
     // Publish all files
     Channel.empty().mix(
       mark_duplicates.out.metrics,
@@ -188,6 +210,16 @@ workflow BWA_ALIGNMENT {
       density_files.out.bigwig,
       density_files.out.bgzip,
     ) | publish_with_meta
+   } else {
+     // Publish all files
+    Channel.empty().mix(
+      mark_duplicates.out.metrics,
+      gather_counts.out,
+      density_files.out.starch,
+      density_files.out.bigwig,
+      density_files.out.bgzip,
+    ) | publish_with_meta 
+   }
 
     Channel.empty().mix(
       encode_cram.out.cram_with_index.flatMap { meta, cram, crai -> [cram, crai] },
@@ -382,10 +414,14 @@ process spot_score {
   output:
     tuple val(meta), file('subsample.r1.spot.out'), file('spotdups.txt')
 
+
+
   script:
     def genome_name = chrom_info.simpleName
     def read_length = (mappable_only.name =~ /K([0-9]+)/)[0][1]
+    
     """
+    echo ${chrom_info}
     # random sample
     samtools view -h -F 12 -f 3 "${bam}" \
       | awk '{if( ! index(\$3, "chrM") && \$3 != "chrC" && \$3 != "random"){print}}' \
