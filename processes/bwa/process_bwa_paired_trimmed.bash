@@ -21,6 +21,13 @@ adapterfile="adapters.txt"
 outdir="output_$version"
 workdir="work"
 
+if [[ -z "${PAIRED}" ]]; then
+	R2_FASTQ=${R1_FASTQ/R1.f/R2.f}
+	R2_FASTQ=$(basename ${R2_FASTQ})
+	ln -s ${R1_FASTQ} ./${R2_FASTQ}
+fi
+
+
 # Remove old stuff if necessary
 if [[ -n "$REDO_ALIGNMENT" ]] ; then
   rm -rf "$outdir"
