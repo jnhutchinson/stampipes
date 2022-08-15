@@ -64,6 +64,7 @@ nextflow run \
   --id "ALN${ALIGNMENT_ID}" \
   --r1="$R1_FASTQ" \
   --r2="$R2_FASTQ" \
+  --paired="$PAIRED" \
   --adapter_file="$adapterfile"  \
   --UMI="$UMI_METHOD" \
   --genome="$BWAINDEX.fa" \
