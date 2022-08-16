@@ -124,6 +124,7 @@ workflow BWA_ALIGNMENT {
     // | view { "from map $it" }
     | fastp_adapter_trim
 
+  //if single end data, submit null R2_fastq to BWA for alignment
     if (params.paired){   
     fastp_adapter_trim.out.fastq
       .map { meta, reads -> [ meta, meta.trim_to_length, reads[0], reads[1] ] }
@@ -163,6 +164,7 @@ workflow BWA_ALIGNMENT {
     mark_duplicates.out.marked_bam
     | bam_counts
 
+  //skip insert size calculation if single end data
    if (params.paired){   
     filter_bam_to_unique.out
     | insert_size
@@ -199,7 +201,7 @@ workflow BWA_ALIGNMENT {
     ).groupTuple()
     | gather_counts
 
-
+    //skip publishing insert size if single end 
    if (params.paired){   
     // Publish all files
     Channel.empty().mix(
@@ -417,6 +419,7 @@ process spot_score {
   script:
     def genome_name = chrom_info.simpleName
     def read_length = (mappable_only.name =~ /K([0-9]+)/)[0][1]
+  // conditional to deal with single end data
   if (params.paired)  
     """
     # random sample
