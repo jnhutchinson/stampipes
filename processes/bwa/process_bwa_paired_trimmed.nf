@@ -23,6 +23,7 @@ params.r2 = ""
 params.outdir = "output"
 params.readlength = 36
 params.adapter_file = ""
+//not sure if this would work with single end data with paired=true as default
 params.paired = false
 
 params.cramthreads = 10
