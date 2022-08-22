@@ -21,6 +21,7 @@ adapterfile="adapters.txt"
 outdir="output_$version"
 workdir="work"
 
+# setup dummy R2 if single end
 if [[ -z "${PAIRED}" ]]; then
 	R2_FASTQ=${R1_FASTQ/R1.f/R2.f}
 	R2_FASTQ=$(basename ${R2_FASTQ})
